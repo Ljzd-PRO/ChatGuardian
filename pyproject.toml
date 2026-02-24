@@ -1,0 +1,41 @@
+[tool.poetry]
+name = "chat-guardian"
+version = "0.1.0"
+description = "LLM-powered cross-platform chat topic guardian"
+authors = ["Ljzd-PRO <me@ljzd.link>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.116.0"
+uvicorn = {extras = ["standard"], version = "^0.35.0"}
+pydantic = "^2.11.0"
+pydantic-settings = "^2.10.0"
+sqlalchemy = "^2.0.43"
+aiosqlite = "^0.21.0"
+alembic = "^1.16.0"
+httpx = "^0.28.1"
+aiosmtplib = "^4.0.1"
+aiocqhttp = "^1.4.3"
+jinja2 = "^3.1.6"
+python-dotenv = "^1.1.1"
+orjson = "^3.11.3"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.1"
+pytest-asyncio = "^1.1.0"
+ruff = "^0.12.10"
+mypy = "^1.17.1"
+
+[tool.poetry.scripts]
+chat-guardian = "chat_guardian.main:run"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

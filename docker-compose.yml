@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  chat-guardian:
+    build: .
+    container_name: chat-guardian
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./chat_guardian.db:/app/chat_guardian.db
