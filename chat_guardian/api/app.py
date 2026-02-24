@@ -63,7 +63,10 @@ class AppContainer:
 
         该容器用于在 `create_app` 中创建单例服务实例，便于路由直接使用。
         """
-        self.chat_history_store = InMemoryChatHistoryStore()
+        self.chat_history_store = InMemoryChatHistoryStore(
+            pending_queue_limit=settings.pending_queue_limit,
+            history_list_limit=settings.history_list_limit,
+        )
         self.rule_repository = InMemoryRuleRepository()
         self.feedback_repository = InMemoryFeedbackRepository()
         self.memory_repository = InMemoryMemoryRepository()
@@ -93,6 +96,13 @@ class AppContainer:
         )
 
         self.adapter_manager = AdapterManager(build_adapters_from_settings(settings))
+        for adapter in self.adapter_manager.adapters:
+            adapter.register_handler(self.handle_adapter_event)
+
+    async def handle_adapter_event(self, event: ChatEvent) -> None:
+        """Adapter 统一消息入口：先处理 self-memory，再进入检测触发流程。"""
+        await self.self_message_service.process_if_self_message(event)
+        await self.detection_engine.ingest_event(event)
 
 
 def _from_payload(payload: RulePayload) -> DetectionRule:
@@ -216,7 +226,6 @@ def create_app() -> FastAPI:
     @app.post("/detect", response_model=DetectResponse)
     async def detect(payload: DetectRequest) -> DetectResponse:
         message = _convert_message_payload(payload.message)
-        await container.chat_history_store.append_message(message)
 
         event = ChatEvent(
             chat_type=ChatType(payload.chat_type),
@@ -227,7 +236,15 @@ def create_app() -> FastAPI:
         )
 
         await container.self_message_service.process_if_self_message(event)
-        engine_output = await container.detection_engine.process_event(event)
+        engine_output = await container.detection_engine.ingest_event(event)
+
+        if engine_output is None:
+            return DetectResponse(
+                event_id=f"queued-{message.message_id}",
+                triggered_rule_ids=[],
+                notified_count=0,
+            )
+
         triggered = [decision.rule_id for decision in engine_output.result.decisions if decision.triggered]
 
         return DetectResponse(

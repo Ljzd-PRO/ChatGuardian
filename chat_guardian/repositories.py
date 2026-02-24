@@ -8,30 +8,101 @@
 from __future__ import annotations
 
 from collections import defaultdict, deque
+from datetime import datetime
 
-from chat_guardian.domain import ChatMessage, DetectionResult, DetectionRule, Feedback, UserMemoryFact
+from chat_guardian.domain import ChatMessage, ChatType, DetectionResult, DetectionRule, Feedback, UserMemoryFact
 
 
 class InMemoryChatHistoryStore:
-    """将消息按会话保存在内存的环形队列中。
+    """将消息按 adapter/chat_type/chat_id 分类保存在内存中。
 
     Methods:
-        append_message: 将消息追加到会话历史。
-        recent_messages: 获取指定消息之前的最近若干条消息（按时间升序）。
+        enqueue_message: 将消息写入未处理队列。
+        pop_pending_messages: 从未处理队列头部取消息。
+        append_history_messages: 将消息写入滚动历史列表。
+        recent_history_messages: 获取指定消息之前的最近若干条历史消息（按时间升序）。
     """
 
-    def __init__(self, per_chat_limit: int = 1000):
-        self.per_chat_limit = per_chat_limit
-        self.data: dict[str, deque[ChatMessage]] = defaultdict(deque)
+    def __init__(self, pending_queue_limit: int = 200, history_list_limit: int = 1000):
+        self.pending_queue_limit = pending_queue_limit
+        self.history_list_limit = history_list_limit
+        self.pending: dict[str, dict[str, dict[str, deque[ChatMessage]]]] = defaultdict(
+            lambda: defaultdict(lambda: defaultdict(deque))
+        )
+        self.history: dict[str, dict[str, dict[str, deque[ChatMessage]]]] = defaultdict(
+            lambda: defaultdict(lambda: defaultdict(deque))
+        )
 
-    async def append_message(self, message: ChatMessage) -> None:
-        bucket = self.data[message.chat_id]
+    @staticmethod
+    def _chat_type_key(chat_type: ChatType | str) -> str:
+        return chat_type.value if isinstance(chat_type, ChatType) else str(chat_type)
+
+    async def enqueue_message(self, platform: str, chat_type: ChatType | str, chat_id: str, message: ChatMessage) -> None:
+        bucket = self.pending[platform][self._chat_type_key(chat_type)][chat_id]
         bucket.append(message)
-        while len(bucket) > self.per_chat_limit:
+        while len(bucket) > self.pending_queue_limit:
             bucket.popleft()
 
-    async def recent_messages(self, chat_id: str, before_message_id: str | None, limit: int) -> list[ChatMessage]:
-        bucket = list(self.data.get(chat_id, []))
+    async def pending_size(self, platform: str, chat_type: ChatType | str, chat_id: str) -> int:
+        return len(self.pending[platform][self._chat_type_key(chat_type)][chat_id])
+
+    async def oldest_pending_timestamp(
+        self,
+        platform: str,
+        chat_type: ChatType | str,
+        chat_id: str,
+    ) -> datetime | None:
+        bucket = self.pending[platform][self._chat_type_key(chat_type)][chat_id]
+        if not bucket:
+            return None
+        return bucket[0].timestamp
+
+    async def pop_pending_messages(
+        self,
+        platform: str,
+        chat_type: ChatType | str,
+        chat_id: str,
+        max_count: int | None,
+    ) -> list[ChatMessage]:
+        bucket = self.pending[platform][self._chat_type_key(chat_type)][chat_id]
+        if max_count is None:
+            max_count = len(bucket)
+        items: list[ChatMessage] = []
+        while bucket and len(items) < max_count:
+            items.append(bucket.popleft())
+        return items
+
+    async def append_history_message(
+        self,
+        platform: str,
+        chat_type: ChatType | str,
+        chat_id: str,
+        message: ChatMessage,
+    ) -> None:
+        bucket = self.history[platform][self._chat_type_key(chat_type)][chat_id]
+        bucket.append(message)
+        while len(bucket) > self.history_list_limit:
+            bucket.popleft()
+
+    async def append_history_messages(
+        self,
+        platform: str,
+        chat_type: ChatType | str,
+        chat_id: str,
+        messages: list[ChatMessage],
+    ) -> None:
+        for message in messages:
+            await self.append_history_message(platform, chat_type, chat_id, message)
+
+    async def recent_history_messages(
+        self,
+        platform: str,
+        chat_type: ChatType | str,
+        chat_id: str,
+        before_message_id: str | None,
+        limit: int,
+    ) -> list[ChatMessage]:
+        bucket = list(self.history[platform][self._chat_type_key(chat_type)][chat_id])
         if before_message_id:
             try:
                 idx = next(index for index, message in enumerate(bucket) if message.message_id == before_message_id)
@@ -39,7 +110,6 @@ class InMemoryChatHistoryStore:
             except StopIteration:
                 pass
         return bucket[-limit:]
-
 
 class InMemoryRuleRepository:
     """内存中的规则存储实现，支持上载/列举已启用规则。"""

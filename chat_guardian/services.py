@@ -14,8 +14,8 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from typing import Protocol
 
 import httpx
@@ -24,6 +24,7 @@ from aiosmtplib import SMTP
 from chat_guardian.domain import (
     ChatEvent,
     ChatMessage,
+    ChatType,
     DetectionResult,
     DetectionRule,
     Feedback,
@@ -38,14 +39,41 @@ from chat_guardian.settings import settings
 
 
 class ChatHistoryStore(Protocol):
-    """消息历史存储的协议接口。
+    """消息缓冲与历史存储协议。
 
-    实现者需提供将消息追加到会话历史与按窗口读取历史消息的方法。
+    存储按 adapter/chat_type/chat_id 分类，支持：
+    - 未处理消息队列（pending）
+    - 已处理滚动历史（history）
     """
 
-    async def append_message(self, message: ChatMessage) -> None: ...
+    async def enqueue_message(self, platform: str, chat_type: str, chat_id: str, message: ChatMessage) -> None: ...
 
-    async def recent_messages(self, chat_id: str, before_message_id: str | None, limit: int) -> list[ChatMessage]: ...
+    async def pending_size(self, platform: str, chat_type: str, chat_id: str) -> int: ...
+
+    async def pop_pending_messages(
+        self,
+        platform: str,
+        chat_type: str,
+        chat_id: str,
+        max_count: int | None,
+    ) -> list[ChatMessage]: ...
+
+    async def append_history_messages(
+        self,
+        platform: str,
+        chat_type: str,
+        chat_id: str,
+        messages: list[ChatMessage],
+    ) -> None: ...
+
+    async def recent_history_messages(
+        self,
+        platform: str,
+        chat_type: str,
+        chat_id: str,
+        before_message_id: str | None,
+        limit: int,
+    ) -> list[ChatMessage]: ...
 
 
 class RuleRepository(Protocol):
@@ -177,7 +205,9 @@ class ContextWindowService:
         self.store = store
 
     async def build_context(self, event: ChatEvent) -> list[ChatMessage]:
-        previous = await self.store.recent_messages(
+        previous = await self.store.recent_history_messages(
+            platform=event.platform,
+            chat_type=event.chat_type.value,
             chat_id=event.chat_id,
             before_message_id=event.message.message_id,
             limit=settings.context_message_limit,
@@ -189,6 +219,16 @@ class ContextWindowService:
 class EngineOutput:
     result: DetectionResult
     notified_count: int
+
+
+@dataclass(slots=True)
+class ChannelRuntimeState:
+    """单会话运行时状态（用于触发策略控制）。"""
+
+    last_detection_at: datetime | None = None
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    cooldown_task: asyncio.Task[None] | None = None
+    timeout_task: asyncio.Task[None] | None = None
 
 
 class DetectionEngine:
@@ -215,10 +255,53 @@ class DetectionEngine:
         self.result_repository = result_repository
         self.notifiers = notifiers
         self.hook_dispatcher = hook_dispatcher
+        self._runtime_states: dict[tuple[str, str, str], ChannelRuntimeState] = {}
 
-    async def process_event(self, event: ChatEvent) -> EngineOutput:
+    @staticmethod
+    def _channel_key(platform: str, chat_type: str, chat_id: str) -> tuple[str, str, str]:
+        return (platform, chat_type, chat_id)
+
+    def _state_of(self, platform: str, chat_type: str, chat_id: str) -> ChannelRuntimeState:
+        key = self._channel_key(platform, chat_type, chat_id)
+        if key not in self._runtime_states:
+            self._runtime_states[key] = ChannelRuntimeState()
+        return self._runtime_states[key]
+
+    async def ingest_event(self, event: ChatEvent) -> EngineOutput | None:
+        """接收新消息事件并按策略决定是否触发检测。
+
+        流程：
+        1) 先入 pending 队列；
+        2) 满足最小新消息数时尝试触发；
+        3) 若不足最小数量，依赖等待超时强制触发。
+        """
+        if settings.detection_min_new_messages > 1 and settings.detection_wait_timeout_seconds <= 0:
+            raise ValueError("When detection_min_new_messages > 1, detection_wait_timeout_seconds must be > 0")
+
+        await self.context_service.store.enqueue_message(
+            platform=event.platform,
+            chat_type=event.chat_type.value,
+            chat_id=event.chat_id,
+            message=event.message,
+        )
+
+        state = self._state_of(event.platform, event.chat_type.value, event.chat_id)
+        await self._ensure_timeout_task(event.platform, event.chat_type.value, event.chat_id, state)
+
+        min_new = max(1, settings.detection_min_new_messages)
+        pending = await self.context_service.store.pending_size(event.platform, event.chat_type.value, event.chat_id)
+        if pending < min_new:
+            return None
+
+        return await self._try_trigger(
+            platform=event.platform,
+            chat_type=event.chat_type.value,
+            chat_id=event.chat_id,
+            force_all_pending=False,
+        )
+
+    async def _process_event_with_context(self, event: ChatEvent, context_messages: list[ChatMessage]) -> EngineOutput:
         active_rules = [rule for rule in await self.rules.list_enabled() if SessionMatcher.match(rule.target_session, event)]
-        context_messages = await self.context_service.build_context(event)
         decisions = await self._evaluate_rules_in_parallel_batches(context_messages, active_rules)
         result = DetectionResult(
             event_id=f"evt-{event.message.message_id}",
@@ -238,6 +321,122 @@ class DetectionEngine:
             await self.hook_dispatcher.dispatch(event, decision, context_messages)
 
         return EngineOutput(result=result, notified_count=notify_count)
+
+    async def _try_trigger(
+        self,
+        platform: str,
+        chat_type: str,
+        chat_id: str,
+        force_all_pending: bool,
+    ) -> EngineOutput | None:
+        state = self._state_of(platform, chat_type, chat_id)
+        async with state.lock:
+            now = datetime.utcnow()
+            cooldown = max(0.0, settings.detection_cooldown_seconds)
+            if state.last_detection_at and cooldown > 0:
+                due = state.last_detection_at + timedelta(seconds=cooldown)
+                if now < due:
+                    await self._ensure_cooldown_task(platform, chat_type, chat_id, state, (due - now).total_seconds())
+                    return None
+
+            output = await self._drain_pending_and_detect(platform, chat_type, chat_id, force_all_pending)
+            if output is None:
+                return None
+
+            state.last_detection_at = datetime.utcnow()
+
+            pending = await self.context_service.store.pending_size(platform, chat_type, chat_id)
+            min_new = max(1, settings.detection_min_new_messages)
+            if pending >= min_new and cooldown > 0:
+                await self._ensure_cooldown_task(platform, chat_type, chat_id, state, cooldown)
+            await self._ensure_timeout_task(platform, chat_type, chat_id, state)
+            return output
+
+    async def _drain_pending_and_detect(
+        self,
+        platform: str,
+        chat_type: str,
+        chat_id: str,
+        force_all_pending: bool,
+    ) -> EngineOutput | None:
+        min_new = max(1, settings.detection_min_new_messages)
+        max_count = None if force_all_pending else min_new
+
+        pending_messages = await self.context_service.store.pop_pending_messages(
+            platform=platform,
+            chat_type=chat_type,
+            chat_id=chat_id,
+            max_count=max_count,
+        )
+        if not pending_messages:
+            return None
+
+        await self.context_service.store.append_history_messages(
+            platform=platform,
+            chat_type=chat_type,
+            chat_id=chat_id,
+            messages=pending_messages,
+        )
+
+        anchor_message = pending_messages[-1]
+        event = ChatEvent(
+            chat_type=ChatType(chat_type),
+            chat_id=chat_id,
+            message=anchor_message,
+            platform=platform,
+            is_from_self=False,
+        )
+        context_messages = await self.context_service.build_context(event)
+        return await self._process_event_with_context(event, context_messages)
+
+    async def _ensure_cooldown_task(
+        self,
+        platform: str,
+        chat_type: str,
+        chat_id: str,
+        state: ChannelRuntimeState,
+        delay_seconds: float,
+    ) -> None:
+        if state.cooldown_task and not state.cooldown_task.done():
+            return
+
+        async def _run() -> None:
+            try:
+                await asyncio.sleep(max(0.0, delay_seconds))
+                await self._try_trigger(platform, chat_type, chat_id, force_all_pending=False)
+            finally:
+                state.cooldown_task = None
+
+        state.cooldown_task = asyncio.create_task(_run())
+
+    async def _ensure_timeout_task(
+        self,
+        platform: str,
+        chat_type: str,
+        chat_id: str,
+        state: ChannelRuntimeState,
+    ) -> None:
+        pending = await self.context_service.store.pending_size(platform, chat_type, chat_id)
+        min_new = max(1, settings.detection_min_new_messages)
+        timeout_seconds = settings.detection_wait_timeout_seconds
+
+        if pending == 0 or min_new <= 1 or timeout_seconds <= 0:
+            if state.timeout_task and not state.timeout_task.done():
+                state.timeout_task.cancel()
+            state.timeout_task = None
+            return
+
+        if state.timeout_task and not state.timeout_task.done():
+            return
+
+        async def _run() -> None:
+            try:
+                await asyncio.sleep(timeout_seconds)
+                await self._try_trigger(platform, chat_type, chat_id, force_all_pending=True)
+            finally:
+                state.timeout_task = None
+
+        state.timeout_task = asyncio.create_task(_run())
 
     async def _evaluate_rules_in_parallel_batches(
         self,

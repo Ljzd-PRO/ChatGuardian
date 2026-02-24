@@ -85,10 +85,10 @@ async def test_rules_are_split_into_batches() -> None:
         reply_from=None,
         timestamp=datetime.utcnow(),
     )
-    await history.append_message(message)
-
     event = ChatEvent(chat_type=ChatType.GROUP, chat_id="g-1", message=message, platform="test")
-    await engine.process_event(event)
+    output = await engine.ingest_event(event)
+
+    assert output is not None
 
     assert sorted(llm.batch_sizes) == [1, 2, 2]
 

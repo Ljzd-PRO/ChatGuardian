@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     # 从会话中获取历史消息条数
     context_message_limit: int = 10
 
+    # 消息缓冲配置：未处理队列与滚动历史上限
+    pending_queue_limit: int = 200
+    history_list_limit: int = 1000
+
+    # 检测触发配置：冷却、新消息最小数量、等待超时
+    detection_cooldown_seconds: float = 5.0
+    detection_min_new_messages: int = 1
+    detection_wait_timeout_seconds: float = 30.0
+
     # SMTP 发信配置（可用于 EmailNotifier）
     smtp_host: str | None = None
     smtp_port: int = 587
