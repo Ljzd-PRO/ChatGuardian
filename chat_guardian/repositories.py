@@ -38,12 +38,23 @@ class InMemoryChatHistoryStore:
         return chat_type.value if isinstance(chat_type, ChatType) else str(chat_type)
 
     async def enqueue_message(self, platform: str, chat_type: ChatType | str, chat_id: str, message: ChatMessage) -> None:
+        """将新消息追加到未处理队列（按 platform/chat_type/chat_id 分类）。
+
+        如果队列超过 `pending_queue_limit`，会从最旧处丢弃消息以保证容量上限。
+
+        Args:
+            platform: 消息来源平台标识（如 onebot）。
+            chat_type: 聊天类型（'group' 或 'private'）。
+            chat_id: 会话/群组 ID。
+            message: 要入队的 `ChatMessage` 实例。
+        """
         bucket = self.pending[platform][self._chat_type_key(chat_type)][chat_id]
         bucket.append(message)
         while len(bucket) > self.pending_queue_limit:
             bucket.popleft()
 
     async def pending_size(self, platform: str, chat_type: ChatType | str, chat_id: str) -> int:
+        """返回指定队列当前的未处理消息数量。"""
         return len(self.pending[platform][self._chat_type_key(chat_type)][chat_id])
 
     async def oldest_pending_timestamp(
@@ -52,6 +63,7 @@ class InMemoryChatHistoryStore:
         chat_type: ChatType | str,
         chat_id: str,
     ) -> datetime | None:
+        """返回队列中最早一条未处理消息的时间戳，如果队列为空返回 None。"""
         bucket = self.pending[platform][self._chat_type_key(chat_type)][chat_id]
         if not bucket:
             return None
@@ -64,6 +76,11 @@ class InMemoryChatHistoryStore:
         chat_id: str,
         max_count: int | None,
     ) -> list[ChatMessage]:
+        """从未处理队列头部弹出最多 `max_count` 条消息并返回。
+
+        如果 `max_count` 为 None，则弹出全部消息。
+        返回值为按时间顺序（从旧到新）的消息列表。
+        """
         bucket = self.pending[platform][self._chat_type_key(chat_type)][chat_id]
         if max_count is None:
             max_count = len(bucket)
@@ -79,6 +96,7 @@ class InMemoryChatHistoryStore:
         chat_id: str,
         message: ChatMessage,
     ) -> None:
+        """将单条消息追加到已处理滚动历史中，超过上限会从旧端丢弃。"""
         bucket = self.history[platform][self._chat_type_key(chat_type)][chat_id]
         bucket.append(message)
         while len(bucket) > self.history_list_limit:
@@ -91,6 +109,7 @@ class InMemoryChatHistoryStore:
         chat_id: str,
         messages: list[ChatMessage],
     ) -> None:
+        """将多条消息按顺序追加到已处理滚动历史中。"""
         for message in messages:
             await self.append_history_message(platform, chat_type, chat_id, message)
 
@@ -102,6 +121,15 @@ class InMemoryChatHistoryStore:
         before_message_id: str | None,
         limit: int,
     ) -> list[ChatMessage]:
+        """获取指定会话在 `before_message_id` 之前的最近若干条历史消息。
+
+        Args:
+            platform: 平台标识。
+            chat_type: 聊天类型。
+            chat_id: 会话 ID。
+            before_message_id: 以该消息为分界（不包含该消息），如果为 None 则取最新。
+            limit: 返回的最大条数。
+        """
         bucket = list(self.history[platform][self._chat_type_key(chat_type)][chat_id])
         if before_message_id:
             try:

@@ -329,6 +329,20 @@ class DetectionEngine:
         chat_id: str,
         force_all_pending: bool,
     ) -> EngineOutput | None:
+        """尝试触发一次检测。
+
+        行为：在会话锁内检查冷却期；若处于冷却则安排冷却完成后的重试；
+        否则从 pending 中取出消息并执行检测。
+
+        Args:
+            platform: 平台标识。
+            chat_type: 聊天类型字符串。
+            chat_id: 会话 ID。
+            force_all_pending: 是否强制将 pending 中全部消息取出（用于超时触发）。
+
+        Returns:
+            若执行了检测返回 `EngineOutput`，否则返回 None（表示未触发）。
+        """
         state = self._state_of(platform, chat_type, chat_id)
         async with state.lock:
             now = datetime.utcnow()
@@ -359,6 +373,13 @@ class DetectionEngine:
         chat_id: str,
         force_all_pending: bool,
     ) -> EngineOutput | None:
+        """从 pending 中取出一批消息写入历史并以最后一条为锚触发检测。
+
+        当 `force_all_pending` 为 False 时，最多只取 `detection_min_new_messages` 条；
+        否则取出队列内所有消息。
+
+        返回与 `process_event` 相同的 `EngineOutput`，或在没有消息可处理时返回 None。
+        """
         min_new = max(1, settings.detection_min_new_messages)
         max_count = None if force_all_pending else min_new
 
@@ -397,6 +418,10 @@ class DetectionEngine:
         state: ChannelRuntimeState,
         delay_seconds: float,
     ) -> None:
+        """安排一个冷却到期后的重试任务。
+
+        若已有未完成的冷却任务则不重复创建。
+        """
         if state.cooldown_task and not state.cooldown_task.done():
             return
 
@@ -416,6 +441,11 @@ class DetectionEngine:
         chat_id: str,
         state: ChannelRuntimeState,
     ) -> None:
+        """根据当前 pending 状态与配置，安排或取消等待超时强制触发的任务。
+
+        - 若 pending==0 或 最小新消息 <=1 或 超时时间 <=0，则取消已有超时任务。
+        - 否则创建一个在 `detection_wait_timeout_seconds` 后执行的任务（若尚未存在）。
+        """
         pending = await self.context_service.store.pending_size(platform, chat_type, chat_id)
         min_new = max(1, settings.detection_min_new_messages)
         timeout_seconds = settings.detection_wait_timeout_seconds
