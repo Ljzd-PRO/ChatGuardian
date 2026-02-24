@@ -245,11 +245,9 @@ def create_app() -> FastAPI:
                 notified_count=0,
             )
 
-        triggered = [decision.rule_id for decision in engine_output.result.decisions if decision.triggered]
-
         return DetectResponse(
-            event_id=engine_output.result.event_id,
-            triggered_rule_ids=triggered,
+            event_id=engine_output.event_id,
+            triggered_rule_ids=engine_output.triggered_rule_ids,
             notified_count=engine_output.notified_count,
         )
 

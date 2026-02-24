@@ -183,16 +183,24 @@ class RuleDecision:
 
 @dataclass(slots=True)
 class DetectionResult:
-    """一次事件的整体检测结果汇总。
+    """单条规则在一次检测中的结果记录。
 
-    包含所有规则的 `RuleDecision`。
+    说明：
+    - 检测结果按 `rule_id` 归档；
+    - 每条结果包含当次检测使用的上下文窗口；
+    - 当命中被去重抑制时，`trigger_suppressed=True`。
     """
 
+    result_id: str
     event_id: str
+    rule_id: str
     chat_id: str
     message_id: str
-    decisions: list[RuleDecision]
+    decision: RuleDecision
+    context_messages: list[ChatMessage]
     generated_at: datetime
+    trigger_suppressed: bool = False
+    suppression_reason: str | None = None
 
 
 @dataclass(slots=True)

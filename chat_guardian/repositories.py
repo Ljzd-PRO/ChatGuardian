@@ -183,10 +183,44 @@ class InMemoryMemoryRepository:
 
 
 class InMemoryDetectionResultRepository:
-    """将检测结果追加到内存列表中（用于审计和测试）。"""
+    """按规则索引检测结果，并维护最近触发结果的 O(1) 查询结构。"""
 
     def __init__(self):
         self.results: list[DetectionResult] = []
+        self.results_by_rule: dict[str, list[DetectionResult]] = defaultdict(list)
+        self.last_triggered_by_rule: dict[str, DetectionResult] = {}
+        self.last_triggered_message_ids: dict[str, set[str]] = {}
 
     async def add(self, result: DetectionResult) -> None:
+        """新增一条检测结果，并同步更新按规则索引。"""
         self.results.append(result)
+        self.results_by_rule[result.rule_id].append(result)
+
+        if result.decision.triggered and not result.trigger_suppressed:
+            self.last_triggered_by_rule[result.rule_id] = result
+            self.last_triggered_message_ids[result.rule_id] = {message.message_id for message in result.context_messages}
+
+    async def list_by_rule(self, rule_id: str) -> list[DetectionResult]:
+        """返回指定规则的全部检测结果。"""
+        return list(self.results_by_rule.get(rule_id, []))
+
+    async def contains_message_in_last_triggered(self, rule_id: str, message_id: str) -> bool:
+        """O(1) 判断某消息是否在该规则最近一次“已触发且未抑制”的结果里。"""
+        return message_id in self.last_triggered_message_ids.get(rule_id, set())
+
+    async def merge_into_last_triggered(self, rule_id: str, new_context_messages: list[ChatMessage]) -> DetectionResult | None:
+        """将新增上下文消息并入该规则最近一次触发结果，避免重复触发。"""
+        last = self.last_triggered_by_rule.get(rule_id)
+        if last is None:
+            return None
+
+        known_ids = self.last_triggered_message_ids.setdefault(rule_id, set())
+        merged = list(last.context_messages)
+        for message in new_context_messages:
+            if message.message_id in known_ids:
+                continue
+            merged.append(message)
+            known_ids.add(message.message_id)
+
+        last.context_messages = merged
+        return last

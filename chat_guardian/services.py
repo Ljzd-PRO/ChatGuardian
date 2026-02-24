@@ -110,6 +110,12 @@ class DetectionResultRepository(Protocol):
 
     async def add(self, result: DetectionResult) -> None: ...
 
+    async def list_by_rule(self, rule_id: str) -> list[DetectionResult]: ...
+
+    async def contains_message_in_last_triggered(self, rule_id: str, message_id: str) -> bool: ...
+
+    async def merge_into_last_triggered(self, rule_id: str, new_context_messages: list[ChatMessage]) -> DetectionResult | None: ...
+
 
 class LLMClient(Protocol):
     """与 LLM 提供者交互的抽象接口。
@@ -217,7 +223,9 @@ class ContextWindowService:
 
 @dataclass(slots=True)
 class EngineOutput:
-    result: DetectionResult
+    event_id: str
+    results: list[DetectionResult]
+    triggered_rule_ids: list[str]
     notified_count: int
 
 
@@ -303,24 +311,54 @@ class DetectionEngine:
     async def _process_event_with_context(self, event: ChatEvent, context_messages: list[ChatMessage]) -> EngineOutput:
         active_rules = [rule for rule in await self.rules.list_enabled() if SessionMatcher.match(rule.target_session, event)]
         decisions = await self._evaluate_rules_in_parallel_batches(context_messages, active_rules)
-        result = DetectionResult(
-            event_id=f"evt-{event.message.message_id}",
-            chat_id=event.chat_id,
-            message_id=event.message.message_id,
-            decisions=decisions,
-            generated_at=datetime.utcnow(),
-        )
-        await self.result_repository.add(result)
 
-        triggered = [decision for decision in decisions if decision.triggered]
+        event_id = f"evt-{event.message.message_id}"
+        all_results: list[DetectionResult] = []
+        triggered_rule_ids: list[str] = []
         notify_count = 0
-        for decision in triggered:
+
+        for decision in decisions:
+            suppressed = False
+            suppression_reason: str | None = None
+
+            if decision.triggered and context_messages:
+                earliest_message_id = context_messages[0].message_id
+                is_in_last = await self.result_repository.contains_message_in_last_triggered(decision.rule_id, earliest_message_id)
+                if is_in_last:
+                    await self.result_repository.merge_into_last_triggered(decision.rule_id, context_messages)
+                    suppressed = True
+                    suppression_reason = "context overlaps with last triggered result"
+
+            result = DetectionResult(
+                result_id=f"{event_id}:{decision.rule_id}:{len(all_results)}",
+                event_id=event_id,
+                rule_id=decision.rule_id,
+                chat_id=event.chat_id,
+                message_id=event.message.message_id,
+                decision=decision,
+                context_messages=list(context_messages),
+                generated_at=datetime.utcnow(),
+                trigger_suppressed=suppressed,
+                suppression_reason=suppression_reason,
+            )
+            await self.result_repository.add(result)
+            all_results.append(result)
+
+            if not decision.triggered or suppressed:
+                continue
+
+            triggered_rule_ids.append(decision.rule_id)
             for notifier in self.notifiers:
                 sent = await notifier.notify(event, decision, context_messages)
                 notify_count += 1 if sent else 0
             await self.hook_dispatcher.dispatch(event, decision, context_messages)
 
-        return EngineOutput(result=result, notified_count=notify_count)
+        return EngineOutput(
+            event_id=event_id,
+            results=all_results,
+            triggered_rule_ids=triggered_rule_ids,
+            notified_count=notify_count,
+        )
 
     async def _try_trigger(
         self,
