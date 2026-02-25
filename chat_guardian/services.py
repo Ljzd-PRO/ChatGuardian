@@ -40,7 +40,7 @@ from chat_guardian.domain import (
     SessionTarget,
     UserMemoryFact,
 )
-from chat_guardian.models import DiagnosticsModel, RuleBatchSchedulerDiagnosticsModel
+from chat_guardian.models import RuleBatchSchedulerDiagnosticsModel, DiagnosticsModel
 from chat_guardian.settings import settings
 
 
@@ -52,7 +52,7 @@ def _extract_json_payload(raw_text: str) -> dict:
     except json.JSONDecodeError:
         pass
 
-    match = re.search(r"\{.*\}", raw_text, flags=re.DOTALL)
+    match = re.search(r"\{.*}", raw_text, flags=re.DOTALL)
     if not match:
         return {}
     try:
@@ -687,7 +687,7 @@ class DetectionEngine:
 
     @staticmethod
     def _channel_key(platform: str, chat_type: str, chat_id: str) -> tuple[str, str, str]:
-        return (platform, chat_type, chat_id)
+        return platform, chat_type, chat_id
 
     def _state_of(self, platform: str, chat_type: str, chat_id: str) -> ChannelRuntimeState:
         key = self._channel_key(platform, chat_type, chat_id)
