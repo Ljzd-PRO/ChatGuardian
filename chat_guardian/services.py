@@ -141,20 +141,6 @@ class DetectionResultRepository(Protocol):
     async def merge_into_last_triggered(self, rule_id: str, new_context_messages: list[ChatMessage]) -> DetectionResult | None: ...
 
 
-class LLMClient(Protocol):
-    """与 LLM 提供者交互的抽象接口。
-
-    - `evaluate`: 对一批消息与一组规则进行判断，返回每个规则的 `RuleDecision`。
-    - `extract_self_participation`: 当消息来自用户自身时，提取用户参与相关的记忆事实。
-    """
-
-    async def evaluate(self, messages: list[ChatMessage], rules: list[DetectionRule]) -> list[RuleDecision]: ...
-
-    async def extract_self_participation(self, event: ChatEvent, context: list[ChatMessage]) -> list[UserMemoryFact]: ...
-
-    def diagnostics(self) -> dict[str, object]: ...
-
-    async def ping(self) -> tuple[bool, str | None, float]: ...
 
 
 class LangChainLLMClient:
@@ -349,7 +335,6 @@ class LangChainLLMClient:
 
     def diagnostics(self) -> "DiagnosticsModel":
         """返回当前 LLM 运行时诊断信息。"""
-        from chat_guardian.models import DiagnosticsModel
         return DiagnosticsModel(
             backend=self.backend,
             model=self.model_name,
@@ -375,7 +360,7 @@ class LangChainLLMClient:
             return False, str(exc), elapsed_ms
 
 
-def build_llm_client() -> LLMClient:
+def build_llm_client() -> LangChainLLMClient:
     """创建 LangChain LLM 客户端实例。支持 OpenAI 兼容与 Ollama 后端。"""
     backend = settings.llm_langchain_backend.strip().lower()
 
@@ -438,7 +423,7 @@ class RuleBatchScheduler:
 
     def __init__(
         self,
-        llm_client: LLMClient,
+        llm_client: LangChainLLMClient,
         batch_size: int,
         max_parallel_batches: int,
         batch_timeout_seconds: float,
@@ -662,7 +647,7 @@ class DetectionEngine:
         self,
         rules: RuleRepository,
         context_service: ContextWindowService,
-        llm_client: LLMClient,
+        llm_client: LangChainLLMClient,
         result_repository: DetectionResultRepository,
         notifiers: list["Notifier"],
         hook_dispatcher: "ExternalHookDispatcher",
@@ -934,7 +919,7 @@ class DetectionEngine:
 class SelfMessageMemoryService:
     """当用户/机器人自身发言时，识别并写入记忆事实的服务。"""
 
-    def __init__(self, llm_client: LLMClient, memory_repository: MemoryRepository, context_service: ContextWindowService):
+    def __init__(self, llm_client: LangChainLLMClient, memory_repository: MemoryRepository, context_service: ContextWindowService):
         self.llm_client = llm_client
         self.memory_repository = memory_repository
         self.context_service = context_service
