@@ -23,6 +23,8 @@ langchain-ollama = "^0.2.3"
 jinja2 = "^3.1.6"
 python-dotenv = "^1.1.1"
 orjson = "^3.11.3"
+gradio = "^4.44.0"
+huggingface-hub = "<1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.1"
@@ -32,6 +34,7 @@ mypy = "^1.17.1"
 
 [tool.poetry.scripts]
 chat-guardian = "chat_guardian.main:run"
+chat-guardian-ui = "chat_guardian.gradio_temp_ui:run"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

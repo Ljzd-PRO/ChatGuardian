@@ -10,6 +10,7 @@ from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
+import gradio as gr
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import (
@@ -51,6 +52,7 @@ from chat_guardian.services import (
     SuggestionService,
 )
 from chat_guardian.settings import settings
+from chat_guardian.gradio_temp_ui import build_demo
 
 
 class AppContainer:
@@ -225,9 +227,6 @@ def create_app() -> FastAPI:
         saved = await container.rule_repository.upsert(_from_payload(payload))
         return _to_payload(saved)
 
-    # Detection is triggered by adapters sending events to the application.
-    # Manual `/detect` API endpoint removed to enforce adapter-driven detection.
-
     @app.post("/feedback")
     async def submit_feedback(payload: FeedbackPayload) -> dict[str, str]:
         await container.feedback_repository.add(
@@ -267,4 +266,5 @@ def create_app() -> FastAPI:
     async def mcp_generate_rule(payload: RuleGenerateRequest) -> RulePayload:
         return await generate_rule(payload)
 
+    app = gr.mount_gradio_app(app, build_demo(), path="/gradio")
     return app

@@ -77,6 +77,28 @@ poetry run uvicorn chat_guardian.api.app:create_app --factory --reload --host 0.
 - Swagger: `http://127.0.0.1:8000/docs`
 - MVP UI: `http://127.0.0.1:8000/ui`
 
+## 临时 Gradio UI（联调）
+
+1. 启动 API（保持运行）
+
+```bash
+poetry run uvicorn chat_guardian.api.app:create_app --factory --reload --host 0.0.0.0 --port 8000
+```
+
+2. 访问内嵌 Gradio 面板（单端口）
+
+- `http://127.0.0.1:8000/gradio`
+
+3. （可选）独立启动 Gradio 面板
+
+```bash
+poetry run chat-guardian-ui
+```
+
+- 独立地址：`http://127.0.0.1:7860`
+
+> 该界面用于临时联调，当前支持：`/health`、`/llm/health`、`/adapters/start`、`/adapters/stop`、`/rules`、`/rule-generation`。
+
 ## Docker 运行
 
 ```bash
@@ -86,7 +108,7 @@ docker compose up --build
 ## 核心 API
 
 - `POST /rules`：创建或更新结构化检测规则。
-- `POST /detect`：输入消息事件并触发检测主流程。
+- 检测触发：仅由 adapter 输入消息事件触发，不再提供手动 `/detect` 接口。
 - `POST /feedback`：提交检测结果评分与意见。
 - `GET /suggestions/new-rules/{user_id}`：生成新规则建议。
 - `GET /suggestions/rule-improvements/{rule_id}`：生成规则改进建议。
