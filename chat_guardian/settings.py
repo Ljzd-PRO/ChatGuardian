@@ -77,5 +77,12 @@ class Settings(BaseSettings):
     wechat_endpoint: str | None = None
     feishu_app_id: str | None = None
 
+    # Virtual Adapter（测试用）配置
+    virtual_adapter_chat_count: int = 3
+    virtual_adapter_members_per_chat: int = 5
+    virtual_adapter_messages_per_chat: int = 10
+    virtual_adapter_interval_min_seconds: float = 0.1
+    virtual_adapter_interval_max_seconds: float = 0.6
+
 
 settings = Settings()
