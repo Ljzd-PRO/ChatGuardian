@@ -40,6 +40,7 @@ from chat_guardian.domain import (
     SessionTarget,
     UserMemoryFact,
 )
+from chat_guardian.models import DiagnosticsModel, RuleBatchSchedulerDiagnosticsModel
 from chat_guardian.settings import settings
 
 
@@ -346,16 +347,17 @@ class LangChainLLMClient:
             )
         return decisions
 
-    def diagnostics(self) -> dict[str, object]:
+    def diagnostics(self) -> "DiagnosticsModel":
         """返回当前 LLM 运行时诊断信息。"""
-        return {
-            "backend": self.backend,
-            "model": self.model_name,
-            "client_class": self.model.__class__.__name__,
-            "api_base": self.api_base,
-            "api_key_configured": self.api_key_configured,
-            "ollama_base_url": self.ollama_base_url,
-        }
+        from chat_guardian.models import DiagnosticsModel
+        return DiagnosticsModel(
+            backend=self.backend,
+            model=self.model_name,
+            client_class=self.model.__class__.__name__,
+            api_base=self.api_base,
+            api_key_configured=self.api_key_configured,
+            ollama_base_url=self.ollama_base_url,
+        )
 
     async def ping(self) -> tuple[bool, str | None, float]:
         """执行最小模型调用探活。
@@ -579,19 +581,20 @@ class RuleBatchScheduler:
             now2 = time.monotonic()
             self._next_available_time = now2 + interval
 
-    def diagnostics(self) -> dict[str, object]:
+    def diagnostics(self) -> "RuleBatchSchedulerDiagnosticsModel":
         """返回批调度器的运行配置与统计信息。"""
-        return {
-            "batch_size": self.batch_size,
-            "max_parallel_batches": self.max_parallel_batches,
-            "batch_timeout_seconds": self.batch_timeout_seconds,
-            "max_retries": self.max_retries,
-            "rate_limit_per_second": self.rate_limit_per_second,
-            "idempotency_cache_size": self.idempotency_cache_size,
-            "idempotency_completed_cache_entries": len(self._completed),
-            "idempotency_inflight_entries": len(self._inflight),
-            "metrics": dict(self._metrics),
-        }
+        from chat_guardian.models import RuleBatchSchedulerDiagnosticsModel, RuleBatchSchedulerMetricsModel
+        return RuleBatchSchedulerDiagnosticsModel(
+            batch_size=self.batch_size,
+            max_parallel_batches=self.max_parallel_batches,
+            batch_timeout_seconds=self.batch_timeout_seconds,
+            max_retries=self.max_retries,
+            rate_limit_per_second=self.rate_limit_per_second,
+            idempotency_cache_size=self.idempotency_cache_size,
+            idempotency_completed_cache_entries=len(self._completed),
+            idempotency_inflight_entries=len(self._inflight),
+            metrics=RuleBatchSchedulerMetricsModel(**dict(self._metrics)),
+        )
 
     @staticmethod
     def _fallback_decisions(rules: list[DetectionRule], error: Exception | None) -> list[RuleDecision]:

@@ -113,13 +113,14 @@ async def main():
                 for result in results[last_count:]:
                     print(f"[DETECT] rule_id={result.rule_id}, topic={result.decision.reason}, params={result.decision.extracted_params}")
                 last_count = len(results)
-            metrics = engine.batch_scheduler.diagnostics().get("metrics", {})
+            diagnostics = engine.batch_scheduler.diagnostics()
+            metrics = diagnostics.metrics
             # 输出所有metrics字段
-            metrics_str = ", ".join(f"{k}={v}" for k, v in metrics.items())
+            metrics_str = ", ".join(f"{k}={v}" for k, v in metrics.dict().items())
             print(f"[INFO] handled_events={handled_events['count']}, results={last_count}, {metrics_str}")
             # 以total_batches和total_llm_calls为主，判断稳定后退出
-            total_batches = metrics.get("total_batches", 0)
-            total_llm_calls = metrics.get("total_llm_calls", 0)
+            total_batches = metrics.total_batches
+            total_llm_calls = metrics.total_llm_calls
             if total_batches == last_batches and total_llm_calls == last_llm_calls:
                 stable_count += 1
             else:
