@@ -42,13 +42,13 @@ from chat_guardian.repositories import (
     InMemoryRuleRepository,
 )
 from chat_guardian.services import (
+    build_llm_client,
     ContextWindowService,
     DetectionEngine,
     EmailNotifier,
     ExternalHookDispatcher,
     ExternalPromptRuleGenerationBackend,
     InternalRuleGenerationBackend,
-    MockLLMClient,
     NotificationConfig,
     RuleAuthoringService,
     SelfMessageMemoryService,
@@ -72,7 +72,7 @@ class AppContainer:
         self.memory_repository = InMemoryMemoryRepository()
         self.detection_result_repository = InMemoryDetectionResultRepository()
 
-        self.llm_client = MockLLMClient()
+        self.llm_client = build_llm_client()
         self.context_service = ContextWindowService(self.chat_history_store)
 
         self.rule_authoring_service = RuleAuthoringService(
@@ -180,6 +180,29 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health() -> dict[str, str]:
         return {"status": "ok", "time": datetime.utcnow().isoformat()}
+
+    @app.get("/llm/health")
+    async def llm_health(do_ping: bool = True) -> dict[str, object]:
+        diagnostics = container.llm_client.diagnostics()
+        scheduler_diagnostics = container.detection_engine.batch_scheduler.diagnostics()
+        result: dict[str, object] = {
+            "status": "ok",
+            "time": datetime.utcnow().isoformat(),
+            "llm": diagnostics,
+            "scheduler": scheduler_diagnostics,
+        }
+
+        if do_ping:
+            ping_ok, ping_error, latency_ms = await container.llm_client.ping()
+            result["ping"] = {
+                "ok": ping_ok,
+                "latency_ms": round(latency_ms, 2),
+                "error": ping_error,
+            }
+            if not ping_ok:
+                result["status"] = "degraded"
+
+        return result
 
     @app.post("/adapters/start")
     async def start_adapters() -> dict[str, str | list[str]]:

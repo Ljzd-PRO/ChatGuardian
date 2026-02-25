@@ -16,7 +16,7 @@ def test_api_rule_and_detect_flow() -> None:
         "target_session": {"mode": "exact", "query": "chat-1"},
         "topic_hints": ["topic"],
         "score_threshold": 0.5,
-        "enabled": True,
+        "enabled": False,
         "parameters": [{"key": "tag", "description": "topic tag", "required": False}],
     }
     response = client.post("/rules", json=create_rule)
@@ -43,3 +43,19 @@ def test_api_rule_and_detect_flow() -> None:
     assert response.status_code == 200
     data = response.json()
     assert "event_id" in data
+
+
+def test_llm_health_endpoint_without_ping() -> None:
+    app = create_app()
+    client = TestClient(app)
+
+    response = client.get("/llm/health", params={"do_ping": False})
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert "llm" in payload
+    assert payload["llm"]["backend"] in {"openai_compatible", "ollama"}
+    assert "model" in payload["llm"]
+    assert "scheduler" in payload
+    assert "metrics" in payload["scheduler"]

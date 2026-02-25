@@ -27,10 +27,19 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./chat_guardian.db"
 
     # LLM 与批处理相关设置
-    llm_default_provider: str = "mock"
     llm_timeout_seconds: float = 30.0
     llm_max_parallel_batches: int = 3
     llm_rules_per_batch: int = 2
+    llm_batch_timeout_seconds: float = 30.0
+    llm_batch_max_retries: int = 1
+    llm_batch_rate_limit_per_second: float = 0.0
+    llm_batch_idempotency_cache_size: int = 1024
+    llm_langchain_backend: str = "openai_compatible"
+    llm_langchain_model: str = "gpt-4o-mini"
+    llm_langchain_api_base: str | None = None
+    llm_langchain_api_key: str | None = None
+    llm_langchain_temperature: float = 0.0
+    llm_ollama_base_url: str = "http://localhost:11434"
 
     # 从会话中获取历史消息条数
     context_message_limit: int = 10

@@ -3,7 +3,7 @@
 
 此模块包含：
 - 服务接口（Repository、LLM 客户端等）的协议定义；
-- 开发阶段可用的内置实现（Mock LLM、内存存储、Email 通知、外部 Hook 派发器）；
+- 开发阶段可用的内置实现（LangChain LLM、内存存储、Email 通知、外部 Hook 派发器）；
 - 检测引擎、上下文窗口、规则生成、记忆写入与建议服务。
 
 所有对外依赖（如真实 LLM、消息平台、持久化）均通过协议抽象，便于替换。
@@ -12,14 +12,19 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import re
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Protocol
+from typing import Awaitable, Callable, Protocol
 
 import httpx
 from aiosmtplib import SMTP
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 
 from chat_guardian.domain import (
     ChatEvent,
@@ -36,6 +41,24 @@ from chat_guardian.domain import (
     UserMemoryFact,
 )
 from chat_guardian.settings import settings
+
+
+def _extract_json_payload(raw_text: str) -> dict:
+    """从模型输出文本中提取 JSON 对象。"""
+    try:
+        parsed = json.loads(raw_text)
+        return parsed if isinstance(parsed, dict) else {}
+    except json.JSONDecodeError:
+        pass
+
+    match = re.search(r"\{.*\}", raw_text, flags=re.DOTALL)
+    if not match:
+        return {}
+    try:
+        parsed = json.loads(match.group(0))
+        return parsed if isinstance(parsed, dict) else {}
+    except json.JSONDecodeError:
+        return {}
 
 
 class ChatHistoryStore(Protocol):
@@ -128,66 +151,266 @@ class LLMClient(Protocol):
 
     async def extract_self_participation(self, event: ChatEvent, context: list[ChatMessage]) -> list[UserMemoryFact]: ...
 
+    def diagnostics(self) -> dict[str, object]: ...
 
-class MockLLMClient:
-    """用于本地开发的简易 LLM 客户端实现（确定性）。
+    async def ping(self) -> tuple[bool, str | None, float]: ...
 
-    该实现通过简单的关键词匹配来估算置信度，旨在支持离线开发与单元测试，
-    不应在生产环境中替代真实模型。
+
+class LangChainLLMClient:
+    """基于 LangChain 的 LLM 客户端实现。
+
+    说明：
+    - 底层使用 `langchain_openai.ChatOpenAI`（兼容 OpenAI API 及同协议网关）；
+    - 通过 JSON 协议返回规则判断与记忆提取结果；
+    - 当模型输出异常时，回退为安全默认值（不触发）。
     """
 
+    def __init__(
+        self,
+        chat_model: ChatOpenAI | ChatOllama,
+        backend: str,
+        model_name: str,
+        api_base: str | None,
+        api_key_configured: bool,
+        ollama_base_url: str | None,
+    ):
+        self.model = chat_model
+        self.backend = backend
+        self.model_name = model_name
+        self.api_base = api_base
+        self.api_key_configured = api_key_configured
+        self.ollama_base_url = ollama_base_url
+
     async def evaluate(self, messages: list[ChatMessage], rules: list[DetectionRule]) -> list[RuleDecision]:
-        text_blob = "\n".join(message.extract_plain_text() for message in messages).lower()
-        results: list[RuleDecision] = []
-        for rule in rules:
-            match_score = 0.0
-            for hint in rule.topic_hints:
-                if hint.lower() in text_blob:
-                    match_score += 1.0
-            denom = max(1, len(rule.topic_hints))
-            confidence = min(1.0, match_score / denom)
-            triggered = confidence >= rule.score_threshold if rule.topic_hints else False
-            extracted_params = {
-                param.key: self._extract_param_value(text_blob, param)
-                for param in rule.parameters
-                if triggered
-            }
+        if not rules:
+            return []
+
+        payload = {
+            "messages": [
+                {
+                    "message_id": message.message_id,
+                    "sender_id": message.sender_id,
+                    "text": message.extract_plain_text(),
+                    "timestamp": message.timestamp.isoformat(),
+                }
+                for message in messages
+            ],
+            "rules": [
+                {
+                    "rule_id": rule.rule_id,
+                    "name": rule.name,
+                    "description": rule.description,
+                    "topic_hints": rule.topic_hints,
+                    "score_threshold": rule.score_threshold,
+                    "parameters": [
+                        {
+                            "key": parameter.key,
+                            "description": parameter.description,
+                            "required": parameter.required,
+                        }
+                        for parameter in rule.parameters
+                    ],
+                }
+                for rule in rules
+            ],
+        }
+
+        response = await self.model.ainvoke(
+            [
+                SystemMessage(
+                    content=(
+                        "你是聊天规则检测模型。请根据输入消息和规则进行判断，并严格输出 JSON。"
+                        "输出结构："
+                        '{"decisions":[{"rule_id":"...","triggered":true|false,'
+                        '"confidence":0~1,"reason":"...","extracted_params":{}}]}'
+                    )
+                ),
+                HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
+            ]
+        )
+        content = self._response_text(response.content)
+        parsed = _extract_json_payload(content)
+        return self._parse_decisions(parsed, rules)
+
+    async def extract_self_participation(self, event: ChatEvent, context: list[ChatMessage]) -> list[UserMemoryFact]:
+        payload = {
+            "event": {
+                "chat_id": event.chat_id,
+                "sender_id": event.message.sender_id,
+                "message": event.message.extract_plain_text(),
+            },
+            "context": [message.extract_plain_text() for message in context],
+        }
+        response = await self.model.ainvoke(
+            [
+                SystemMessage(
+                    content=(
+                        "请从用户本人发言与上下文中提取可记忆事实，严格输出 JSON。"
+                        '输出结构：{"facts":[{"topic":"...","counterpart_user_ids":["u1"],"confidence":0~1}]}'
+                    )
+                ),
+                HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
+            ]
+        )
+        content = self._response_text(response.content)
+        parsed = _extract_json_payload(content)
+
+        raw_facts = parsed.get("facts", [])
+        if not isinstance(raw_facts, list):
+            return []
+
+        results: list[UserMemoryFact] = []
+        for item in raw_facts:
+            if not isinstance(item, dict):
+                continue
+            topic = str(item.get("topic", "")).strip()
+            if not topic:
+                continue
+            counterparts_raw = item.get("counterpart_user_ids", [])
+            if not isinstance(counterparts_raw, list):
+                counterparts_raw = []
+            counterparts = [str(value) for value in counterparts_raw if str(value).strip()]
+            try:
+                confidence = float(item.get("confidence", 0.3))
+            except (TypeError, ValueError):
+                confidence = 0.3
+            confidence = min(1.0, max(0.0, confidence))
+
             results.append(
-                RuleDecision(
-                    rule_id=rule.rule_id,
-                    triggered=triggered,
+                UserMemoryFact(
+                    user_id=event.message.sender_id,
+                    chat_id=event.chat_id,
+                    topic=topic,
+                    counterpart_user_ids=counterparts[:5],
                     confidence=confidence,
-                    reason="Matched topic hints" if triggered else "No sufficient topic overlap",
-                    extracted_params=extracted_params,
+                    captured_at=datetime.utcnow(),
                 )
             )
         return results
 
-    async def extract_self_participation(self, event: ChatEvent, context: list[ChatMessage]) -> list[UserMemoryFact]:
-        text = " ".join([message.extract_plain_text() for message in context] + [event.message.extract_plain_text()])
-        tokens = [token for token in re.split(r"\W+", text) if len(token) >= 3]
-        if not tokens:
-            return []
-        top_topic = max(set(tokens), key=tokens.count)
-        counterparts = sorted({message.sender_id for message in context if message.sender_id != event.message.sender_id})
-        fact = UserMemoryFact(
-            user_id=event.message.sender_id,
-            chat_id=event.chat_id,
-            topic=top_topic,
-            counterpart_user_ids=counterparts[:5],
-            confidence=0.4,
-            captured_at=datetime.utcnow(),
-        )
-        return [fact]
+    @staticmethod
+    def _response_text(content: object) -> str:
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            text_parts: list[str] = []
+            for item in content:
+                if isinstance(item, str):
+                    text_parts.append(item)
+                elif isinstance(item, dict) and isinstance(item.get("text"), str):
+                    text_parts.append(item["text"])
+            return "\n".join(text_parts)
+        return str(content)
 
     @staticmethod
-    def _extract_param_value(text_blob: str, spec: RuleParameterSpec) -> str:
-        if not text_blob:
-            return "unknown"
-        if spec.key.lower() in text_blob:
-            return spec.key
-        words = [word for word in re.split(r"\W+", text_blob) if word]
-        return words[0] if words else "unknown"
+    def _parse_decisions(payload: dict, rules: list[DetectionRule]) -> list[RuleDecision]:
+        raw_decisions = payload.get("decisions", [])
+        indexed: dict[str, RuleDecision] = {}
+        if isinstance(raw_decisions, list):
+            for item in raw_decisions:
+                if not isinstance(item, dict):
+                    continue
+                rule_id = str(item.get("rule_id", "")).strip()
+                if not rule_id:
+                    continue
+                triggered = bool(item.get("triggered", False))
+                try:
+                    confidence = float(item.get("confidence", 0.0))
+                except (TypeError, ValueError):
+                    confidence = 0.0
+                confidence = min(1.0, max(0.0, confidence))
+                reason = str(item.get("reason", "LLM response"))
+                raw_params = item.get("extracted_params", {})
+                extracted_params = raw_params if isinstance(raw_params, dict) else {}
+                indexed[rule_id] = RuleDecision(
+                    rule_id=rule_id,
+                    triggered=triggered,
+                    confidence=confidence,
+                    reason=reason,
+                    extracted_params={str(key): str(value) for key, value in extracted_params.items()},
+                )
+
+        decisions: list[RuleDecision] = []
+        for rule in rules:
+            decisions.append(
+                indexed.get(
+                    rule.rule_id,
+                    RuleDecision(
+                        rule_id=rule.rule_id,
+                        triggered=False,
+                        confidence=0.0,
+                        reason="LLM response missing this rule",
+                        extracted_params={},
+                    ),
+                )
+            )
+        return decisions
+
+    def diagnostics(self) -> dict[str, object]:
+        """返回当前 LLM 运行时诊断信息。"""
+        return {
+            "backend": self.backend,
+            "model": self.model_name,
+            "client_class": self.model.__class__.__name__,
+            "api_base": self.api_base,
+            "api_key_configured": self.api_key_configured,
+            "ollama_base_url": self.ollama_base_url,
+        }
+
+    async def ping(self) -> tuple[bool, str | None, float]:
+        """执行最小模型调用探活。
+
+        Returns:
+            (是否成功, 失败原因, 延迟毫秒)
+        """
+        start = datetime.utcnow()
+        try:
+            await asyncio.wait_for(self.model.ainvoke([HumanMessage(content="ping")]), timeout=2.0)
+            elapsed_ms = (datetime.utcnow() - start).total_seconds() * 1000
+            return True, None, elapsed_ms
+        except Exception as exc:
+            elapsed_ms = (datetime.utcnow() - start).total_seconds() * 1000
+            return False, str(exc), elapsed_ms
+
+
+def build_llm_client() -> LLMClient:
+    """创建 LangChain LLM 客户端实例。支持 OpenAI 兼容与 Ollama 后端。"""
+    backend = settings.llm_langchain_backend.strip().lower()
+
+    if backend == "openai_compatible":
+        api_key = settings.llm_langchain_api_key or "chat-guardian-dev-placeholder-key"
+        chat_model = ChatOpenAI(
+            model=settings.llm_langchain_model,
+            temperature=settings.llm_langchain_temperature,
+            timeout=settings.llm_timeout_seconds,
+            base_url=settings.llm_langchain_api_base,
+            api_key=api_key,
+        )
+        return LangChainLLMClient(
+            chat_model=chat_model,
+            backend="openai_compatible",
+            model_name=settings.llm_langchain_model,
+            api_base=settings.llm_langchain_api_base,
+            api_key_configured=bool(settings.llm_langchain_api_key),
+            ollama_base_url=None,
+        )
+
+    elif backend == "ollama":
+        chat_model = ChatOllama(
+            model=settings.llm_langchain_model,
+            temperature=settings.llm_langchain_temperature,
+            base_url=settings.llm_ollama_base_url,
+        )
+        return LangChainLLMClient(
+            chat_model=chat_model,
+            backend="ollama",
+            model_name=settings.llm_langchain_model,
+            api_base=None,
+            api_key_configured=False,
+            ollama_base_url=settings.llm_ollama_base_url,
+        )
+
+    raise ValueError(f"Unsupported llm_langchain_backend: {settings.llm_langchain_backend}")
 
 
 class SessionMatcher:
@@ -199,6 +422,190 @@ class SessionMatcher:
             return target.query == event.chat_id
         normalized_query = target.query.lower().strip()
         return normalized_query in event.chat_id.lower()
+
+
+class RuleBatchScheduler:
+    """规则批处理调度器。
+
+    能力：
+    - 按批大小切分规则并并发调度；
+    - 单批超时控制与失败重试；
+    - 全局速率限制（每秒最大批次数）；
+    - 幂等请求 ID（相同请求复用结果，避免重复调用 LLM）。
+    """
+
+    def __init__(
+        self,
+        llm_client: LLMClient,
+        batch_size: int,
+        max_parallel_batches: int,
+        batch_timeout_seconds: float,
+        max_retries: int,
+        rate_limit_per_second: float,
+        idempotency_cache_size: int,
+    ):
+        self.llm_client = llm_client
+        self.batch_size = max(1, batch_size)
+        self.max_parallel_batches = max(1, max_parallel_batches)
+        self.batch_timeout_seconds = max(0.1, batch_timeout_seconds)
+        self.max_retries = max(0, max_retries)
+        self.rate_limit_per_second = max(0.0, rate_limit_per_second)
+        self.idempotency_cache_size = max(16, idempotency_cache_size)
+
+        self._parallel_semaphore = asyncio.Semaphore(self.max_parallel_batches)
+        self._idempotency_lock = asyncio.Lock()
+        self._inflight: dict[str, asyncio.Task[list[RuleDecision]]] = {}
+        self._completed: dict[str, list[RuleDecision]] = {}
+
+        self._rate_lock = asyncio.Lock()
+        self._next_available_time = 0.0
+        self._metrics: dict[str, float | int] = {
+            "total_requests": 0,
+            "total_batches": 0,
+            "total_llm_calls": 0,
+            "successful_batches": 0,
+            "fallback_batches": 0,
+            "retry_attempts": 0,
+            "batch_timeouts": 0,
+            "idempotency_completed_hits": 0,
+            "idempotency_inflight_hits": 0,
+            "rate_limit_wait_count": 0,
+            "rate_limit_wait_ms": 0.0,
+        }
+
+    async def evaluate_rules(
+        self,
+        messages: list[ChatMessage],
+        rules: list[DetectionRule],
+        request_id: str,
+    ) -> list[RuleDecision]:
+        """执行规则批调度并返回合并后的决策结果。"""
+        if not rules:
+            return []
+
+        batches = [rules[i : i + self.batch_size] for i in range(0, len(rules), self.batch_size)]
+        self._metrics["total_requests"] += 1
+        self._metrics["total_batches"] += len(batches)
+
+        async def run_batch(index: int, batch_rules: list[DetectionRule]) -> list[RuleDecision]:
+            batch_request_id = self._build_batch_request_id(request_id, messages, batch_rules, index)
+            return await self._run_idempotent(batch_request_id, lambda: self._execute_batch(messages, batch_rules))
+
+        nested_results = await asyncio.gather(*(run_batch(index, batch) for index, batch in enumerate(batches)))
+        decisions = [decision for sublist in nested_results for decision in sublist]
+        return sorted(decisions, key=lambda item: item.rule_id)
+
+    def _build_batch_request_id(
+        self,
+        request_id: str,
+        messages: list[ChatMessage],
+        rules: list[DetectionRule],
+        batch_index: int,
+    ) -> str:
+        message_part = "|".join(message.message_id for message in messages)
+        rule_part = "|".join(rule.rule_id for rule in rules)
+        digest = hashlib.sha1(f"{request_id}:{batch_index}:{message_part}:{rule_part}".encode("utf-8")).hexdigest()
+        return f"rb:{digest}"
+
+    async def _run_idempotent(
+        self,
+        request_id: str,
+        executor: Callable[[], Awaitable[list[RuleDecision]]],
+    ) -> list[RuleDecision]:
+        async with self._idempotency_lock:
+            cached = self._completed.get(request_id)
+            if cached is not None:
+                self._metrics["idempotency_completed_hits"] += 1
+                return cached
+
+            task = self._inflight.get(request_id)
+            if task is None:
+                task = asyncio.create_task(executor())
+                self._inflight[request_id] = task
+            else:
+                self._metrics["idempotency_inflight_hits"] += 1
+
+        result = await task
+
+        async with self._idempotency_lock:
+            self._inflight.pop(request_id, None)
+            self._completed[request_id] = result
+            while len(self._completed) > self.idempotency_cache_size:
+                first_key = next(iter(self._completed))
+                self._completed.pop(first_key, None)
+
+        return result
+
+    async def _execute_batch(
+        self,
+        messages: list[ChatMessage],
+        rules: list[DetectionRule],
+    ) -> list[RuleDecision]:
+        async with self._parallel_semaphore:
+            last_error: Exception | None = None
+            for attempt in range(self.max_retries + 1):
+                try:
+                    await self._acquire_rate_limit_slot()
+                    self._metrics["total_llm_calls"] += 1
+                    decisions = await asyncio.wait_for(
+                        self.llm_client.evaluate(messages=messages, rules=rules),
+                        timeout=self.batch_timeout_seconds,
+                    )
+                    self._metrics["successful_batches"] += 1
+                    return decisions
+                except Exception as exc:
+                    last_error = exc
+                    if isinstance(exc, TimeoutError | asyncio.TimeoutError):
+                        self._metrics["batch_timeouts"] += 1
+                    if attempt < self.max_retries:
+                        self._metrics["retry_attempts"] += 1
+                    if attempt >= self.max_retries:
+                        break
+            self._metrics["fallback_batches"] += 1
+            return self._fallback_decisions(rules, last_error)
+
+    async def _acquire_rate_limit_slot(self) -> None:
+        if self.rate_limit_per_second <= 0:
+            return
+
+        interval = 1.0 / self.rate_limit_per_second
+        async with self._rate_lock:
+            now = time.monotonic()
+            if now < self._next_available_time:
+                wait_seconds = self._next_available_time - now
+                self._metrics["rate_limit_wait_count"] += 1
+                self._metrics["rate_limit_wait_ms"] += wait_seconds * 1000
+                await asyncio.sleep(wait_seconds)
+            now2 = time.monotonic()
+            self._next_available_time = now2 + interval
+
+    def diagnostics(self) -> dict[str, object]:
+        """返回批调度器的运行配置与统计信息。"""
+        return {
+            "batch_size": self.batch_size,
+            "max_parallel_batches": self.max_parallel_batches,
+            "batch_timeout_seconds": self.batch_timeout_seconds,
+            "max_retries": self.max_retries,
+            "rate_limit_per_second": self.rate_limit_per_second,
+            "idempotency_cache_size": self.idempotency_cache_size,
+            "idempotency_completed_cache_entries": len(self._completed),
+            "idempotency_inflight_entries": len(self._inflight),
+            "metrics": dict(self._metrics),
+        }
+
+    @staticmethod
+    def _fallback_decisions(rules: list[DetectionRule], error: Exception | None) -> list[RuleDecision]:
+        reason = f"LLM batch failed: {error}" if error else "LLM batch failed"
+        return [
+            RuleDecision(
+                rule_id=rule.rule_id,
+                triggered=False,
+                confidence=0.0,
+                reason=reason,
+                extracted_params={},
+            )
+            for rule in rules
+        ]
 
 
 class ContextWindowService:
@@ -256,6 +663,7 @@ class DetectionEngine:
         result_repository: DetectionResultRepository,
         notifiers: list["Notifier"],
         hook_dispatcher: "ExternalHookDispatcher",
+        batch_scheduler: RuleBatchScheduler | None = None,
     ):
         self.rules = rules
         self.context_service = context_service
@@ -263,6 +671,15 @@ class DetectionEngine:
         self.result_repository = result_repository
         self.notifiers = notifiers
         self.hook_dispatcher = hook_dispatcher
+        self.batch_scheduler = batch_scheduler or RuleBatchScheduler(
+            llm_client=llm_client,
+            batch_size=settings.llm_rules_per_batch,
+            max_parallel_batches=settings.llm_max_parallel_batches,
+            batch_timeout_seconds=settings.llm_batch_timeout_seconds,
+            max_retries=settings.llm_batch_max_retries,
+            rate_limit_per_second=settings.llm_batch_rate_limit_per_second,
+            idempotency_cache_size=settings.llm_batch_idempotency_cache_size,
+        )
         self._runtime_states: dict[tuple[str, str, str], ChannelRuntimeState] = {}
 
     @staticmethod
@@ -310,7 +727,12 @@ class DetectionEngine:
 
     async def _process_event_with_context(self, event: ChatEvent, context_messages: list[ChatMessage]) -> EngineOutput:
         active_rules = [rule for rule in await self.rules.list_enabled() if SessionMatcher.match(rule.target_session, event)]
-        decisions = await self._evaluate_rules_in_parallel_batches(context_messages, active_rules)
+        scheduler_request_id = f"{event.platform}:{event.chat_id}:{event.message.message_id}"
+        decisions = await self.batch_scheduler.evaluate_rules(
+            messages=context_messages,
+            rules=active_rules,
+            request_id=scheduler_request_id,
+        )
 
         event_id = f"evt-{event.message.message_id}"
         all_results: list[DetectionResult] = []
@@ -505,27 +927,6 @@ class DetectionEngine:
                 state.timeout_task = None
 
         state.timeout_task = asyncio.create_task(_run())
-
-    async def _evaluate_rules_in_parallel_batches(
-        self,
-        messages: list[ChatMessage],
-        rules: list[DetectionRule],
-    ) -> list[RuleDecision]:
-        if not rules:
-            return []
-
-        batch_size = max(1, settings.llm_rules_per_batch)
-        batches = [rules[i : i + batch_size] for i in range(0, len(rules), batch_size)]
-        semaphore = asyncio.Semaphore(max(1, settings.llm_max_parallel_batches))
-
-        async def run_batch(rule_batch: list[DetectionRule]) -> list[RuleDecision]:
-            async with semaphore:
-                return await self.llm_client.evaluate(messages=messages, rules=rule_batch)
-
-        nested_results = await asyncio.gather(*(run_batch(batch) for batch in batches))
-        decisions = [decision for sublist in nested_results for decision in sublist]
-        return sorted(decisions, key=lambda item: item.rule_id)
-
 
 class SelfMessageMemoryService:
     """当用户/机器人自身发言时，识别并写入记忆事实的服务。"""

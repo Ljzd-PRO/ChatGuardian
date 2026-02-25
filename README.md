@@ -2,12 +2,13 @@
 
 基于 LLM 的群聊/私聊规则检测与提醒系统（MVP骨架）。
 
-## 当前已实现（第二阶段）
+## 当前已实现（第三阶段）
 
 - 抽象领域模型：消息事件、规则 DSL、参数提取、反馈、用户记忆。
 - 消息内容链：`ChatMessage.contents` 支持文本/图片/Mention 片段，支持 `reply_from` 嵌套回复消息。
 - Adapter 插件体系：支持 `onebot`、`telegram`、`wechat`、`feishu`，其中 `onebot`（`aiocqhttp`）已实现。
 - 规则检测引擎：自动拼接上下文消息 + 规则分批并行调用 LLM。
+- LLM 调用链：已接入 LangChain（`langchain_openai.ChatOpenAI`），支持 OpenAI 兼容 API 与本地/云端网关。
 - 一句话规则生成：内置生成后端 + 外部自定义提示词后端（可选）。
 - 通知链路：邮件通知抽象 + 外部 API Hook 调用抽象。
 - 本人发言识别：触发参与话题/相关群友记忆写入。
@@ -50,6 +51,21 @@ poetry install
 copy .env.example .env
 ```
 
+> LLM 调用统一使用 LangChain，并支持两种后端：
+> - `openai_compatible`：OpenAI 官方与兼容平台（如 DeepSeek）
+> - `ollama`：本地 Ollama 服务
+
+> OpenAI 兼容后端示例（OpenAI / DeepSeek）：
+> - `CHAT_GUARDIAN_LLM_LANGCHAIN_BACKEND=openai_compatible`
+> - `CHAT_GUARDIAN_LLM_LANGCHAIN_MODEL=gpt-4o-mini`（或 DeepSeek 模型名）
+> - `CHAT_GUARDIAN_LLM_LANGCHAIN_API_KEY=your_key`
+> - `CHAT_GUARDIAN_LLM_LANGCHAIN_API_BASE=https://api.deepseek.com/v1`（DeepSeek 示例）
+
+> Ollama 后端示例：
+> - `CHAT_GUARDIAN_LLM_LANGCHAIN_BACKEND=ollama`
+> - `CHAT_GUARDIAN_LLM_LANGCHAIN_MODEL=qwen2.5:7b`
+> - `CHAT_GUARDIAN_LLM_OLLAMA_BASE_URL=http://localhost:11434`
+
 3. 启动服务
 
 ```bash
@@ -76,6 +92,7 @@ docker compose up --build
 - `GET /suggestions/rule-improvements/{rule_id}`：生成规则改进建议。
 - `POST /rule-generation`：一句话生成规则（内置/外部后端）。
 - `POST /mcp/tools/generate-rule`：MCP 风格规则生成入口。
+- `GET /llm/health`：返回当前 LLM 后端诊断信息，并可执行最小 ping 探活（`do_ping` 参数）。
 - `POST /adapters/start`：按配置启动已启用 adapter（可反复调用）。
 - `POST /adapters/stop`：停止已启用 adapter。
 
