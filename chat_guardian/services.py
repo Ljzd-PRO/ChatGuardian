@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from chat_guardian.models import RuleBatchSchedulerMetricsModel
 """
 核心服务与基础实现。
 
@@ -8,8 +11,6 @@
 
 所有对外依赖（如真实 LLM、消息平台、持久化）均通过协议抽象，便于替换。
 """
-
-from __future__ import annotations
 
 import asyncio
 import hashlib
@@ -568,7 +569,7 @@ class RuleBatchScheduler:
 
     def diagnostics(self) -> "RuleBatchSchedulerDiagnosticsModel":
         """返回批调度器的运行配置与统计信息。"""
-        from chat_guardian.models import RuleBatchSchedulerDiagnosticsModel, RuleBatchSchedulerMetricsModel
+        # 已在文件顶部导入，无需重复
         return RuleBatchSchedulerDiagnosticsModel(
             batch_size=self.batch_size,
             max_parallel_batches=self.max_parallel_batches,
@@ -1097,7 +1098,7 @@ class EmailNotifier:
     def __init__(self, config: NotificationConfig):
         self.config = config
 
-    async def notify(self, event: ChatEvent, decision: RuleDecision, context_messages: list[ChatMessage]) -> bool:
+    async def notify(self, event: ChatEvent, decision: RuleDecision, _context_messages: list[ChatMessage]) -> bool:
         """发送邮件通知。
 
         在未配置 SMTP 或接收邮箱时，返回 False 表示未发送。
@@ -1120,9 +1121,9 @@ class EmailNotifier:
         if settings.smtp_username and settings.smtp_password:
             await smtp.login(settings.smtp_username, settings.smtp_password)
         await smtp.sendmail(
-            sender=settings.smtp_sender,
-            recipients=[self.config.to_email],
-            message=(
+            settings.smtp_sender,
+            [self.config.to_email],
+            (
                 f"From: {settings.smtp_sender}\r\n"
                 f"To: {self.config.to_email}\r\n"
                 f"Subject: {subject}\r\n\r\n"

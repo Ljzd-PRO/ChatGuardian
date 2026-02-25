@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
+from typing import Optional
 
 class DiagnosticsModel(BaseModel):
     backend: str

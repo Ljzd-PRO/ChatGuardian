@@ -41,7 +41,7 @@ def _request(method: str, base_url: str, path: str, payload: dict[str, Any] | No
                 "body": body,
             }
         )
-    except Exception as exc:  # noqa: BLE001
+    except (httpx.RequestError, httpx.HTTPStatusError, Exception) as exc:
         return _pretty({"ok": False, "url": url, "error": str(exc)})
 
 
@@ -92,7 +92,7 @@ def do_list_rules(base_url: str) -> list[dict]:
         with httpx.Client(timeout=20.0) as client:
             resp = client.get(url)
         return resp.json() if resp.is_success else []
-    except Exception:
+    except (httpx.RequestError, httpx.HTTPStatusError, Exception):
         return []
 
 def do_delete_rule(base_url: str, rule_id: str) -> str:
@@ -101,7 +101,7 @@ def do_delete_rule(base_url: str, rule_id: str) -> str:
         with httpx.Client(timeout=20.0) as client:
             resp = client.post(url)
         return _pretty({"ok": resp.is_success, "status_code": resp.status_code, "rule_id": rule_id})
-    except Exception as exc:
+    except (httpx.RequestError, httpx.HTTPStatusError, Exception) as exc:
         return _pretty({"ok": False, "error": str(exc)})
 
 def build_demo() -> gr.Blocks:
