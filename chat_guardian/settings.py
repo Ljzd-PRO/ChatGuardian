@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     history_list_limit: int = 1000
 
     # 检测触发配置：冷却、新消息最小数量、等待超时
-    detection_cooldown_seconds: float = 5.0
+    detection_cooldown_seconds: float = 0
     detection_min_new_messages: int = 1
     detection_wait_timeout_seconds: float = 30.0
 
