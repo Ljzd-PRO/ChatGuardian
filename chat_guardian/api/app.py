@@ -227,6 +227,18 @@ def create_app() -> FastAPI:
         saved = await container.rule_repository.upsert(_from_payload(payload))
         return _to_payload(saved)
 
+    @app.get("/rules/list", response_model=list[RulePayload])
+    async def list_rules() -> list[RulePayload]:
+        rules = await container.rule_repository.list_all()
+        return [_to_payload(rule) for rule in rules]
+
+    @app.post("/rules/delete/{rule_id}")
+    async def delete_rule(rule_id: str) -> dict[str, str | bool]:
+        deleted = await container.rule_repository.delete(rule_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail=f"Rule not found: {rule_id}")
+        return {"status": "deleted", "rule_id": rule_id, "deleted": True}
+
     @app.post("/feedback")
     async def submit_feedback(payload: FeedbackPayload) -> dict[str, str]:
         await container.feedback_repository.add(

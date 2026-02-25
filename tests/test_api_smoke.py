@@ -84,3 +84,37 @@ def test_llm_health_endpoint_without_ping() -> None:
     assert "model" in payload["llm"]
     assert "scheduler" in payload
     assert "metrics" in payload["scheduler"]
+
+
+def test_rule_list_and_delete_flow() -> None:
+    app = create_app()
+    client = TestClient(app)
+
+    rule_payload = {
+        "rule_id": "rule-to-delete",
+        "name": "Rule to delete",
+        "description": "temp rule",
+        "target_session": {"mode": "exact", "query": "chat-del"},
+        "topic_hints": ["tmp"],
+        "score_threshold": 0.5,
+        "enabled": True,
+        "parameters": [],
+    }
+
+    create_resp = client.post("/rules", json=rule_payload)
+    assert create_resp.status_code == 200
+
+    list_resp = client.get("/rules/list")
+    assert list_resp.status_code == 200
+    rules = list_resp.json()
+    assert any(item["rule_id"] == "rule-to-delete" for item in rules)
+
+    delete_resp = client.post("/rules/delete/rule-to-delete")
+    assert delete_resp.status_code == 200
+    delete_data = delete_resp.json()
+    assert delete_data["deleted"] is True
+
+    list_after_resp = client.get("/rules/list")
+    assert list_after_resp.status_code == 200
+    rules_after = list_after_resp.json()
+    assert all(item["rule_id"] != "rule-to-delete" for item in rules_after)

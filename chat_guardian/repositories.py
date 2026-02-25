@@ -148,12 +148,21 @@ class InMemoryRuleRepository:
     async def list_enabled(self) -> list[DetectionRule]:
         return [rule for rule in self.rules.values() if rule.enabled]
 
+    async def list_all(self) -> list[DetectionRule]:
+        return list(self.rules.values())
+
     async def upsert(self, rule: DetectionRule) -> DetectionRule:
         self.rules[rule.rule_id] = rule
         return rule
 
     async def get(self, rule_id: str) -> DetectionRule | None:
         return self.rules.get(rule_id)
+
+    async def delete(self, rule_id: str) -> bool:
+        if rule_id not in self.rules:
+            return False
+        del self.rules[rule_id]
+        return True
 
 
 class InMemoryFeedbackRepository:
