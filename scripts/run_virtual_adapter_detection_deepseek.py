@@ -2,7 +2,8 @@ from __future__ import annotations
 import os
 import asyncio
 
-from chat_guardian.adapters import AdapterManager, VirtualAdapter, VirtualAdapterConfig, VirtualScriptedMessage
+from chat_guardian.adapters import AdapterManager
+from chat_guardian.adapters.virtual import VirtualAdapter, VirtualAdapterConfig, VirtualScriptedMessage
 from chat_guardian.domain import DetectionRule, SessionMatchMode, SessionTarget
 from chat_guardian.repositories import InMemoryChatHistoryStore, InMemoryDetectionResultRepository, InMemoryRuleRepository
 from chat_guardian.services import ContextWindowService, DetectionEngine, ExternalHookDispatcher, build_llm_client
