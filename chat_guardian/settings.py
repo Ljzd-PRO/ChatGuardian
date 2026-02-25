@@ -83,6 +83,7 @@ class Settings(BaseSettings):
     virtual_adapter_messages_per_chat: int = 10
     virtual_adapter_interval_min_seconds: float = 0.1
     virtual_adapter_interval_max_seconds: float = 0.6
+    virtual_adapter_script_path: str | None = None
 
 
 settings = Settings()

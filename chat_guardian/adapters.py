@@ -10,10 +10,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import random
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Awaitable, Callable, Protocol
 
 from aiocqhttp import CQHttp
@@ -75,6 +77,63 @@ class VirtualScriptedMessage:
     delay_seconds: float = 0.1
     chat_type: ChatType = ChatType.GROUP
     is_from_self: bool = False
+
+
+def load_virtual_scripted_messages(script_path: str) -> list[VirtualScriptedMessage]:
+    """从外部脚本文件加载虚拟对话。
+
+    支持格式：
+    - `.json`：文件内容为数组，每个元素是消息对象；
+    - `.yaml` / `.yml`：同样为数组结构（需要安装 `PyYAML`）。
+    """
+    path = Path(script_path)
+    if not path.exists():
+        raise ValueError(f"Virtual adapter script file not found: {script_path}")
+
+    suffix = path.suffix.lower()
+    if suffix == ".json":
+        raw_data = json.loads(path.read_text(encoding="utf-8"))
+    elif suffix in {".yaml", ".yml"}:
+        try:
+            import yaml  # type: ignore
+        except Exception as exc:  # pragma: no cover
+            raise ValueError("PyYAML is required to load .yaml/.yml script files") from exc
+        raw_data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    else:
+        raise ValueError(f"Unsupported virtual adapter script format: {suffix}")
+
+    if not isinstance(raw_data, list):
+        raise ValueError("Virtual adapter script must be a list of message objects")
+
+    messages: list[VirtualScriptedMessage] = []
+    for index, item in enumerate(raw_data):
+        if not isinstance(item, dict):
+            raise ValueError(f"Invalid scripted message at index {index}: expected object")
+
+        chat_id = str(item.get("chat_id", "")).strip()
+        sender_id = str(item.get("sender_id", "")).strip()
+        text = str(item.get("text", ""))
+        if not chat_id or not sender_id:
+            raise ValueError(f"Invalid scripted message at index {index}: chat_id/sender_id required")
+
+        raw_chat_type = str(item.get("chat_type", ChatType.GROUP.value))
+        try:
+            chat_type = ChatType(raw_chat_type)
+        except ValueError as exc:
+            raise ValueError(f"Invalid chat_type at index {index}: {raw_chat_type}") from exc
+
+        messages.append(
+            VirtualScriptedMessage(
+                chat_id=chat_id,
+                sender_id=sender_id,
+                sender_name=(str(item["sender_name"]) if item.get("sender_name") is not None else None),
+                text=text,
+                delay_seconds=float(item.get("delay_seconds", 0.1)),
+                chat_type=chat_type,
+                is_from_self=bool(item.get("is_from_self", False)),
+            )
+        )
+    return messages
 
 
 class OneBotAdapter(Adapter):
@@ -415,6 +474,9 @@ def build_adapters_from_settings(app_settings: Settings) -> list[Adapter]:
     if "feishu" in enabled:
         adapters.append(FeishuAdapter())
     if "virtual" in enabled:
+        scripted_messages: list[VirtualScriptedMessage] | None = None
+        if app_settings.virtual_adapter_script_path:
+            scripted_messages = load_virtual_scripted_messages(app_settings.virtual_adapter_script_path)
         adapters.append(
             VirtualAdapter(
                 VirtualAdapterConfig(
@@ -423,6 +485,7 @@ def build_adapters_from_settings(app_settings: Settings) -> list[Adapter]:
                     messages_per_chat=app_settings.virtual_adapter_messages_per_chat,
                     interval_min_seconds=app_settings.virtual_adapter_interval_min_seconds,
                     interval_max_seconds=app_settings.virtual_adapter_interval_max_seconds,
+                    scripted_messages=scripted_messages,
                 )
             )
         )
