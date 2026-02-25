@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
+import asyncio
 
 from chat_guardian.api.app import create_app
+from chat_guardian.domain import ChatMessage, ChatEvent, ChatType, MessageContent, ContentType
 
 
 def test_api_rule_and_detect_flow() -> None:
@@ -39,10 +41,33 @@ def test_api_rule_and_detect_flow() -> None:
             "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     }
-    response = client.post("/detect", json=detect_payload)
-    assert response.status_code == 200
-    data = response.json()
-    assert "event_id" in data
+    # Simulate adapter-driven detection by constructing domain event
+    contents = [
+        MessageContent(type=ContentType("text"), text="this topic is interesting"),
+        MessageContent(type=ContentType("mention"), mention_user_id="u-2"),
+    ]
+
+    message = ChatMessage(
+        message_id="m-1",
+        chat_id="chat-1",
+        sender_id="u-1",
+        sender_name="tester",
+        contents=contents,
+        reply_from=None,
+        timestamp=None,
+    )
+
+    event = ChatEvent(
+        chat_type=ChatType("group"),
+        chat_id="chat-1",
+        message=message,
+        platform="test",
+        is_from_self=False,
+    )
+
+    # call the container handler directly (adapter would invoke this)
+    container = app.state.container
+    asyncio.run(container.handle_adapter_event(event))
 
 
 def test_llm_health_endpoint_without_ping() -> None:

@@ -13,11 +13,7 @@ from fastapi.responses import HTMLResponse
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import (
-    DetectRequest,
-    DetectResponse,
     FeedbackPayload,
-    MessageContentPayload,
-    MessagePayload,
     RuleGenerateRequest,
     RulePayload,
     SuggestResponse,
@@ -150,32 +146,15 @@ def _to_payload(rule: DetectionRule) -> RulePayload:
     )
 
 
-def _convert_content_item(item: MessageContentPayload) -> MessageContent:
-    return MessageContent(
-        type=ContentType(item.type),
-        text=item.text,
-        image_url=item.image_url,
-        mention_user_id=item.mention_user_id,
-    )
 
-
-def _convert_message_payload(payload: MessagePayload) -> ChatMessage:
-    reply_from = _convert_message_payload(payload.reply_from) if payload.reply_from else None
-    return ChatMessage(
-        message_id=payload.message_id,
-        chat_id=payload.chat_id,
-        sender_id=payload.sender_id,
-        sender_name=payload.sender_name,
-        contents=[_convert_content_item(item) for item in payload.contents],
-        reply_from=reply_from,
-        timestamp=payload.timestamp,
-    )
 
 
 def create_app() -> FastAPI:
     """创建并返回 FastAPI 应用实例。"""
     app = FastAPI(title="ChatGuardian API", version="0.1.0")
     container = AppContainer()
+    # Expose the application container on app.state for testing and integrations.
+    app.state.container = container
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -246,33 +225,8 @@ def create_app() -> FastAPI:
         saved = await container.rule_repository.upsert(_from_payload(payload))
         return _to_payload(saved)
 
-    @app.post("/detect", response_model=DetectResponse)
-    async def detect(payload: DetectRequest) -> DetectResponse:
-        message = _convert_message_payload(payload.message)
-
-        event = ChatEvent(
-            chat_type=ChatType(payload.chat_type),
-            chat_id=payload.message.chat_id,
-            message=message,
-            platform=payload.platform,
-            is_from_self=payload.is_from_self,
-        )
-
-        await container.self_message_service.process_if_self_message(event)
-        engine_output = await container.detection_engine.ingest_event(event)
-
-        if engine_output is None:
-            return DetectResponse(
-                event_id=f"queued-{message.message_id}",
-                triggered_rule_ids=[],
-                notified_count=0,
-            )
-
-        return DetectResponse(
-            event_id=engine_output.event_id,
-            triggered_rule_ids=engine_output.triggered_rule_ids,
-            notified_count=engine_output.notified_count,
-        )
+    # Detection is triggered by adapters sending events to the application.
+    # Manual `/detect` API endpoint removed to enforce adapter-driven detection.
 
     @app.post("/feedback")
     async def submit_feedback(payload: FeedbackPayload) -> dict[str, str]:
