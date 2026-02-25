@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import gradio as gr
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
-import gradio as gr
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import (
@@ -21,16 +21,13 @@ from chat_guardian.api.schemas import (
 )
 from chat_guardian.domain import (
     ChatEvent,
-    ChatMessage,
-    ChatType,
-    ContentType,
     DetectionRule,
     Feedback,
-    MessageContent,
     RuleParameterSpec,
     SessionMatchMode,
     SessionTarget,
 )
+from chat_guardian.gradio_temp_ui import build_demo
 from chat_guardian.repositories import (
     InMemoryChatHistoryStore,
     InMemoryDetectionResultRepository,
@@ -52,7 +49,6 @@ from chat_guardian.services import (
     SuggestionService,
 )
 from chat_guardian.settings import settings
-from chat_guardian.gradio_temp_ui import build_demo
 
 
 class AppContainer:
@@ -129,20 +125,24 @@ def _from_payload(payload: RulePayload) -> DetectionRule:
 
 def _to_payload(rule: DetectionRule) -> RulePayload:
     """将领域对象 `DetectionRule` 转换成 API 可序列化的 `RulePayload`。"""
+    from chat_guardian.api.schemas import SessionTargetPayload, RuleParameterPayload
     return RulePayload(
         rule_id=rule.rule_id,
         name=rule.name,
         description=rule.description,
-        target_session={"mode": rule.target_session.mode.value, "query": rule.target_session.query},
+        target_session=SessionTargetPayload(
+            mode=rule.target_session.mode.value,
+            query=rule.target_session.query,
+        ),
         topic_hints=rule.topic_hints,
         score_threshold=rule.score_threshold,
         enabled=rule.enabled,
         parameters=[
-            {
-                "key": item.key,
-                "description": item.description,
-                "required": item.required,
-            }
+            RuleParameterPayload(
+                key=item.key,
+                description=item.description,
+                required=item.required,
+            )
             for item in rule.parameters
         ],
     )

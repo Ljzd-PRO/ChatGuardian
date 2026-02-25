@@ -117,7 +117,7 @@ async def main():
             diagnostics = engine.batch_scheduler.diagnostics()
             metrics = diagnostics.metrics
             # 输出所有metrics字段
-            metrics_str = ", ".join(f"{k}={v}" for k, v in metrics.dict().items())
+            metrics_str = ", ".join(f"{k}={v}" for k, v in metrics.model_dump().items())
             print(f"[INFO] handled_events={handled_events['count']}, results={last_count}, {metrics_str}")
             # 以total_batches和total_llm_calls为主，判断稳定后退出
             total_batches = metrics.total_batches
