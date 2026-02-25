@@ -3,6 +3,9 @@
 提供 `run()` 函数用于在本地通过 Uvicorn 启动应用。
 """
 
+from loguru import logger
+logger.add("chat_guardian.log", rotation="10 MB", retention="7 days", encoding="utf-8", enqueue=True, level="DEBUG")
+
 from chat_guardian.api.app import create_app
 
 

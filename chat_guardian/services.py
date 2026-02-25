@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from loguru import logger
 from chat_guardian.models import RuleBatchSchedulerMetricsModel
 """
 核心服务与基础实现。
@@ -535,21 +536,27 @@ class RuleBatchScheduler:
                 try:
                     await self._acquire_rate_limit_slot()
                     self._metrics["total_llm_calls"] += 1
+                    logger.debug(f"[RuleBatchScheduler] 批次LLM请求: attempt={attempt}, batch_size={len(rules)}")
                     decisions = await asyncio.wait_for(
                         self.llm_client.evaluate(messages=messages, rules=rules),
                         timeout=self.batch_timeout_seconds,
                     )
                     self._metrics["successful_batches"] += 1
+                    logger.success(f"[RuleBatchScheduler] 批次LLM请求成功: batch_size={len(rules)}")
                     return decisions
                 except Exception as exc:
                     last_error = exc
+                    logger.error(f"[RuleBatchScheduler] 批次LLM请求失败: attempt={attempt}, error={exc}")
                     if isinstance(exc, TimeoutError | asyncio.TimeoutError):
                         self._metrics["batch_timeouts"] += 1
+                        logger.warning(f"[RuleBatchScheduler] 批次超时: attempt={attempt}")
                     if attempt < self.max_retries:
                         self._metrics["retry_attempts"] += 1
+                        logger.info(f"[RuleBatchScheduler] 重试: attempt={attempt+1}")
                     if attempt >= self.max_retries:
                         break
             self._metrics["fallback_batches"] += 1
+            logger.error(f"[RuleBatchScheduler] 批次LLM全部失败，使用fallback。batch_size={len(rules)}")
             return self._fallback_decisions(rules, last_error)
 
     async def _acquire_rate_limit_slot(self) -> None:
@@ -692,6 +699,7 @@ class DetectionEngine:
         if settings.detection_min_new_messages > 1 and settings.detection_wait_timeout_seconds <= 0:
             raise ValueError("When detection_min_new_messages > 1, detection_wait_timeout_seconds must be > 0")
 
+        logger.debug(f"[Adapter] 收到消息: {event.message}")
         await self.context_service.store.enqueue_message(
             platform=event.platform,
             chat_type=event.chat_type.value,
@@ -704,7 +712,9 @@ class DetectionEngine:
 
         min_new = max(1, settings.detection_min_new_messages)
         pending = await self.context_service.store.pending_size(event.platform, event.chat_type.value, event.chat_id)
+        logger.debug(f"[DetectionEngine] 当前pending消息数: {pending}, 最小触发数: {min_new}")
         if pending < min_new:
+            logger.info(f"[DetectionEngine] 未达到最小触发数，等待更多消息。pending={pending}, min_new={min_new}")
             return None
 
         return await self._try_trigger(
@@ -716,8 +726,11 @@ class DetectionEngine:
 
     async def _process_event_with_context(self, event: ChatEvent, context_messages: list[ChatMessage]) -> EngineOutput:
         active_rules = [rule for rule in await self.rules.list_enabled() if SessionMatcher.match(rule.target_session, event)]
+        logger.debug(f"[DetectionEngine] 批处理上下文: {context_messages}")
+        logger.debug(f"[DetectionEngine] 批处理规则: {[rule.rule_id for rule in active_rules]}")
         scheduler_request_id = f"{event.platform}:{event.chat_id}:{event.message.message_id}"
         decisions = await self.batch_scheduler.evaluate_rules(
+        logger.debug(f"[DetectionEngine] 规则检测结果: {decisions}")
             messages=context_messages,
             rules=active_rules,
             request_id=scheduler_request_id,
@@ -733,6 +746,7 @@ class DetectionEngine:
             suppression_reason: str | None = None
 
             if decision.triggered and context_messages:
+                logger.warning(f"[DetectionEngine] 规则 {decision.rule_id} 被重复触发，跳过。context overlap.")
                 earliest_message_id = context_messages[0].message_id
                 is_in_last = await self.result_repository.contains_message_in_last_triggered(decision.rule_id, earliest_message_id)
                 if is_in_last:
@@ -799,6 +813,7 @@ class DetectionEngine:
             if state.last_detection_at and cooldown > 0:
                 due = state.last_detection_at + timedelta(seconds=cooldown)
                 if now < due:
+                    logger.info(f"[DetectionEngine] 冷却期未结束，安排重试。chat_id={chat_id}, due={due}")
                     await self._ensure_cooldown_task(platform, chat_type, chat_id, state, (due - now).total_seconds())
                     return None
 
@@ -833,6 +848,7 @@ class DetectionEngine:
         max_count = None if force_all_pending else min_new
 
         pending_messages = await self.context_service.store.pop_pending_messages(
+        logger.debug(f"[DetectionEngine] 本批处理消息: {pending_messages}")
             platform=platform,
             chat_type=chat_type,
             chat_id=chat_id,
