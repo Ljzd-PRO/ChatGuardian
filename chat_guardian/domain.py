@@ -13,10 +13,12 @@ from enum import Enum
 
 
 class ChatType(str, Enum):
-    """聊天类型枚举。
+    """
+    聊天类型枚举。
 
-    - GROUP: 群聊
-    - PRIVATE: 私聊
+    Attributes:
+        GROUP: 群聊。
+        PRIVATE: 私聊。
     """
 
     GROUP = "group"
@@ -24,7 +26,14 @@ class ChatType(str, Enum):
 
 
 class ContentType(str, Enum):
-    """消息内容片段类型。"""
+    """
+    消息内容片段类型。
+
+    Attributes:
+        TEXT: 文本。
+        IMAGE: 图片。
+        MENTION: 提及。
+    """
 
     TEXT = "text"
     IMAGE = "image"
@@ -33,7 +42,8 @@ class ContentType(str, Enum):
 
 @dataclass(slots=True)
 class MessageContent:
-    """消息内容链中的单个片段。
+    """
+    消息内容链中的单个片段。
 
     Attributes:
         type: 片段类型。
@@ -50,7 +60,8 @@ class MessageContent:
 
 @dataclass(slots=True)
 class ChatMessage:
-    """表示一条聊天消息的结构。
+    """
+    表示一条聊天消息的结构。
 
     Attributes:
         message_id: 消息唯一 ID（平台侧的标识）。
@@ -89,7 +100,8 @@ class ChatMessage:
 
 @dataclass(slots=True)
 class ChatEvent:
-    """表示从消息平台流入的事件包装。
+    """
+    表示从消息平台流入的事件包装。
 
     Attributes:
         chat_type: 聊天类型（群/私聊）。
@@ -107,7 +119,13 @@ class ChatEvent:
 
 
 class SessionMatchMode(str, Enum):
-    """会话匹配模式：精确或模糊。"""
+    """
+    会话匹配模式：精确或模糊。
+
+    Attributes:
+        EXACT: 精确匹配。
+        FUZZY: 模糊匹配。
+    """
 
     EXACT = "exact"
     FUZZY = "fuzzy"
@@ -115,7 +133,8 @@ class SessionMatchMode(str, Enum):
 
 @dataclass(slots=True)
 class SessionTarget:
-    """表示规则所匹配的目标会话。
+    """
+    表示规则所匹配的目标会话。
 
     Attributes:
         mode: 匹配模式（`SessionMatchMode`）。
@@ -128,7 +147,13 @@ class SessionTarget:
 
 @dataclass(slots=True)
 class ParticipantConstraint:
-    """参与者约束，用于限制规则只针对特定用户集合触发。"""
+    """
+    参与者约束，用于限制规则只针对特定用户集合触发。
+
+    Attributes:
+        participant_ids: 参与者 ID 集合。
+        relation_hint: 关系提示。
+    """
 
     participant_ids: set[str] = field(default_factory=set)
     relation_hint: str | None = None
@@ -136,7 +161,14 @@ class ParticipantConstraint:
 
 @dataclass(slots=True)
 class RuleParameterSpec:
-    """规则参数规范，描述规则在触发时应当提取的结构化字段。"""
+    """
+    规则参数规范，描述规则在触发时应当提取的结构化字段。
+
+    Attributes:
+        key: 参数键名。
+        description: 参数描述。
+        required: 是否为必填参数。
+    """
 
     key: str
     description: str
@@ -145,7 +177,8 @@ class RuleParameterSpec:
 
 @dataclass(slots=True)
 class DetectionRule:
-    """检测规则主体。
+    """
+    检测规则主体。
 
     Attributes:
         rule_id: 规则唯一标识。
@@ -172,7 +205,16 @@ class DetectionRule:
 
 @dataclass(slots=True)
 class RuleDecision:
-    """单条规则在一次事件评估中的决策结果。"""
+    """
+    单条规则在一次事件评估中的决策结果。
+
+    Attributes:
+        rule_id: 规则 ID。
+        triggered: 是否被触发。
+        confidence: 置信度。
+        reason: 触发原因。
+        extracted_params: 提取的参数。
+    """
 
     rule_id: str
     triggered: bool
@@ -183,12 +225,20 @@ class RuleDecision:
 
 @dataclass(slots=True)
 class DetectionResult:
-    """单条规则在一次检测中的结果记录。
+    """
+    单条规则在一次检测中的结果记录。
 
-    说明：
-    - 检测结果按 `rule_id` 归档；
-    - 每条结果包含当次检测使用的上下文窗口；
-    - 当命中被去重抑制时，`trigger_suppressed=True`。
+    Attributes:
+        result_id: 结果唯一 ID。
+        event_id: 事件 ID。
+        rule_id: 规则 ID。
+        chat_id: 会话 ID。
+        message_id: 消息 ID。
+        decision: 规则决策。
+        context_messages: 检测时的上下文消息。
+        generated_at: 生成时间。
+        trigger_suppressed: 是否被抑制。
+        suppression_reason: 抑制原因。
     """
 
     result_id: str
@@ -205,7 +255,17 @@ class DetectionResult:
 
 @dataclass(slots=True)
 class UserMemoryFact:
-    """表示系统记忆的一条事实（由用户自己参与的会话生成）。"""
+    """
+    表示系统记忆的一条事实（由用户自己参与的会话生成）。
+
+    Attributes:
+        user_id: 用户 ID。
+        chat_id: 会话 ID。
+        topic: 主题。
+        counterpart_user_ids: 对方用户 ID 列表。
+        confidence: 置信度。
+        captured_at: 采集时间。
+    """
 
     user_id: str
     chat_id: str
@@ -217,7 +277,8 @@ class UserMemoryFact:
 
 @dataclass(slots=True)
 class Feedback:
-    """用户对一次规则命中后的反馈记录。
+    """
+    用户对一次规则命中后的反馈记录。
 
     Attributes:
         rule_id: 对应规则 ID。

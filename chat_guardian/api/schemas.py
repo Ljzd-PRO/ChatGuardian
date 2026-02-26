@@ -12,7 +12,8 @@ from pydantic import BaseModel, Field
 
 
 class SessionTargetPayload(BaseModel):
-    """会话匹配请求负载。
+    """
+    会话匹配请求负载。
 
     Attributes:
         mode: 匹配模式（"exact" 或 "fuzzy"）。
@@ -24,7 +25,14 @@ class SessionTargetPayload(BaseModel):
 
 
 class RuleParameterPayload(BaseModel):
-    """规则参数规范的序列化模型。"""
+    """
+    规则参数规范的序列化模型。
+
+    Attributes:
+        key: 参数键名。
+        description: 参数描述。
+        required: 是否为必填参数。
+    """
 
     key: str
     description: str
@@ -32,7 +40,19 @@ class RuleParameterPayload(BaseModel):
 
 
 class RulePayload(BaseModel):
-    """规则的完整序列化表示（用于创建/查询）。"""
+    """
+    规则的完整序列化表示（用于创建/查询）。
+
+    Attributes:
+        rule_id: 规则唯一标识。
+        name: 规则名称。
+        description: 规则描述。
+        target_session: 匹配目标会话。
+        topic_hints: 主题关键词提示。
+        score_threshold: 触发阈值。
+        enabled: 是否启用。
+        parameters: 触发时需要提取的参数规范列表。
+    """
 
     rule_id: str
     name: str
@@ -45,7 +65,18 @@ class RulePayload(BaseModel):
 
 
 class MessagePayload(BaseModel):
-    """消息负载结构，表示单条聊天消息。"""
+    """
+    消息负载结构，表示单条聊天消息。
+
+    Attributes:
+        message_id: 消息唯一 ID。
+        chat_id: 会话/群组 ID。
+        sender_id: 发送者用户 ID。
+        sender_name: 发送者昵称。
+        contents: 消息内容片段列表。
+        reply_from: 回复的消息。
+        timestamp: 消息时间戳。
+    """
 
     message_id: str
     chat_id: str
@@ -57,7 +88,15 @@ class MessagePayload(BaseModel):
 
 
 class MessageContentPayload(BaseModel):
-    """消息内容片段。"""
+    """
+    消息内容片段。
+
+    Attributes:
+        type: 片段类型（text/image/mention）。
+        text: 文本内容。
+        image_url: 图片地址。
+        mention_user_id: 被提及用户 ID。
+    """
 
     type: str
     text: str | None = None
@@ -66,7 +105,15 @@ class MessageContentPayload(BaseModel):
 
 
 class DetectRequest(BaseModel):
-    """/detect 路由的请求模型。"""
+    """
+    /detect 路由的请求模型。
+
+    Attributes:
+        platform: 消息平台。
+        chat_type: 聊天类型。
+        is_from_self: 是否为自身消息。
+        message: 消息负载。
+    """
 
     platform: str
     chat_type: str
@@ -75,7 +122,14 @@ class DetectRequest(BaseModel):
 
 
 class DetectResponse(BaseModel):
-    """/detect 路由的响应模型。"""
+    """
+    /detect 路由的响应模型。
+
+    Attributes:
+        event_id: 检测事件 ID。
+        triggered_rule_ids: 被触发的规则 ID 列表。
+        notified_count: 通知数量。
+    """
 
     event_id: str
     triggered_rule_ids: list[str]
@@ -83,7 +137,15 @@ class DetectResponse(BaseModel):
 
 
 class FeedbackPayload(BaseModel):
-    """提交反馈的请求模型。"""
+    """
+    提交反馈的请求模型。
+
+    Attributes:
+        rule_id: 规则 ID。
+        event_id: 事件 ID。
+        score: 评分（1-5）。
+        comment: 文字说明。
+    """
 
     rule_id: str
     event_id: str
@@ -92,11 +154,13 @@ class FeedbackPayload(BaseModel):
 
 
 class RuleGenerateRequest(BaseModel):
-    """一句话生成规则的请求负载。
+    """
+    一句话生成规则的请求负载。
 
-    - `utterance`: 用户的一句话描述。
-    - `use_external`: 是否调用外部生成后端。
-    - `override_system_prompt`: 可选系统提示词覆盖。
+    Attributes:
+        utterance: 用户的一句话描述。
+        use_external: 是否调用外部生成后端。
+        override_system_prompt: 可选系统提示词覆盖。
     """
 
     utterance: str
@@ -105,7 +169,12 @@ class RuleGenerateRequest(BaseModel):
 
 
 class SuggestResponse(BaseModel):
-    """建议返回模型，包含若干建议文本。"""
+    """
+    建议返回模型，包含若干建议文本。
+
+    Attributes:
+        suggestions: 建议文本列表。
+    """
 
     suggestions: list[str]
 
