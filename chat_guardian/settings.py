@@ -12,13 +12,51 @@ class Settings(BaseSettings):
     """
     全局配置类。
 
-    属性说明：
-    - `database_url`: SQLAlchemy/数据库连接字符串。
-    - `llm_*`: 与 LLM 调用与并发控制相关的参数。
-    - `context_message_limit`: 在判断时回溯的消息条数。
-    - `smtp_*`: 邮件发送配置（可为空，当未配置时邮件通知将被跳过）。
-    - `external_rule_generation_endpoint`: 可选的外部规则生成 API 地址。
-    - `enabled_adapters`: 启用的 adapter 列表（可多选）。
+    Attributes:
+        app_name: 应用名称。
+        environment: 当前环境（如 dev、prod）。
+        database_url: SQLAlchemy/数据库连接字符串。
+        llm_timeout_seconds: LLM 单次调用超时时间（秒）。
+        llm_max_parallel_batches: LLM 最大并行批次数。
+        llm_rules_per_batch: 每批处理的规则数。
+        llm_batch_timeout_seconds: LLM 批处理超时时间（秒）。
+        llm_batch_max_retries: LLM 批处理最大重试次数。
+        llm_batch_rate_limit_per_second: LLM 批处理限流速率（每秒）。
+        llm_batch_idempotency_cache_size: LLM 幂等缓存大小。
+        llm_langchain_backend: LangChain 后端类型。
+        llm_langchain_model: LangChain 使用的模型名称。
+        llm_langchain_api_base: LangChain API 基础地址。
+        llm_langchain_api_key: LangChain API 密钥。
+        llm_langchain_temperature: LangChain 采样温度。
+        llm_ollama_base_url: Ollama 基础地址。
+        context_message_limit: 检测时回溯的历史消息条数。
+        pending_queue_limit: 未处理消息队列上限。
+        history_list_limit: 滚动历史消息上限。
+        detection_cooldown_seconds: 检测冷却时间（秒）。
+        detection_min_new_messages: 检测触发所需最小新消息数。
+        detection_wait_timeout_seconds: 检测等待超时时间（秒）。
+        smtp_host: SMTP 邮件服务器主机。
+        smtp_port: SMTP 端口。
+        smtp_username: SMTP 用户名。
+        smtp_password: SMTP 密码。
+        smtp_sender: SMTP 发件人。
+        hook_timeout_seconds: 外部 Hook 超时时间（秒）。
+        enable_internal_rule_generation: 是否启用内置规则生成。
+        external_rule_generation_endpoint: 外部规则生成 API 地址。
+        enabled_adapters: 启用的 adapter 列表。
+        onebot_api_root: OneBot API 根地址。
+        onebot_access_token: OneBot 访问令牌。
+        onebot_retry_interval_seconds: OneBot 重试间隔（秒）。
+        onebot_connect_timeout_seconds: OneBot 连接超时时间（秒）。
+        telegram_bot_token: Telegram Bot Token。
+        wechat_endpoint: WeChat 端点。
+        feishu_app_id: 飞书 App ID。
+        virtual_adapter_chat_count: 虚拟 adapter 聊天数。
+        virtual_adapter_members_per_chat: 虚拟 adapter 每个聊天成员数。
+        virtual_adapter_messages_per_chat: 虚拟 adapter 每个聊天消息数。
+        virtual_adapter_interval_min_seconds: 虚拟 adapter 消息最小间隔（秒）。
+        virtual_adapter_interval_max_seconds: 虚拟 adapter 消息最大间隔（秒）。
+        virtual_adapter_script_path: 虚拟 adapter 脚本路径。
     """
 
     model_config = SettingsConfigDict(env_prefix="CHAT_GUARDIAN_", env_file=".env", extra="ignore")
