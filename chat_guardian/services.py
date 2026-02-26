@@ -448,19 +448,19 @@ class RuleBatchScheduler:
 
         self._rate_lock = asyncio.Lock()
         self._next_available_time = 0.0
-        self._metrics: dict[str, float | int] = {
-            "total_requests": 0,
-            "total_batches": 0,
-            "total_llm_calls": 0,
-            "successful_batches": 0,
-            "fallback_batches": 0,
-            "retry_attempts": 0,
-            "batch_timeouts": 0,
-            "idempotency_completed_hits": 0,
-            "idempotency_inflight_hits": 0,
-            "rate_limit_wait_count": 0,
-            "rate_limit_wait_ms": 0.0,
-        }
+        self._metrics = RuleBatchSchedulerMetricsModel(
+            total_requests=0,
+            total_batches=0,
+            total_llm_calls=0,
+            successful_batches=0,
+            fallback_batches=0,
+            retry_attempts=0,
+            batch_timeouts=0,
+            idempotency_completed_hits=0,
+            idempotency_inflight_hits=0,
+            rate_limit_wait_count=0,
+            rate_limit_wait_ms=0.0,
+        )
 
     async def evaluate_rules(
         self,
@@ -473,8 +473,8 @@ class RuleBatchScheduler:
             return []
 
         batches = [rules[i : i + self.batch_size] for i in range(0, len(rules), self.batch_size)]
-        self._metrics["total_requests"] += 1
-        self._metrics["total_batches"] += len(batches)
+        self._metrics.total_requests += 1
+        self._metrics.total_batches += len(batches)
 
         async def run_batch(index: int, batch_rules: list[DetectionRule]) -> list[RuleDecision]:
             batch_request_id = self._build_batch_request_id(request_id, messages, batch_rules, index)
@@ -504,7 +504,7 @@ class RuleBatchScheduler:
         async with self._idempotency_lock:
             cached = self._completed.get(request_id)
             if cached is not None:
-                self._metrics["idempotency_completed_hits"] += 1
+                self._metrics.idempotency_completed_hits += 1
                 return cached
 
             task = self._inflight.get(request_id)
@@ -512,7 +512,7 @@ class RuleBatchScheduler:
                 task = asyncio.create_task(executor())
                 self._inflight[request_id] = task
             else:
-                self._metrics["idempotency_inflight_hits"] += 1
+                self._metrics.idempotency_inflight_hits += 1
 
         result = await task
 
@@ -535,22 +535,22 @@ class RuleBatchScheduler:
             for attempt in range(self.max_retries + 1):
                 try:
                     await self._acquire_rate_limit_slot()
-                    self._metrics["total_llm_calls"] += 1
+                    self._metrics.total_llm_calls += 1
                     decisions = await asyncio.wait_for(
                         self.llm_client.evaluate(messages=messages, rules=rules),
                         timeout=self.batch_timeout_seconds,
                     )
-                    self._metrics["successful_batches"] += 1
+                    self._metrics.successful_batches += 1
                     return decisions
                 except Exception as exc:
                     last_error = exc
                     if isinstance(exc, TimeoutError | asyncio.TimeoutError):
-                        self._metrics["batch_timeouts"] += 1
+                        self._metrics.batch_timeouts += 1
                     if attempt < self.max_retries:
-                        self._metrics["retry_attempts"] += 1
+                        self._metrics.retry_attempts += 1
                     if attempt >= self.max_retries:
                         break
-            self._metrics["fallback_batches"] += 1
+            self._metrics.fallback_batches += 1
             return self._fallback_decisions(rules, last_error)
 
     async def _acquire_rate_limit_slot(self) -> None:
@@ -562,8 +562,8 @@ class RuleBatchScheduler:
             now = time.monotonic()
             if now < self._next_available_time:
                 wait_seconds = self._next_available_time - now
-                self._metrics["rate_limit_wait_count"] += 1
-                self._metrics["rate_limit_wait_ms"] += wait_seconds * 1000
+                self._metrics.rate_limit_wait_count += 1
+                self._metrics.rate_limit_wait_ms += wait_seconds * 1000
                 await asyncio.sleep(wait_seconds)
             now2 = time.monotonic()
             self._next_available_time = now2 + interval
@@ -580,7 +580,7 @@ class RuleBatchScheduler:
             idempotency_cache_size=self.idempotency_cache_size,
             idempotency_completed_cache_entries=len(self._completed),
             idempotency_inflight_entries=len(self._inflight),
-            metrics=RuleBatchSchedulerMetricsModel(**dict(self._metrics)),
+            metrics=self._metrics,
         )
 
     @staticmethod
