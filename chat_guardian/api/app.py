@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import gradio as gr
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 
@@ -26,6 +27,7 @@ from chat_guardian.domain import (
     SessionMatchMode,
     SessionTarget,
 )
+from chat_guardian.gradio_temp_ui import build_demo
 from chat_guardian.repositories import (
     InMemoryChatHistoryStore,
     InMemoryDetectionResultRepository,
@@ -276,4 +278,5 @@ def create_app() -> FastAPI:
     async def mcp_generate_rule(payload: RuleGenerateRequest) -> RulePayload:
         return await generate_rule(payload)
 
+    app = gr.mount_gradio_app(app, build_demo(), path="/gradio")
     return app
