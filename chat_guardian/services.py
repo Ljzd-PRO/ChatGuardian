@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from chat_guardian.models import RuleBatchSchedulerMetricsModel
+
 """
 核心服务与基础实现。
 
@@ -19,7 +20,7 @@ import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Awaitable, Callable, Protocol
+from typing import Callable, Protocol, Coroutine, Any, Union
 
 import httpx
 from aiosmtplib import SMTP
@@ -155,7 +156,7 @@ class LangChainLLMClient:
 
     def __init__(
         self,
-        chat_model: ChatOpenAI | ChatOllama,
+        chat_model: Union[ChatOpenAI | ChatOllama],
         backend: str,
         model_name: str,
         api_base: str | None,
@@ -483,8 +484,8 @@ class RuleBatchScheduler:
         decisions = [decision for sublist in nested_results for decision in sublist]
         return sorted(decisions, key=lambda item: item.rule_id)
 
+    @staticmethod
     def _build_batch_request_id(
-        self,
         request_id: str,
         messages: list[ChatMessage],
         rules: list[DetectionRule],
@@ -498,7 +499,7 @@ class RuleBatchScheduler:
     async def _run_idempotent(
         self,
         request_id: str,
-        executor: Callable[[], Awaitable[list[RuleDecision]]],
+        executor: Callable[[], Coroutine[Any, Any, list[RuleDecision]]],
     ) -> list[RuleDecision]:
         async with self._idempotency_lock:
             cached = self._completed.get(request_id)
@@ -516,7 +517,7 @@ class RuleBatchScheduler:
         result = await task
 
         async with self._idempotency_lock:
-            self._inflight.pop(request_id, None)
+            await self._inflight.pop(request_id, None)
             self._completed[request_id] = result
             while len(self._completed) > self.idempotency_cache_size:
                 first_key = next(iter(self._completed))
@@ -986,7 +987,7 @@ class RuleGenerationBackend(Protocol):
     async def generate(self, utterance: str, override_system_prompt: str | None = None) -> DetectionRule: ...
 
 
-class InternalRuleGenerationBackend:
+class InternalRuleGenerationBackend(RuleGenerationBackend):
     """简单的内置规则生成器。
 
     基于文本拆分与正则规则抽取候选主题、参与者与目标会话，产出一个初步可编辑的规则草案。
@@ -1029,7 +1030,7 @@ class InternalRuleGenerationBackend:
         return "*"
 
 
-class ExternalPromptRuleGenerationBackend:
+class ExternalPromptRuleGenerationBackend(RuleGenerationBackend):
     def __init__(self, endpoint: str):
         self.endpoint = endpoint
 
@@ -1092,7 +1093,7 @@ class NotificationConfig:
     to_email: str | None
 
 
-class EmailNotifier:
+class EmailNotifier(Notifier):
     """基于 SMTP 的邮件通知实现。"""
 
     def __init__(self, config: NotificationConfig):

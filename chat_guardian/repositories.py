@@ -11,9 +11,11 @@ from collections import defaultdict, deque
 from datetime import datetime
 
 from chat_guardian.domain import ChatMessage, ChatType, DetectionResult, DetectionRule, Feedback, UserMemoryFact
+from chat_guardian.services import ChatHistoryStore, RuleRepository, FeedbackRepository, DetectionResultRepository, \
+    MemoryRepository
 
 
-class InMemoryChatHistoryStore:
+class InMemoryChatHistoryStore(ChatHistoryStore):
     """将消息按 adapter/chat_type/chat_id 分类保存在内存中。
 
     Methods:
@@ -139,7 +141,7 @@ class InMemoryChatHistoryStore:
                 pass
         return bucket[-limit:]
 
-class InMemoryRuleRepository:
+class InMemoryRuleRepository(RuleRepository):
     """内存中的规则存储实现，支持上载/列举已启用规则。"""
 
     def __init__(self):
@@ -165,7 +167,7 @@ class InMemoryRuleRepository:
         return True
 
 
-class InMemoryFeedbackRepository:
+class InMemoryFeedbackRepository(FeedbackRepository):
     """简单的反馈存储（按规则分组）。"""
 
     def __init__(self):
@@ -178,7 +180,7 @@ class InMemoryFeedbackRepository:
         return list(self.feedback_by_rule.get(rule_id, []))
 
 
-class InMemoryMemoryRepository:
+class InMemoryMemoryRepository(MemoryRepository):
     """用户记忆事实的内存实现，用于存储 `UserMemoryFact`。"""
 
     def __init__(self):
@@ -191,7 +193,7 @@ class InMemoryMemoryRepository:
         return list(self.facts_by_user.get(user_id, []))
 
 
-class InMemoryDetectionResultRepository:
+class InMemoryDetectionResultRepository(DetectionResultRepository):
     """按规则索引检测结果，并维护最近触发结果的 O(1) 查询结构。"""
 
     def __init__(self):

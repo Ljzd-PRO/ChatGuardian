@@ -3,6 +3,7 @@
 
 此模块定义 `Settings` 配置类，使用环境变量（前缀 `CHAT_GUARDIAN_`）进行初始化。
 """
+from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -36,8 +37,8 @@ class Settings(BaseSettings):
     llm_batch_idempotency_cache_size: int = 1024
     llm_langchain_backend: str = "openai_compatible"
     llm_langchain_model: str = "gpt-4o-mini"
-    llm_langchain_api_base: str | None = None
-    llm_langchain_api_key: str | None = None
+    llm_langchain_api_base: Optional[str] = None
+    llm_langchain_api_key: Optional[str] = None
     llm_langchain_temperature: float = 0.0
     llm_ollama_base_url: str = "http://localhost:11434"
 
@@ -54,28 +55,28 @@ class Settings(BaseSettings):
     detection_wait_timeout_seconds: float = 30.0
 
     # SMTP 发信配置（可用于 EmailNotifier）
-    smtp_host: str | None = None
+    smtp_host: Optional[str] = None
     smtp_port: int = 587
-    smtp_username: str | None = None
-    smtp_password: str | None = None
-    smtp_sender: str | None = None
+    smtp_username: Optional[str] = None
+    smtp_password: Optional[str] = None
+    smtp_sender: Optional[str] = None
 
     # 外部 Hook 与规则生成端点
     hook_timeout_seconds: float = 8.0
     enable_internal_rule_generation: bool = True
-    external_rule_generation_endpoint: str | None = None
+    external_rule_generation_endpoint: Optional[str] = None
 
     # Adapter 插件配置
     enabled_adapters: list[str] = []
 
-    onebot_api_root: str | None = None
-    onebot_access_token: str | None = None
+    onebot_api_root: Optional[str] = None
+    onebot_access_token: Optional[str] = None
     onebot_retry_interval_seconds: float = 5.0
     onebot_connect_timeout_seconds: float = 10.0
 
-    telegram_bot_token: str | None = None
-    wechat_endpoint: str | None = None
-    feishu_app_id: str | None = None
+    telegram_bot_token: Optional[str] = None
+    wechat_endpoint: Optional[str] = None
+    feishu_app_id: Optional[str] = None
 
     # Virtual Adapter（测试用）配置
     virtual_adapter_chat_count: int = 3
@@ -83,7 +84,7 @@ class Settings(BaseSettings):
     virtual_adapter_messages_per_chat: int = 10
     virtual_adapter_interval_min_seconds: float = 0.1
     virtual_adapter_interval_max_seconds: float = 0.6
-    virtual_adapter_script_path: str | None = None
+    virtual_adapter_script_path: Optional[str] = None
 
 
 settings = Settings()
