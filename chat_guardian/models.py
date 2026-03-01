@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 class DiagnosticsModel(BaseModel):
@@ -13,12 +13,12 @@ class DiagnosticsModel(BaseModel):
         api_key_configured: API 密钥是否已配置。
         ollama_base_url: Ollama 基础地址。
     """
-    backend: str
-    model: str
-    client_class: str
-    api_base: Optional[str]
-    api_key_configured: bool
-    ollama_base_url: Optional[str]
+    backend: str = Field(...)
+    model: str = Field(...)
+    client_class: str = Field(...)
+    api_base: Optional[str] = Field(default=None)
+    api_key_configured: bool = Field(...)
+    ollama_base_url: Optional[str] = Field(default=None)
 
 class RuleBatchSchedulerMetricsModel(BaseModel):
     """
@@ -37,17 +37,17 @@ class RuleBatchSchedulerMetricsModel(BaseModel):
         rate_limit_wait_count: 限流等待次数。
         rate_limit_wait_ms: 限流等待总时长（毫秒）。
     """
-    total_requests: int
-    total_batches: int
-    total_llm_calls: int
-    successful_batches: int
-    fallback_batches: int
-    retry_attempts: int
-    batch_timeouts: int
-    idempotency_completed_hits: int
-    idempotency_inflight_hits: int
-    rate_limit_wait_count: int
-    rate_limit_wait_ms: float
+    total_requests: int = Field(...)
+    total_batches: int = Field(...)
+    total_llm_calls: int = Field(...)
+    successful_batches: int = Field(...)
+    fallback_batches: int = Field(...)
+    retry_attempts: int = Field(...)
+    batch_timeouts: int = Field(...)
+    idempotency_completed_hits: int = Field(...)
+    idempotency_inflight_hits: int = Field(...)
+    rate_limit_wait_count: int = Field(...)
+    rate_limit_wait_ms: float = Field(...)
 
 class RuleBatchSchedulerDiagnosticsModel(BaseModel):
     """
@@ -64,14 +64,14 @@ class RuleBatchSchedulerDiagnosticsModel(BaseModel):
         idempotency_inflight_entries: 幂等进行中条目数。
         metrics: 调度器指标。
     """
-    batch_size: int
-    max_parallel_batches: int
-    batch_timeout_seconds: float
-    max_retries: int
-    rate_limit_per_second: float
-    idempotency_cache_size: int
-    idempotency_completed_cache_entries: int
-    idempotency_inflight_entries: int
-    metrics: RuleBatchSchedulerMetricsModel
+    batch_size: int = Field(...)
+    max_parallel_batches: int = Field(...)
+    batch_timeout_seconds: float = Field(...)
+    max_retries: int = Field(...)
+    rate_limit_per_second: float = Field(...)
+    idempotency_cache_size: int = Field(...)
+    idempotency_completed_cache_entries: int = Field(...)
+    idempotency_inflight_entries: int = Field(...)
+    metrics: RuleBatchSchedulerMetricsModel = Field(...)
 
 # 可根据后续梳理结果继续补充 payload、其他 dict 结构
