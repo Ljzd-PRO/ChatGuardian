@@ -52,15 +52,12 @@ def build_adapters_from_settings(app_settings: Settings) -> list[Adapter]:
 	adapters: list[Adapter] = []
 
 	if "onebot" in enabled:
-		if not app_settings.onebot_api_root:
-			raise ValueError("Adapter 'onebot' is enabled but onebot_api_root is not configured")
 		adapters.append(
 			OneBotAdapter(
 				OneBotAdapterConfig(
-					api_root=app_settings.onebot_api_root,
+					host=app_settings.onebot_host,
+					port=app_settings.onebot_port,
 					access_token=app_settings.onebot_access_token,
-					retry_interval_seconds=app_settings.onebot_retry_interval_seconds,
-					connect_timeout_seconds=app_settings.onebot_connect_timeout_seconds,
 				)
 			)
 		)

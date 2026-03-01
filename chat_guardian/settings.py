@@ -44,10 +44,9 @@ class Settings(BaseSettings):
         enable_internal_rule_generation: 是否启用内置规则生成。
         external_rule_generation_endpoint: 外部规则生成 API 地址。
         enabled_adapters: 启用的 adapter 列表。
-        onebot_api_root: OneBot API 根地址。
+        onebot_host: OneBot WebSocket 服务器监听地址。
+        onebot_port: OneBot WebSocket 服务器监听端口。
         onebot_access_token: OneBot 访问令牌。
-        onebot_retry_interval_seconds: OneBot 重试间隔（秒）。
-        onebot_connect_timeout_seconds: OneBot 连接超时时间（秒）。
         telegram_bot_token: Telegram Bot Token。
         wechat_endpoint: WeChat 端点。
         feishu_app_id: 飞书 App ID。
@@ -107,10 +106,11 @@ class Settings(BaseSettings):
     # Adapter 插件配置
     enabled_adapters: list[str] = []
 
-    onebot_api_root: Optional[str] = None
+    # OneBot - 反向 WebSocket 连接方式
+    # OneBot 实例需要配置连接到此服务，例如：ws://host:port/ws/event/
+    onebot_host: str = "0.0.0.0"
+    onebot_port: int = 2290
     onebot_access_token: Optional[str] = None
-    onebot_retry_interval_seconds: float = 5.0
-    onebot_connect_timeout_seconds: float = 10.0
 
     telegram_bot_token: Optional[str] = None
     wechat_endpoint: Optional[str] = None
