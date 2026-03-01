@@ -95,13 +95,7 @@ class OneBotAdapter(Adapter):
             self._ready = True
             logger.success(f"🟢 OneBot WebSocket 连接已建立 | self_id={self_id}")
         
-        @self._bot.on_connection_closed
-        async def _on_connection_closed() -> None:
-            """OneBot WebSocket 连接关闭时的回调"""
-            self._ready = False
-            logger.warning(f"🟠 OneBot WebSocket 连接已断开")
-        
-        logger.info(f"📡 OneBot 事件回调已注册 (message, connection, close)")
+        logger.info(f"📡 OneBot 事件回调已注册 (message, connection)")
     
     async def _convert_event(self, event: dict[str, Any]) -> ChatEvent | None:
         try:
