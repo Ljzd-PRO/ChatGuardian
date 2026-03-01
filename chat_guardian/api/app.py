@@ -13,13 +13,20 @@ from fastapi.responses import HTMLResponse
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import (
+    DetectionResultPayload,
     FeedbackPayload,
+    MessageContentPayload,
+    MessagePayload,
     RuleGenerateRequest,
+    RuleDecisionPayload,
     RulePayload,
+    RuleStatsPayload,
     SuggestResponse,
 )
 from chat_guardian.domain import (
     ChatEvent,
+    ChatMessage,
+    DetectionResult,
     DetectionRule,
     Feedback,
     RuleParameterSpec,
@@ -146,6 +153,49 @@ def _to_payload(rule: DetectionRule) -> RulePayload:
     )
 
 
+def _to_message_payload(message: ChatMessage) -> MessagePayload:
+    """将领域对象 `ChatMessage` 转换为 API 可序列化对象。"""
+    return MessagePayload(
+        message_id=message.message_id,
+        chat_id=message.chat_id,
+        sender_id=message.sender_id,
+        sender_name=message.sender_name,
+        contents=[
+            MessageContentPayload(
+                type=item.type.value,
+                text=item.text,
+                image_url=item.image_url,
+                mention_user_id=item.mention_user_id,
+            )
+            for item in message.contents
+        ],
+        reply_from=_to_message_payload(message.reply_from) if message.reply_from else None,
+        timestamp=message.timestamp,
+    )
+
+
+def _to_detection_result_payload(result: DetectionResult) -> DetectionResultPayload:
+    """将领域对象 `DetectionResult` 转换为 API 可序列化对象。"""
+    return DetectionResultPayload(
+        result_id=result.result_id,
+        event_id=result.event_id,
+        rule_id=result.rule_id,
+        chat_id=result.chat_id,
+        message_id=result.message_id,
+        decision=RuleDecisionPayload(
+            rule_id=result.decision.rule_id,
+            triggered=result.decision.triggered,
+            confidence=result.decision.confidence,
+            reason=result.decision.reason,
+            extracted_params=result.decision.extracted_params,
+        ),
+        context_messages=[_to_message_payload(message) for message in result.context_messages],
+        generated_at=result.generated_at,
+        trigger_suppressed=result.trigger_suppressed,
+        suppression_reason=result.suppression_reason,
+    )
+
+
 
 
 
@@ -229,6 +279,52 @@ def create_app() -> FastAPI:
     async def list_rules() -> list[RulePayload]:
         rules = await container.rule_repository.list_all()
         return [_to_payload(rule) for rule in rules]
+
+    @app.get("/results/rules-summary", response_model=list[RuleStatsPayload])
+    async def list_rule_result_summary() -> list[RuleStatsPayload]:
+        rules = await container.rule_repository.list_all()
+        summaries: list[RuleStatsPayload] = []
+
+        for rule in rules:
+            results = await container.detection_result_repository.list_by_rule(rule.rule_id)
+            triggered_results = [result for result in results if result.decision.triggered]
+            effective_triggered = [result for result in triggered_results if not result.trigger_suppressed]
+            latest_source = effective_triggered if effective_triggered else triggered_results
+            last_triggered = max(latest_source, key=lambda item: item.generated_at, default=None)
+
+            summaries.append(
+                RuleStatsPayload(
+                    rule_id=rule.rule_id,
+                    rule_name=rule.name,
+                    total_results=len(results),
+                    total_triggered=len(effective_triggered),
+                    last_triggered_at=last_triggered.generated_at if last_triggered else None,
+                )
+            )
+
+        return sorted(
+            summaries,
+            key=lambda item: (
+                item.total_triggered,
+                item.last_triggered_at is not None,
+                item.last_triggered_at or datetime.min,
+            ),
+            reverse=True,
+        )
+
+    @app.get("/results/rules/{rule_id}/triggers", response_model=list[DetectionResultPayload])
+    async def list_rule_trigger_records(rule_id: str, include_suppressed: bool = False) -> list[DetectionResultPayload]:
+        rule = await container.rule_repository.get(rule_id)
+        if not rule:
+            raise HTTPException(status_code=404, detail=f"Rule not found: {rule_id}")
+
+        results = await container.detection_result_repository.list_by_rule(rule_id)
+        trigger_results = [result for result in results if result.decision.triggered]
+        if not include_suppressed:
+            trigger_results = [result for result in trigger_results if not result.trigger_suppressed]
+
+        trigger_results.sort(key=lambda item: item.generated_at, reverse=True)
+        return [_to_detection_result_payload(result) for result in trigger_results]
 
     @app.post("/rules/delete/{rule_id}")
     async def delete_rule(rule_id: str) -> dict[str, str | bool]:

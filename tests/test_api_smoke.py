@@ -4,7 +4,18 @@ from fastapi.testclient import TestClient
 import asyncio
 
 from chat_guardian.api.app import create_app
-from chat_guardian.domain import ChatMessage, ChatEvent, ChatType, MessageContent, ContentType
+from chat_guardian.domain import (
+    ChatEvent,
+    ChatMessage,
+    ChatType,
+    ContentType,
+    DetectionResult,
+    DetectionRule,
+    MessageContent,
+    RuleDecision,
+    SessionMatchMode,
+    SessionTarget,
+)
 
 
 def test_api_rule_and_detect_flow() -> None:
@@ -118,3 +129,60 @@ def test_rule_list_and_delete_flow() -> None:
     assert list_after_resp.status_code == 200
     rules_after = list_after_resp.json()
     assert all(item["rule_id"] != "rule-to-delete" for item in rules_after)
+
+
+def test_results_summary_and_trigger_records() -> None:
+    app = create_app()
+    client = TestClient(app)
+    container = app.state.container
+
+    rule = DetectionRule(
+        rule_id="rule-summary-1",
+        name="Summary Rule",
+        description="for summary api",
+        target_session=SessionTarget(mode=SessionMatchMode.EXACT, query="chat-summary"),
+        enabled=True,
+    )
+    asyncio.run(container.rule_repository.upsert(rule))
+
+    now = datetime.now(timezone.utc)
+    message = ChatMessage(
+        message_id="summary-m-1",
+        chat_id="chat-summary",
+        sender_id="u-summary",
+        sender_name="summary-user",
+        contents=[MessageContent(type=ContentType.TEXT, text="triggered content")],
+        reply_from=None,
+        timestamp=now,
+    )
+    result = DetectionResult(
+        result_id="summary-result-1",
+        event_id="summary-event-1",
+        rule_id="rule-summary-1",
+        chat_id="chat-summary",
+        message_id="summary-m-1",
+        decision=RuleDecision(
+            rule_id="rule-summary-1",
+            triggered=True,
+            confidence=0.92,
+            reason="matched",
+            extracted_params={"topic": "alert"},
+        ),
+        context_messages=[message],
+        generated_at=now,
+    )
+    asyncio.run(container.detection_result_repository.add(result))
+
+    summary_resp = client.get("/results/rules-summary")
+    assert summary_resp.status_code == 200
+    summary_payload = summary_resp.json()
+    target = next(item for item in summary_payload if item["rule_id"] == "rule-summary-1")
+    assert target["total_results"] == 1
+    assert target["total_triggered"] == 1
+
+    trigger_resp = client.get("/results/rules/rule-summary-1/triggers")
+    assert trigger_resp.status_code == 200
+    trigger_payload = trigger_resp.json()
+    assert len(trigger_payload) == 1
+    assert trigger_payload[0]["rule_id"] == "rule-summary-1"
+    assert trigger_payload[0]["decision"]["triggered"] is True

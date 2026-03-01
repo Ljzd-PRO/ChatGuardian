@@ -99,6 +99,37 @@ poetry run chat-guardian-ui
 
 > 该界面用于临时联调，当前支持：`/health`、`/llm/health`、`/adapters/start`、`/adapters/stop`、`/rules`、`/rule-generation`。
 
+## 全新 Streamlit 可视化 UI（规则触发看板）
+
+1. 启动 API（保持运行）
+
+```bash
+poetry run uvicorn chat_guardian.api.app:create_app --factory --reload --host 0.0.0.0 --port 8000
+```
+
+2. 启动 Streamlit 面板
+
+```bash
+poetry run chat-guardian-streamlit
+```
+
+或直接：
+
+```bash
+poetry run streamlit run chat_guardian/streamlit_rule_dashboard.py
+```
+
+3. 访问界面
+
+- `http://127.0.0.1:8501`
+
+> 该界面提供：
+> - 每条规则的触发统计（总检测数、触发数、最近触发时间）
+> - 触发记录列表（可展开查看）
+> - 结果属性图形化展示（指标卡、置信度进度条、柱状图）
+> - 结果属性可编辑（非 JSON 直出，字段级编辑）
+> - 聊天记录以聊天框风格展示（发送者名称 + 消息内容）
+
 ## Docker 运行
 
 ```bash
@@ -117,6 +148,8 @@ docker compose up --build
 - `GET /llm/health`：返回当前 LLM 后端诊断信息，并可执行最小 ping 探活（`do_ping` 参数）。
 - `POST /adapters/start`：按配置启动已启用 adapter（可反复调用）。
 - `POST /adapters/stop`：停止已启用 adapter。
+- `GET /results/rules-summary`：获取每条规则的检测总数与触发统计。
+- `GET /results/rules/{rule_id}/triggers`：获取规则触发记录详情（支持 `include_suppressed`）。
 
 ## 扩展点
 
