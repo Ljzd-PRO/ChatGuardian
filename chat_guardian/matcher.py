@@ -6,71 +6,71 @@ from pydantic import BaseModel, ConfigDict, Field
 from chat_guardian.domain import ChatEvent, ContentType
 
 
-class MatcherBase(ABC):
+class Matcher(BaseModel, ABC):
     """所有匹配器的基类，支持使用 & 和 | 运算符组合规则"""
 
-    def __and__(self, other: "MatcherBase") -> "AndMatcher":
+    def __and__(self, other: "Matcher") -> "AndMatcher":
         """使用 & 运算符创建"与"规则链"""
         if isinstance(self, AndMatcher):
             return AndMatcher(matchers=self.matchers + [other])
         return AndMatcher(matchers=[self, other])
 
-    def __or__(self, other: "MatcherBase") -> "OrMatcher":
+    def __or__(self, other: "Matcher") -> "OrMatcher":
         """使用 | 运算符创建"或"规则链"""
         if isinstance(self, OrMatcher):
             return OrMatcher(matchers=self.matchers + [other])
         return OrMatcher(matchers=[self, other])
 
-    def matches(self, event: "ChatEvent") -> bool:
+    def matches(self, event: ChatEvent) -> bool:
         """检查事件是否匹配规则，需在子类中实现具体逻辑"""
         raise NotImplementedError("MatcherBase is an abstract class and cannot be instantiated directly")
 
 
-class AndMatcher(MatcherBase, BaseModel):
+class AndMatcher(Matcher):
     """表示多个匹配规则的"与"关系"""
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    matchers: list["Matcher"] = Field(default_factory=list)
+    matchers: list[Matcher] = Field(default_factory=list)
 
-    def __and__(self, other: MatcherBase) -> "AndMatcher":
+    def __and__(self, other: Matcher) -> "AndMatcher":
         """继续添加"与"条件"""
         return AndMatcher(matchers=self.matchers + [other])
 
-    def matches(self, event: "ChatEvent") -> bool:
+    def matches(self, event: ChatEvent) -> bool:
         """事件必须满足所有规则才匹配成功"""
         return all(matcher.matches(event) for matcher in self.matchers)
 
 
-class OrMatcher(MatcherBase, BaseModel):
+class OrMatcher(Matcher):
     """表示多个匹配规则的"或"关系"""
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    matchers: list["Matcher"] = Field(default_factory=list)
+    matchers: list[Matcher] = Field(default_factory=list)
 
-    def __or__(self, other: MatcherBase) -> "OrMatcher":
+    def __or__(self, other: Matcher) -> "OrMatcher":
         """继续添加"或"条件"""
         return OrMatcher(matchers=self.matchers + [other])
 
-    def matches(self, event: "ChatEvent") -> bool:
+    def matches(self, event: ChatEvent) -> bool:
         """事件满足任一规则即匹配成功"""
         return any(matcher.matches(event) for matcher in self.matchers)
 
 
-class MatchAll(MatcherBase, BaseModel):
+class MatchAll(Matcher):
     """匹配所有事件的规则"""
 
-    def matches(self, events: "ChatEvent") -> bool:
+    def matches(self, events: ChatEvent) -> bool:
         return True
 
 
-class _MatchUserInfo(MatcherBase, BaseModel):
+class _MatchUserInfo(Matcher):
     user_id: Optional[str] = None
     display_name: Optional[str] = None
 
-    def matches(self, event: "ChatEvent") -> bool:
+    def matches(self, event: ChatEvent) -> bool:
         raise NotImplementedError("This is a base class for user info matchers and should not be used directly")
 
 
 class MatchSender(_MatchUserInfo):
-    def matches(self, event: "ChatEvent") -> bool:
+    def matches(self, event: ChatEvent) -> bool:
         if not event.message or not event.message.sender_id:
             return False
         if self.user_id and self.user_id != event.message.sender_id:
@@ -79,8 +79,9 @@ class MatchSender(_MatchUserInfo):
             return False
         return True
 
+
 class MatchMention(_MatchUserInfo):
-    def matches(self, event: "ChatEvent") -> bool:
+    def matches(self, event: ChatEvent) -> bool:
         if not event.message or not event.message.contents:
             return False
         for content in event.message.contents:
@@ -92,23 +93,23 @@ class MatchMention(_MatchUserInfo):
                 return True
         return False
 
-class MatchChatInfo(MatcherBase, BaseModel):
+
+class MatchChatInfo(Matcher):
     chat_id: str
 
-    def matches(self, event: "ChatEvent") -> bool:
+    def matches(self, event: ChatEvent) -> bool:
         return event.chat_id == self.chat_id
 
-class MatchChatType(MatcherBase, BaseModel):
+
+class MatchChatType(Matcher):
     type: Literal["group", "private"]
 
-    def matches(self, event: "ChatEvent") -> bool:
+    def matches(self, event: ChatEvent) -> bool:
         return event.chat_type.value == self.type
 
-class MatchAdapter(MatcherBase, BaseModel):
+
+class MatchAdapter(Matcher):
     adapter_name: str
 
-    def matches(self, event: "ChatEvent") -> bool:
+    def matches(self, event: ChatEvent) -> bool:
         return event.platform == self.adapter_name
-
-
-Matcher = MatchAll | MatchChatInfo | MatchSender | MatchMention | MatchChatType | MatchAdapter | AndMatcher | OrMatcher
