@@ -14,16 +14,7 @@ from pydantic import TypeAdapter
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import (
-    AndMatcherPayload,
     FeedbackPayload,
-    MatchAdapterPayload,
-    MatchAllPayload,
-    MatchChatInfoPayload,
-    MatchChatTypePayload,
-    MatchMentionPayload,
-    MatchSenderPayload,
-    MatcherPayload,
-    OrMatcherPayload,
     RuleGenerateRequest,
     RuleParameterPayload,
     RulePayload,
@@ -59,46 +50,9 @@ from chat_guardian.services import (
 from chat_guardian.settings import settings
 
 _DETECTION_RULE_ADAPTER = TypeAdapter(DetectionRule)
-
-
-def _matcher_from_payload(payload: MatcherPayload) -> MatcherBase:
-    if isinstance(payload, MatchAllPayload):
-        return MatchAll()
-    if isinstance(payload, MatchChatInfoPayload):
-        return MatchChatInfo(chat_id=payload.chat_id)
-    if isinstance(payload, MatchSenderPayload):
-        return MatchSender(user_id=payload.user_id, display_name=payload.display_name)
-    if isinstance(payload, MatchMentionPayload):
-        return MatchMention(user_id=payload.user_id, display_name=payload.display_name)
-    if isinstance(payload, MatchChatTypePayload):
-        return MatchChatType(type=payload.chat_type)
-    if isinstance(payload, MatchAdapterPayload):
-        return MatchAdapter(adapter_name=payload.adapter_name)
-    if isinstance(payload, AndMatcherPayload):
-        return AndMatcher(matchers=[_matcher_from_payload(item) for item in payload.matchers])
-    if isinstance(payload, OrMatcherPayload):
-        return OrMatcher(matchers=[_matcher_from_payload(item) for item in payload.matchers])
-    raise TypeError(f"Unsupported matcher payload type: {type(payload).__name__}")
-
-
-def _matcher_to_payload(matcher: MatcherBase) -> MatcherPayload:
-    if isinstance(matcher, MatchAll):
-        return MatchAllPayload(type="all")
-    if isinstance(matcher, MatchChatInfo):
-        return MatchChatInfoPayload(type="chat", chat_id=matcher.chat_id)
-    if isinstance(matcher, MatchSender):
-        return MatchSenderPayload(type="sender", user_id=matcher.user_id, display_name=matcher.display_name)
-    if isinstance(matcher, MatchMention):
-        return MatchMentionPayload(type="mention", user_id=matcher.user_id, display_name=matcher.display_name)
-    if isinstance(matcher, MatchChatType):
-        return MatchChatTypePayload(type="chat_type", chat_type=matcher.type)
-    if isinstance(matcher, MatchAdapter):
-        return MatchAdapterPayload(type="adapter", adapter_name=matcher.adapter_name)
-    if isinstance(matcher, AndMatcher):
-        return AndMatcherPayload(type="and", matchers=[_matcher_to_payload(item) for item in matcher.matchers])
-    if isinstance(matcher, OrMatcher):
-        return OrMatcherPayload(type="or", matchers=[_matcher_to_payload(item) for item in matcher.matchers])
-    raise TypeError(f"Unsupported matcher type: {type(matcher).__name__}")
+_MATCHER_ADAPTER = TypeAdapter(
+    MatchAll | MatchChatInfo | MatchSender | MatchMention | MatchChatType | MatchAdapter | AndMatcher | OrMatcher
+)
 
 
 class AppContainer:
@@ -152,7 +106,7 @@ class AppContainer:
 def _from_payload(payload: RulePayload) -> DetectionRule:
     """将 API 的 `RulePayload` 转换为领域对象 `DetectionRule`。"""
     data = payload.model_dump(mode="python")
-    data["matcher"] = _matcher_from_payload(payload.matcher)
+    data["matcher"] = _MATCHER_ADAPTER.validate_python(payload.matcher)
     data["parameters"] = [
         RuleParameterSpec(
             key=item.key,
@@ -167,7 +121,7 @@ def _from_payload(payload: RulePayload) -> DetectionRule:
 def _to_payload(rule: DetectionRule) -> RulePayload:
     """将领域对象 `DetectionRule` 转换成 API 可序列化的 `RulePayload`。"""
     dumped = _DETECTION_RULE_ADAPTER.dump_python(rule, mode="python")
-    dumped["matcher"] = _matcher_to_payload(rule.matcher).model_dump(mode="python")
+    dumped["matcher"] = _MATCHER_ADAPTER.dump_python(rule.matcher, mode="python")
     dumped["parameters"] = [
         RuleParameterPayload(
             key=item.key,
