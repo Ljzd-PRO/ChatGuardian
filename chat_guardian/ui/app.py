@@ -3,7 +3,6 @@ import requests
 import os
 import json
 import copy
-from datetime import datetime
 from dotenv import set_key
 
 # Ensure local imports work if running from root
@@ -23,7 +22,7 @@ def fetch_json(url, default=None):
         resp = requests.get(url, timeout=2)
         if resp.status_code == 200:
             return resp.json()
-    except Exception as e:
+    except (requests.RequestException, ValueError):
         pass
     return default if default is not None else {}
 
@@ -31,14 +30,14 @@ def post_json(url, payload):
     try:
         resp = requests.post(url, json=payload, timeout=5)
         return resp.status_code in (200, 201), resp.json() if resp.status_code in (200, 201) else resp.text
-    except Exception as e:
+    except requests.RequestException as e:
         return False, str(e)
         
 def delete_req(url):
     try:
         resp = requests.post(url, timeout=5)
         return resp.status_code in (200, 201)
-    except Exception as e:
+    except requests.RequestException:
         return False
 
 # ================= Matcher Editor Helpers =================
@@ -74,7 +73,7 @@ def _default_matcher(type_: str) -> dict:
     return copy.deepcopy(defaults.get(type_, {"type": "all"}))
 
 
-def _get_node(root: dict, path: list) -> dict:
+def _get_node(root: dict, path: list):
     """Traverse the matcher tree using a path of alternating keys/indices."""
     node = root
     for key in path:
@@ -249,6 +248,8 @@ def _render_matcher_node(root: dict, path: list, sk: str, depth: int = 0) -> Non
 
 def _matcher_to_root_type_options(root: dict) -> str:
     """Return the current root type label."""
+    if not isinstance(root, dict):
+        return "未知"
     return MATCHER_TYPE_LABELS.get(root.get("type", "all"), "未知")
 
 
@@ -313,7 +314,7 @@ def render_matcher_editor(session_key: str, initial_matcher: dict) -> dict:
                 root.update(parsed)
                 st.success("已从 JSON 更新 Matcher！")
                 st.rerun()
-            except Exception as exc:
+            except (json.JSONDecodeError, ValueError) as exc:
                 st.error(f"JSON 解析失败: {exc}")
 
     return root
@@ -339,11 +340,17 @@ def page_dashboard():
         st.subheader("🚀 启停控制")
         if st.button("启动所有 Adapter"):
             success, res = post_json(f"{API_ROOT}/adapters/start", {})
-            st.success("请求已发送") if success else st.error(f"失败: {res}")
+            if success:
+                st.success("请求已发送")
+            else:
+                st.error(f"失败: {res}")
             st.rerun()
         if st.button("停止所有 Adapter"):
             success, res = post_json(f"{API_ROOT}/adapters/stop", {})
-            st.success("请求已发送") if success else st.error(f"失败: {res}")
+            if success:
+                st.success("请求已发送")
+            else:
+                st.error(f"失败: {res}")
             st.rerun()
 
     with col2:
@@ -608,7 +615,7 @@ def page_rule_stats():
                     # Editable attributes for debugging or marking manually
                     with st.form(f"edit_rec_{rule_name}_{idx}"):
                         st.write("##### 编辑结果记录标签")
-                        c_note = st.text_input("备注/修正标签", value=record.get('note', ''))
+                        st.text_input("备注/修正标签", value=record.get('note', ''), key=f"note_{idx}")
                         if st.form_submit_button("保存备注"):
                             st.success("编辑保存成功 (Mock)")
 
