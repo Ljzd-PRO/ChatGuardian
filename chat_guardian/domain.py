@@ -166,7 +166,7 @@ class RuleParameterSpec(BaseModel):
     required: bool = True
 
 
-from chat_guardian.matcher import MatchAll, Matcher
+from chat_guardian.matcher import MatchAll, Matcher, MatcherUnion
 
 
 class DetectionRule(BaseModel):
@@ -187,7 +187,7 @@ class DetectionRule(BaseModel):
     rule_id: str
     name: str
     description: str
-    matcher: Matcher = Field(default_factory=MatchAll)
+    matcher: MatcherUnion = Field(default_factory=MatchAll)
     topic_hints: list[str] = Field(default_factory=list)
     score_threshold: float = 0.6
     enabled: bool = True

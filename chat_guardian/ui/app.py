@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import os
 import json
+import copy
 from datetime import datetime
 from dotenv import set_key
 
@@ -39,6 +40,284 @@ def delete_req(url):
         return resp.status_code in (200, 201)
     except Exception as e:
         return False
+
+# ================= Matcher Editor Helpers =================
+
+MATCHER_TYPE_LABELS = {
+    "all": "🌟 全匹配 (Match All)",
+    "sender": "👤 发送者 (Sender)",
+    "mention": "📢 @提及 (Mention)",
+    "chat": "💬 聊天室ID (Chat ID)",
+    "chat_type": "📝 聊天类型 (Chat Type)",
+    "adapter": "🔌 适配器 (Adapter)",
+    "and": "🔵 AND 组 (全部满足)",
+    "or": "🟣 OR 组 (任一满足)",
+}
+
+LEAF_TYPES = ["all", "sender", "mention", "chat", "chat_type", "adapter"]
+COMPOUND_TYPES = ["and", "or"]
+ALL_TYPES = COMPOUND_TYPES + LEAF_TYPES
+
+
+def _default_matcher(type_: str) -> dict:
+    """Return a fresh default matcher dict for the given type."""
+    defaults = {
+        "all": {"type": "all"},
+        "sender": {"type": "sender", "user_id": None, "display_name": None},
+        "mention": {"type": "mention", "user_id": None, "display_name": None},
+        "chat": {"type": "chat", "chat_id": ""},
+        "chat_type": {"type": "chat_type", "chat_type": "group"},
+        "adapter": {"type": "adapter", "adapter_name": ""},
+        "and": {"type": "and", "matchers": []},
+        "or": {"type": "or", "matchers": []},
+    }
+    return copy.deepcopy(defaults.get(type_, {"type": "all"}))
+
+
+def _get_node(root: dict, path: list) -> dict:
+    """Traverse the matcher tree using a path of alternating keys/indices."""
+    node = root
+    for key in path:
+        node = node[key]
+    return node
+
+
+def _render_matcher_node(root: dict, path: list, sk: str, depth: int = 0) -> None:
+    """
+    Recursively render a single matcher node.
+    All mutations operate on `root` (stored in session state) in-place, then call st.rerun().
+    """
+    node = _get_node(root, path)
+    mat_type = node.get("type", "all")
+    is_root = len(path) == 0
+    # Build a unique string key for widget de-duplication
+    path_key = "_".join(str(p) for p in path) if path else "root"
+
+    if mat_type in COMPOUND_TYPES:
+        is_and = mat_type == "and"
+        border_color = "#1565C0" if is_and else "#6A1B9A"
+        bg_color = "#EBF5FB" if is_and else "#F5EEF8"
+        label = "🔵 AND — 所有条件都要满足" if is_and else "🟣 OR — 任一条件满足即可"
+
+        # Visual container using a styled div
+        st.markdown(
+            f"<div style='border-left: 4px solid {border_color}; "
+            f"background:{bg_color}; border-radius:4px; "
+            f"padding:6px 10px; margin:4px 0 2px {depth * 18}px;'>"
+            f"<strong>{label}</strong></div>",
+            unsafe_allow_html=True,
+        )
+
+        # Controls row: switch AND↔OR | delete (non-root)
+        ctrl_cols = st.columns([3, 2, 2, 6] if not is_root else [3, 2, 9])
+        with ctrl_cols[0]:
+            other_type = "or" if is_and else "and"
+            if st.button(
+                f"切换为 {'OR' if is_and else 'AND'}",
+                key=f"{sk}_switch_{path_key}",
+            ):
+                node["type"] = other_type
+                st.rerun()
+        with ctrl_cols[1]:
+            # Add AND sub-group
+            if st.button("➕ 子AND", key=f"{sk}_add_and_{path_key}"):
+                node.setdefault("matchers", []).append(_default_matcher("and"))
+                st.rerun()
+        with ctrl_cols[2]:
+            # Add OR sub-group
+            if st.button("➕ 子OR", key=f"{sk}_add_or_{path_key}"):
+                node.setdefault("matchers", []).append(_default_matcher("or"))
+                st.rerun()
+        if not is_root:
+            with ctrl_cols[3]:
+                if st.button("🗑️ 删除此组", key=f"{sk}_del_{path_key}"):
+                    parent = _get_node(root, path[:-2])
+                    parent["matchers"].pop(path[-1])
+                    st.rerun()
+
+        # Render children
+        children = node.get("matchers", [])
+        if not children:
+            st.caption(
+                f"{'　' * (depth + 1)}（此组内暂无条件，请通过下方按钮添加子条件）"
+            )
+        for i in range(len(children)):
+            _render_matcher_node(root, path + ["matchers", i], sk, depth + 1)
+
+        # Add-leaf buttons row
+        add_cols = st.columns(len(LEAF_TYPES))
+        for j, lt in enumerate(LEAF_TYPES):
+            if add_cols[j].button(
+                f"➕ {MATCHER_TYPE_LABELS[lt]}",
+                key=f"{sk}_addleaf_{lt}_{path_key}",
+            ):
+                node.setdefault("matchers", []).append(_default_matcher(lt))
+                st.rerun()
+
+    else:
+        # Leaf matcher
+        indent_px = depth * 18
+        st.markdown(
+            f"<div style='margin-left:{indent_px}px; border-left: 3px solid #AAB7B8; "
+            f"padding:4px 8px; margin-bottom:4px; background:#FDFEFE; border-radius:3px;'>"
+            f"<em>{MATCHER_TYPE_LABELS.get(mat_type, mat_type)}</em></div>",
+            unsafe_allow_html=True,
+        )
+
+        # Type selector + delete in one row
+        type_col, del_col = st.columns([5, 1])
+        with type_col:
+            all_leaf_options = LEAF_TYPES
+            cur_idx = all_leaf_options.index(mat_type) if mat_type in all_leaf_options else 0
+            new_type = st.selectbox(
+                "条件类型",
+                options=all_leaf_options,
+                index=cur_idx,
+                format_func=lambda t: MATCHER_TYPE_LABELS[t],
+                key=f"{sk}_typeSel_{path_key}",
+            )
+            if new_type != mat_type:
+                new_node = _default_matcher(new_type)
+                if is_root:
+                    root.clear()
+                    root.update(new_node)
+                else:
+                    parent = _get_node(root, path[:-2])
+                    parent["matchers"][path[-1]] = new_node
+                st.rerun()
+
+        with del_col:
+            st.write("")  # spacer for alignment
+            if not is_root and st.button("🗑️", key=f"{sk}_del_{path_key}"):
+                parent = _get_node(root, path[:-2])
+                parent["matchers"].pop(path[-1])
+                st.rerun()
+
+        # Editable fields for this leaf type
+        st.markdown(
+            f"<div style='margin-left:{indent_px + 12}px'>",
+            unsafe_allow_html=True,
+        )
+        if mat_type == "all":
+            st.info("匹配所有消息（无过滤条件）", icon="ℹ️")
+
+        elif mat_type in ("sender", "mention"):
+            label_prefix = "发送者" if mat_type == "sender" else "被提及用户"
+            uid = st.text_input(
+                f"{label_prefix} 用户ID（可选）",
+                value=node.get("user_id") or "",
+                key=f"{sk}_uid_{path_key}",
+            )
+            dname = st.text_input(
+                f"{label_prefix} 显示名称（可选）",
+                value=node.get("display_name") or "",
+                key=f"{sk}_dname_{path_key}",
+            )
+            node["user_id"] = uid.strip() or None
+            node["display_name"] = dname.strip() or None
+
+        elif mat_type == "chat":
+            cid = st.text_input(
+                "聊天室 ID",
+                value=node.get("chat_id") or "",
+                key=f"{sk}_cid_{path_key}",
+            )
+            node["chat_id"] = cid.strip()
+
+        elif mat_type == "chat_type":
+            options = ["group", "private"]
+            cur = node.get("chat_type", "group")
+            ct = st.selectbox(
+                "聊天类型",
+                options,
+                index=options.index(cur) if cur in options else 0,
+                format_func=lambda v: "群聊 (group)" if v == "group" else "私聊 (private)",
+                key=f"{sk}_ct_{path_key}",
+            )
+            node["chat_type"] = ct
+
+        elif mat_type == "adapter":
+            aname = st.text_input(
+                "适配器名称",
+                value=node.get("adapter_name") or "",
+                key=f"{sk}_aname_{path_key}",
+            )
+            node["adapter_name"] = aname.strip()
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+
+def _matcher_to_root_type_options(root: dict) -> str:
+    """Return the current root type label."""
+    return MATCHER_TYPE_LABELS.get(root.get("type", "all"), "未知")
+
+
+def render_matcher_editor(session_key: str, initial_matcher: dict) -> dict:
+    """
+    Render the visual matcher editor widget block.
+
+    Args:
+        session_key: Unique Streamlit session state key for this editor instance.
+        initial_matcher: The existing matcher dict (used to initialize session state).
+
+    Returns:
+        The current matcher dict from session state (may differ from initial_matcher
+        if the user has made edits).
+    """
+    if session_key not in st.session_state:
+        st.session_state[session_key] = copy.deepcopy(initial_matcher)
+
+    root = st.session_state[session_key]
+
+    st.markdown("#### 🎯 Matcher 条件编辑器")
+    st.caption(
+        "在此处可视化地构建规则的触发条件。 "
+        "🔵 AND 组要求所有子条件都满足，🟣 OR 组只需任一子条件满足。 "
+        "可以嵌套 AND/OR 组实现复杂逻辑。"
+    )
+
+    # Allow changing the root type
+    root_type = root.get("type", "all")
+    new_root_type = st.selectbox(
+        "根条件类型",
+        options=ALL_TYPES,
+        index=ALL_TYPES.index(root_type) if root_type in ALL_TYPES else 0,
+        format_func=lambda t: MATCHER_TYPE_LABELS[t],
+        key=f"{session_key}_rootType",
+    )
+    if new_root_type != root_type:
+        new_root = _default_matcher(new_root_type)
+        root.clear()
+        root.update(new_root)
+        st.rerun()
+
+    st.markdown("---")
+
+    # Render the tree
+    _render_matcher_node(root, [], session_key, depth=0)
+
+    st.markdown("---")
+
+    # JSON preview (collapsible)
+    with st.expander("🔍 当前 Matcher JSON（高级预览/编辑）", expanded=False):
+        json_str = st.text_area(
+            "Matcher JSON",
+            value=json.dumps(root, ensure_ascii=False, indent=2),
+            height=200,
+            key=f"{session_key}_jsonEdit",
+        )
+        if st.button("从 JSON 应用", key=f"{session_key}_applyJson"):
+            try:
+                parsed = json.loads(json_str)
+                root.clear()
+                root.update(parsed)
+                st.success("已从 JSON 更新 Matcher！")
+                st.rerun()
+            except Exception as exc:
+                st.error(f"JSON 解析失败: {exc}")
+
+    return root
+
 
 # ================= Components =================
 
@@ -153,83 +432,110 @@ def page_queues():
 
 def page_rule_management():
     st.title("📜 规则管理与编辑")
-    st.markdown("在此页面可以可视化添加、编辑和删除规则。")
+    st.markdown("在此页面可以可视化添加、编辑和删除规则，包括对每条规则的 Matcher 进行可视化的增删改查。")
     
     rules = fetch_json(f"{API_ROOT}/rules/list", default=[])
     
-    # 添加规则表单
+    # ---- Add new rule ----
     with st.expander("➕ 添加新规则", expanded=False):
-        with st.form("add_rule_form"):
-            r_id = st.text_input("规则标识 (rule_id)")
-            r_name = st.text_input("规则名称 (name)")
-            r_desc = st.text_area("规则描述 (description)")
-            
-            st.markdown("🎯 **作用域 (Matcher)**")
-            s_query = st.text_input("会话ID (chat_id，留空则全匹配)")
-            
-            st.markdown("⚙️ **高级设置**")
-            c1, c2 = st.columns(2)
-            t_hints = c1.text_area("主题提示 (topic_hints, 逗号分隔)")
-            s_threshold = c2.slider("触发阈值", 0.0, 1.0, 0.6, 0.05)
-            is_enabled = st.checkbox("立即启用", value=True)
-            
-            if st.form_submit_button("提交保存"):
-                hints_list = [h.strip() for h in t_hints.split(",") if h.strip()]
-                payload = {
-                    "rule_id": r_id,
-                    "name": r_name,
-                    "description": r_desc,
-                    "matcher": ({} if not s_query.strip() else {"chat_id": s_query.strip()}),
-                    "topic_hints": hints_list,
-                    "score_threshold": s_threshold,
-                    "enabled": is_enabled,
-                    "parameters": []
-                }
-                ok, res = post_json(f"{API_ROOT}/rules", payload)
-                if ok:
-                    st.success("添加成功！")
-                    st.rerun()
-                else:
-                    st.error(f"添加失败: {res}")
+        r_id = st.text_input("规则标识 (rule_id)", key="new_rule_id")
+        r_name = st.text_input("规则名称 (name)", key="new_rule_name")
+        r_desc = st.text_area("规则描述 (description)", key="new_rule_desc")
+
+        st.markdown("⚙️ **高级设置**")
+        c1, c2 = st.columns(2)
+        t_hints = c1.text_area("主题提示 (topic_hints, 逗号分隔)", key="new_rule_hints")
+        s_threshold = c2.slider("触发阈值", 0.0, 1.0, 0.6, 0.05, key="new_rule_thresh")
+        is_enabled = st.checkbox("立即启用", value=True, key="new_rule_enabled")
+
+        # Matcher editor for the new rule
+        new_matcher = render_matcher_editor(
+            session_key="matcher_new",
+            initial_matcher={"type": "all"},
+        )
+
+        if st.button("提交保存", key="new_rule_submit"):
+            hints_list = [h.strip() for h in t_hints.split(",") if h.strip()]
+            payload = {
+                "rule_id": r_id,
+                "name": r_name,
+                "description": r_desc,
+                "matcher": new_matcher,
+                "topic_hints": hints_list,
+                "score_threshold": s_threshold,
+                "enabled": is_enabled,
+                "parameters": [],
+            }
+            ok, res = post_json(f"{API_ROOT}/rules", payload)
+            if ok:
+                st.success("添加成功！")
+                # Clear the matcher session state for the new rule form
+                if "matcher_new" in st.session_state:
+                    del st.session_state["matcher_new"]
+                st.rerun()
+            else:
+                st.error(f"添加失败: {res}")
     
     st.markdown("---")
     st.subheader("📚 现有规则列表")
     
     for r in rules:
-        with st.expander(f"📌 {r.get('name', '未命名')} (ID: {r.get('rule_id')}) - {'🟢' if r.get('enabled') else '🔴'}", expanded=False):
-            # 编辑表单
-            with st.form(f"edit_{r['rule_id']}"):
-                er_name = st.text_input("名称", value=r.get('name', ''))
-                er_desc = st.text_area("描述", value=r.get('description', ''))
-                
-                matcher = r.get("matcher", {})
-                default_chat_id = matcher.get("chat_id", "")
-                es_query = st.text_input("会话ID (chat_id，留空则全匹配)", value=default_chat_id)
-                
-                ethre = st.slider("阈值", 0.0, 1.0, float(r.get('score_threshold', 0.6)), 0.05)
-                eenab = st.checkbox("启用状态", value=bool(r.get('enabled', True)))
-                
-                et_hints = st.text_area("主题提示 (逗号分隔)", value=",".join(r.get('topic_hints', [])))
-                
-                cols_b = st.columns([1, 1, 4])
-                if cols_b[0].form_submit_button("保存修改"):
-                    hints_list = [h.strip() for h in et_hints.split(",") if h.strip()]
-                    payload = {
-                        "rule_id": r['rule_id'],
-                        "name": er_name,
-                        "description": er_desc,
-                        "matcher": ({} if not es_query.strip() else {"chat_id": es_query.strip()}),
-                        "topic_hints": hints_list,
-                        "score_threshold": ethre,
-                        "enabled": eenab,
-                        "parameters": r.get('parameters', [])
-                    }
-                    ok, res = post_json(f"{API_ROOT}/rules", payload)
-                    if ok: st.success("已保存")
-                    else: st.error("保存失败")
-                
-            if st.button("🗑️ 删除该规则", key=f"del_{r['rule_id']}"):
-                if delete_req(f"{API_ROOT}/rules/delete/{r['rule_id']}"):
+        rule_id = r.get("rule_id", "")
+        with st.expander(
+            f"📌 {r.get('name', '未命名')} (ID: {rule_id}) - {'🟢' if r.get('enabled') else '🔴'}",
+            expanded=False,
+        ):
+            er_name = st.text_input("名称", value=r.get("name", ""), key=f"edit_name_{rule_id}")
+            er_desc = st.text_area("描述", value=r.get("description", ""), key=f"edit_desc_{rule_id}")
+
+            ethre = st.slider(
+                "阈值", 0.0, 1.0, float(r.get("score_threshold", 0.6)), 0.05,
+                key=f"edit_thresh_{rule_id}",
+            )
+            eenab = st.checkbox(
+                "启用状态", value=bool(r.get("enabled", True)), key=f"edit_enab_{rule_id}"
+            )
+            et_hints = st.text_area(
+                "主题提示 (逗号分隔)",
+                value=",".join(r.get("topic_hints", [])),
+                key=f"edit_hints_{rule_id}",
+            )
+
+            # Matcher editor for this rule
+            # Normalize the raw matcher dict coming from the API
+            raw_matcher = r.get("matcher") or {}
+            if not isinstance(raw_matcher, dict) or "type" not in raw_matcher:
+                raw_matcher = {"type": "all"}
+            current_matcher = render_matcher_editor(
+                session_key=f"matcher_{rule_id}",
+                initial_matcher=raw_matcher,
+            )
+
+            col_save, col_del, _ = st.columns([1, 1, 4])
+            if col_save.button("💾 保存修改", key=f"save_{rule_id}"):
+                hints_list = [h.strip() for h in et_hints.split(",") if h.strip()]
+                payload = {
+                    "rule_id": rule_id,
+                    "name": er_name,
+                    "description": er_desc,
+                    "matcher": current_matcher,
+                    "topic_hints": hints_list,
+                    "score_threshold": ethre,
+                    "enabled": eenab,
+                    "parameters": r.get("parameters", []),
+                }
+                ok, res = post_json(f"{API_ROOT}/rules", payload)
+                if ok:
+                    st.success("已保存")
+                else:
+                    st.error(f"保存失败: {res}")
+
+            if col_del.button("🗑️ 删除该规则", key=f"del_{rule_id}"):
+                if delete_req(f"{API_ROOT}/rules/delete/{rule_id}"):
+                    # Remove cached matcher state for this rule
+                    sk = f"matcher_{rule_id}"
+                    if sk in st.session_state:
+                        del st.session_state[sk]
                     st.success("已删除")
                     st.rerun()
 
