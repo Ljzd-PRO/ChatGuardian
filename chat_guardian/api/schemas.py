@@ -179,39 +179,4 @@ class SuggestResponse(BaseModel):
     suggestions: list[str]
 
 
-class RuleStatsPayload(BaseModel):
-    """规则触发统计信息。"""
-
-    rule_id: str
-    rule_name: str
-    total_results: int
-    total_triggered: int
-    last_triggered_at: datetime | None = None
-
-
-class RuleDecisionPayload(BaseModel):
-    """规则决策序列化模型。"""
-
-    rule_id: str
-    triggered: bool
-    confidence: float
-    reason: str
-    extracted_params: dict[str, str] = Field(default_factory=dict)
-
-
-class DetectionResultPayload(BaseModel):
-    """检测结果详情模型。"""
-
-    result_id: str
-    event_id: str
-    rule_id: str
-    chat_id: str
-    message_id: str
-    decision: RuleDecisionPayload
-    context_messages: list[MessagePayload] = Field(default_factory=list)
-    generated_at: datetime
-    trigger_suppressed: bool = False
-    suppression_reason: str | None = None
-
-
 MessagePayload.model_rebuild()
