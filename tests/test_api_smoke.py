@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 import asyncio
 
 from chat_guardian.api.app import create_app
-from chat_guardian.domain import ChatMessage, ChatEvent, ChatType, MessageContent, ContentType
+from chat_guardian.domain import ChatMessage, ChatEvent, ChatType, MessageContent, ContentType, UserInfo
 
 
 def test_api_rule_and_detect_flow() -> None:
@@ -15,7 +15,7 @@ def test_api_rule_and_detect_flow() -> None:
         "rule_id": "rule-1",
         "name": "Topic monitor",
         "description": "generic topic monitor",
-        "target_session": {"mode": "exact", "query": "chat-1"},
+        "matcher": {"type": "chat", "chat_id": "chat-1"},
         "topic_hints": ["topic"],
         "score_threshold": 0.5,
         "enabled": False,
@@ -44,7 +44,7 @@ def test_api_rule_and_detect_flow() -> None:
     # Simulate adapter-driven detection by constructing domain event
     contents = [
         MessageContent(type=ContentType("text"), text="this topic is interesting"),
-        MessageContent(type=ContentType("mention"), mention_user_id="u-2"),
+        MessageContent(type=ContentType("mention"), mention_user=UserInfo(user_id="u-2")),
     ]
 
     message = ChatMessage(
@@ -54,7 +54,7 @@ def test_api_rule_and_detect_flow() -> None:
         sender_name="tester",
         contents=contents,
         reply_from=None,
-        timestamp=None,
+        timestamp=datetime.now(timezone.utc),
     )
 
     event = ChatEvent(
@@ -94,7 +94,7 @@ def test_rule_list_and_delete_flow() -> None:
         "rule_id": "rule-to-delete",
         "name": "Rule to delete",
         "description": "temp rule",
-        "target_session": {"mode": "exact", "query": "chat-del"},
+        "matcher": {"type": "chat", "chat_id": "chat-del"},
         "topic_hints": ["tmp"],
         "score_threshold": 0.5,
         "enabled": True,

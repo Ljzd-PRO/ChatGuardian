@@ -164,10 +164,8 @@ def page_rule_management():
             r_name = st.text_input("规则名称 (name)")
             r_desc = st.text_area("规则描述 (description)")
             
-            st.markdown("🎯 **作用域 (Target Session)**")
-            col1, col2 = st.columns(2)
-            s_mode = col1.selectbox("模式", ["fuzzy", "exact"])
-            s_query = col2.text_input("查询词 (query)")
+            st.markdown("🎯 **作用域 (Matcher)**")
+            s_query = st.text_input("会话ID (chat_id，留空则全匹配)")
             
             st.markdown("⚙️ **高级设置**")
             c1, c2 = st.columns(2)
@@ -181,7 +179,7 @@ def page_rule_management():
                     "rule_id": r_id,
                     "name": r_name,
                     "description": r_desc,
-                    "target_session": {"mode": s_mode, "query": s_query},
+                    "matcher": ({"type": "all"} if not s_query.strip() else {"type": "chat", "chat_id": s_query.strip()}),
                     "topic_hints": hints_list,
                     "score_threshold": s_threshold,
                     "enabled": is_enabled,
@@ -204,9 +202,9 @@ def page_rule_management():
                 er_name = st.text_input("名称", value=r.get('name', ''))
                 er_desc = st.text_area("描述", value=r.get('description', ''))
                 
-                ec1, ec2 = st.columns(2)
-                es_mode = ec1.selectbox("模式", ["fuzzy", "exact"], index=0 if r.get('target_session',{}).get('mode')=='fuzzy' else 1)
-                es_query = ec2.text_input("查询词", value=r.get('target_session',{}).get('query',''))
+                matcher = r.get("matcher", {})
+                default_chat_id = matcher.get("chat_id", "") if matcher.get("type") == "chat" else ""
+                es_query = st.text_input("会话ID (chat_id，留空则全匹配)", value=default_chat_id)
                 
                 ethre = st.slider("阈值", 0.0, 1.0, float(r.get('score_threshold', 0.6)), 0.05)
                 eenab = st.checkbox("启用状态", value=bool(r.get('enabled', True)))
@@ -220,7 +218,7 @@ def page_rule_management():
                         "rule_id": r['rule_id'],
                         "name": er_name,
                         "description": er_desc,
-                        "target_session": {"mode": es_mode, "query": es_query},
+                        "matcher": ({"type": "all"} if not es_query.strip() else {"type": "chat", "chat_id": es_query.strip()}),
                         "topic_hints": hints_list,
                         "score_threshold": ethre,
                         "enabled": eenab,

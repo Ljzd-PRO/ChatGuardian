@@ -7,7 +7,8 @@ import asyncio
 import pytest
 
 from chat_guardian.adapters import AdapterManager, VirtualAdapter, VirtualAdapterConfig, VirtualScriptedMessage
-from chat_guardian.domain import DetectionRule, SessionMatchMode, SessionTarget
+from chat_guardian.domain import DetectionRule
+from chat_guardian.matcher import MatchChatInfo
 from chat_guardian.repositories import (
     InMemoryChatHistoryStore,
     InMemoryDetectionResultRepository,
@@ -67,7 +68,7 @@ async def test_virtual_adapter_with_deepseek_real_run() -> None:
                     rule_id=f"integration-rule-{idx + 1}",
                     name=f"集成规则-{idx + 1}",
                     description=f"检测主题：{topic}",
-                    target_session=SessionTarget(mode=SessionMatchMode.FUZZY, query="virtual-group"),
+                    matcher=MatchChatInfo(chat_id="virtual-group"),
                     topic_hints=[topic],
                     score_threshold=0.4,
                     enabled=True,

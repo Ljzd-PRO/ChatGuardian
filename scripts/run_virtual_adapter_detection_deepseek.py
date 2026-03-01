@@ -4,7 +4,8 @@ import asyncio
 
 from chat_guardian.adapters import AdapterManager
 from chat_guardian.adapters.virtual import VirtualAdapter, VirtualAdapterConfig, VirtualScriptedMessage
-from chat_guardian.domain import DetectionRule, SessionMatchMode, SessionTarget
+from chat_guardian.domain import DetectionRule
+from chat_guardian.matcher import MatchChatInfo
 from chat_guardian.repositories import InMemoryChatHistoryStore, InMemoryDetectionResultRepository, InMemoryRuleRepository
 from chat_guardian.services import ContextWindowService, DetectionEngine, ExternalHookDispatcher, build_llm_client
 from chat_guardian.settings import settings
@@ -37,7 +38,7 @@ async def main():
                 rule_id=f"rule-{idx+1}",
                 name=f"检测主题-{topic}",
                 description=f"检测主题：{topic}",
-                target_session=SessionTarget(mode=SessionMatchMode.FUZZY, query="virtual-group"),
+                matcher=MatchChatInfo(chat_id="virtual-group"),
                 topic_hints=[topic],
                 score_threshold=0.4,
                 enabled=True,

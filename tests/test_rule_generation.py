@@ -7,6 +7,6 @@ async def test_internal_rule_generation_is_generic() -> None:
 
     assert rule.rule_id.startswith("rule-")
     assert rule.description
-    assert rule.target_session.query
+    assert rule.matcher is not None
     assert isinstance(rule.topic_hints, list)
     assert rule.parameters

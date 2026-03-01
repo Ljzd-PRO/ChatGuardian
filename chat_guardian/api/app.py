@@ -10,11 +10,22 @@ from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
+from pydantic import TypeAdapter
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import (
+    AndMatcherPayload,
     FeedbackPayload,
+    MatchAdapterPayload,
+    MatchAllPayload,
+    MatchChatInfoPayload,
+    MatchChatTypePayload,
+    MatchMentionPayload,
+    MatchSenderPayload,
+    MatcherPayload,
+    OrMatcherPayload,
     RuleGenerateRequest,
+    RuleParameterPayload,
     RulePayload,
     SuggestResponse,
 )
@@ -23,9 +34,8 @@ from chat_guardian.domain import (
     DetectionRule,
     Feedback,
     RuleParameterSpec,
-    SessionMatchMode,
-    SessionTarget,
 )
+from chat_guardian.matcher import AndMatcher, MatchAdapter, MatchAll, MatchChatInfo, MatchChatType, MatchMention, MatchSender, MatcherBase, OrMatcher
 from chat_guardian.repositories import (
     InMemoryChatHistoryStore,
     InMemoryDetectionResultRepository,
@@ -47,6 +57,48 @@ from chat_guardian.services import (
     SuggestionService,
 )
 from chat_guardian.settings import settings
+
+_DETECTION_RULE_ADAPTER = TypeAdapter(DetectionRule)
+
+
+def _matcher_from_payload(payload: MatcherPayload) -> MatcherBase:
+    if isinstance(payload, MatchAllPayload):
+        return MatchAll()
+    if isinstance(payload, MatchChatInfoPayload):
+        return MatchChatInfo(chat_id=payload.chat_id)
+    if isinstance(payload, MatchSenderPayload):
+        return MatchSender(user_id=payload.user_id, display_name=payload.display_name)
+    if isinstance(payload, MatchMentionPayload):
+        return MatchMention(user_id=payload.user_id, display_name=payload.display_name)
+    if isinstance(payload, MatchChatTypePayload):
+        return MatchChatType(type=payload.chat_type)
+    if isinstance(payload, MatchAdapterPayload):
+        return MatchAdapter(adapter_name=payload.adapter_name)
+    if isinstance(payload, AndMatcherPayload):
+        return AndMatcher(matchers=[_matcher_from_payload(item) for item in payload.matchers])
+    if isinstance(payload, OrMatcherPayload):
+        return OrMatcher(matchers=[_matcher_from_payload(item) for item in payload.matchers])
+    raise TypeError(f"Unsupported matcher payload type: {type(payload).__name__}")
+
+
+def _matcher_to_payload(matcher: MatcherBase) -> MatcherPayload:
+    if isinstance(matcher, MatchAll):
+        return MatchAllPayload(type="all")
+    if isinstance(matcher, MatchChatInfo):
+        return MatchChatInfoPayload(type="chat", chat_id=matcher.chat_id)
+    if isinstance(matcher, MatchSender):
+        return MatchSenderPayload(type="sender", user_id=matcher.user_id, display_name=matcher.display_name)
+    if isinstance(matcher, MatchMention):
+        return MatchMentionPayload(type="mention", user_id=matcher.user_id, display_name=matcher.display_name)
+    if isinstance(matcher, MatchChatType):
+        return MatchChatTypePayload(type="chat_type", chat_type=matcher.type)
+    if isinstance(matcher, MatchAdapter):
+        return MatchAdapterPayload(type="adapter", adapter_name=matcher.adapter_name)
+    if isinstance(matcher, AndMatcher):
+        return AndMatcherPayload(type="and", matchers=[_matcher_to_payload(item) for item in matcher.matchers])
+    if isinstance(matcher, OrMatcher):
+        return OrMatcherPayload(type="or", matchers=[_matcher_to_payload(item) for item in matcher.matchers])
+    raise TypeError(f"Unsupported matcher type: {type(matcher).__name__}")
 
 
 class AppContainer:
@@ -99,51 +151,32 @@ class AppContainer:
 
 def _from_payload(payload: RulePayload) -> DetectionRule:
     """将 API 的 `RulePayload` 转换为领域对象 `DetectionRule`。"""
-    return DetectionRule(
-        rule_id=payload.rule_id,
-        name=payload.name,
-        description=payload.description,
-        target_session=SessionTarget(
-            mode=SessionMatchMode(payload.target_session.mode),
-            query=payload.target_session.query,
-        ),
-        topic_hints=payload.topic_hints,
-        score_threshold=payload.score_threshold,
-        enabled=payload.enabled,
-        parameters=[
-            RuleParameterSpec(
-                key=item.key,
-                description=item.description,
-                required=item.required,
-            )
-            for item in payload.parameters
-        ],
-    )
+    data = payload.model_dump(mode="python")
+    data["matcher"] = _matcher_from_payload(payload.matcher)
+    data["parameters"] = [
+        RuleParameterSpec(
+            key=item.key,
+            description=item.description,
+            required=item.required,
+        )
+        for item in payload.parameters
+    ]
+    return _DETECTION_RULE_ADAPTER.validate_python(data)
 
 
 def _to_payload(rule: DetectionRule) -> RulePayload:
     """将领域对象 `DetectionRule` 转换成 API 可序列化的 `RulePayload`。"""
-    from chat_guardian.api.schemas import SessionTargetPayload, RuleParameterPayload
-    return RulePayload(
-        rule_id=rule.rule_id,
-        name=rule.name,
-        description=rule.description,
-        target_session=SessionTargetPayload(
-            mode=rule.target_session.mode.value,
-            query=rule.target_session.query,
-        ),
-        topic_hints=rule.topic_hints,
-        score_threshold=rule.score_threshold,
-        enabled=rule.enabled,
-        parameters=[
-            RuleParameterPayload(
-                key=item.key,
-                description=item.description,
-                required=item.required,
-            )
-            for item in rule.parameters
-        ],
-    )
+    dumped = _DETECTION_RULE_ADAPTER.dump_python(rule, mode="python")
+    dumped["matcher"] = _matcher_to_payload(rule.matcher).model_dump(mode="python")
+    dumped["parameters"] = [
+        RuleParameterPayload(
+            key=item.key,
+            description=item.description,
+            required=item.required,
+        ).model_dump(mode="python")
+        for item in rule.parameters
+    ]
+    return RulePayload.model_validate(dumped)
 
 
 
@@ -298,7 +331,7 @@ def create_app() -> FastAPI:
                     "result": "Triggered (Suppressed)" if r.trigger_suppressed else "Triggered",
                     "rule_name": rule.name,
                     "messages": [
-                        {"sender": m.sender_name or m.sender_id, "content": m.extract_plain_text()}
+                        {"sender": m.sender_name or m.sender_id, "content": str(m)}
                         for m in r.context_messages
                     ],
                     "reason": r.decision.reason,
@@ -328,7 +361,7 @@ def create_app() -> FastAPI:
                                     "chat_type": chat_type,
                                     "chat_id": chat_id,
                                     "sender_name": message.sender_name or message.sender_id,
-                                    "content": message.extract_plain_text(),
+                                    "content": str(message),
                                     "timestamp": message.timestamp.isoformat(),
                                 }
                             )

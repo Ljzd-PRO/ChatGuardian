@@ -7,21 +7,63 @@ API 层请求与响应的 Pydantic 模型定义。
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
 
-class SessionTargetPayload(BaseModel):
-    """
-    会话匹配请求负载。
+class MatchAllPayload(BaseModel):
+    type: Literal["all"]
 
-    Attributes:
-        mode: 匹配模式（"exact" 或 "fuzzy"）。
-        query: 要匹配的会话标识或描述。
-    """
 
-    mode: str = Field(default="fuzzy")
-    query: str
+class MatchChatInfoPayload(BaseModel):
+    type: Literal["chat"]
+    chat_id: str
+
+
+class MatchSenderPayload(BaseModel):
+    type: Literal["sender"]
+    user_id: str | None = None
+    display_name: str | None = None
+
+
+class MatchMentionPayload(BaseModel):
+    type: Literal["mention"]
+    user_id: str | None = None
+    display_name: str | None = None
+
+
+class MatchChatTypePayload(BaseModel):
+    type: Literal["chat_type"]
+    chat_type: Literal["group", "private"]
+
+
+class MatchAdapterPayload(BaseModel):
+    type: Literal["adapter"]
+    adapter_name: str
+
+
+class AndMatcherPayload(BaseModel):
+    type: Literal["and"]
+    matchers: list["MatcherPayload"] = Field(default_factory=list)
+
+
+class OrMatcherPayload(BaseModel):
+    type: Literal["or"]
+    matchers: list["MatcherPayload"] = Field(default_factory=list)
+
+
+MatcherPayload = Annotated[
+    MatchAllPayload
+    | MatchChatInfoPayload
+    | MatchSenderPayload
+    | MatchMentionPayload
+    | MatchChatTypePayload
+    | MatchAdapterPayload
+    | AndMatcherPayload
+    | OrMatcherPayload,
+    Field(discriminator="type"),
+]
 
 
 class RuleParameterPayload(BaseModel):
@@ -47,7 +89,7 @@ class RulePayload(BaseModel):
         rule_id: 规则唯一标识。
         name: 规则名称。
         description: 规则描述。
-        target_session: 匹配目标会话。
+        matcher: 规则匹配器。
         topic_hints: 主题关键词提示。
         score_threshold: 触发阈值。
         enabled: 是否启用。
@@ -57,7 +99,7 @@ class RulePayload(BaseModel):
     rule_id: str
     name: str
     description: str
-    target_session: SessionTargetPayload
+    matcher: MatcherPayload
     topic_hints: list[str] = Field(default_factory=list)
     score_threshold: float = 0.6
     enabled: bool = True
@@ -180,3 +222,5 @@ class SuggestResponse(BaseModel):
 
 
 MessagePayload.model_rebuild()
+AndMatcherPayload.model_rebuild()
+OrMatcherPayload.model_rebuild()

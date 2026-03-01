@@ -1,4 +1,5 @@
-from chat_guardian.domain import DetectionRule, SessionMatchMode, SessionTarget
+from chat_guardian.domain import DetectionRule
+from chat_guardian.matcher import MatchChatInfo
 from chat_guardian.services import LangChainLLMClient, _extract_json_payload
 
 
@@ -14,13 +15,13 @@ def test_parse_decisions_fills_missing_rule_with_safe_default() -> None:
             rule_id="r-1",
             name="rule-1",
             description="d",
-            target_session=SessionTarget(mode=SessionMatchMode.EXACT, query="chat-1"),
+            matcher=MatchChatInfo(chat_id="chat-1"),
         ),
         DetectionRule(
             rule_id="r-2",
             name="rule-2",
             description="d",
-            target_session=SessionTarget(mode=SessionMatchMode.EXACT, query="chat-1"),
+            matcher=MatchChatInfo(chat_id="chat-1"),
         ),
     ]
 

@@ -6,9 +6,8 @@ from chat_guardian.domain import (
     DetectionRule,
     MessageContent,
     RuleDecision,
-    SessionMatchMode,
-    SessionTarget,
 )
+from chat_guardian.matcher import MatchChatInfo
 from chat_guardian.services import RuleBatchScheduler
 
 
@@ -67,7 +66,7 @@ def _build_rules(count: int) -> list[DetectionRule]:
             rule_id=f"r-{index}",
             name=f"rule-{index}",
             description="d",
-            target_session=SessionTarget(mode=SessionMatchMode.EXACT, query="chat-1"),
+            matcher=MatchChatInfo(chat_id="chat-1"),
             topic_hints=["hello"],
         )
         for index in range(count)
@@ -94,8 +93,8 @@ async def test_scheduler_retry_eventually_succeeds() -> None:
 
     assert len(decisions) == 2
     assert llm.calls == 2
-    metrics = scheduler.diagnostics()["metrics"]
-    assert metrics["retry_attempts"] == 1
+    metrics = scheduler.diagnostics().metrics
+    assert metrics.retry_attempts == 1
 
 
 async def test_scheduler_idempotent_request_reuses_cached_result() -> None:
@@ -119,5 +118,5 @@ async def test_scheduler_idempotent_request_reuses_cached_result() -> None:
     assert len(first) == 4
     assert len(second) == 4
     assert llm.calls == 2
-    metrics = scheduler.diagnostics()["metrics"]
-    assert metrics["idempotency_completed_hits"] >= 2
+    metrics = scheduler.diagnostics().metrics
+    assert metrics.idempotency_completed_hits >= 2

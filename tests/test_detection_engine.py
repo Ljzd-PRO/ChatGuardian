@@ -8,9 +8,8 @@ from chat_guardian.domain import (
     DetectionRule,
     MessageContent,
     RuleDecision,
-    SessionMatchMode,
-    SessionTarget,
 )
+from chat_guardian.matcher import MatchChatInfo
 from chat_guardian.repositories import (
     InMemoryChatHistoryStore,
     InMemoryDetectionResultRepository,
@@ -62,7 +61,7 @@ async def test_rules_are_split_into_batches() -> None:
                 rule_id=f"r-{index}",
                 name=f"rule-{index}",
                 description="d",
-                target_session=SessionTarget(mode=SessionMatchMode.EXACT, query="g-1"),
+                matcher=MatchChatInfo(chat_id="g-1"),
                 topic_hints=["topic"],
             )
         )

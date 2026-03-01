@@ -10,9 +10,8 @@ from chat_guardian.domain import (
     DetectionRule,
     MessageContent,
     RuleDecision,
-    SessionMatchMode,
-    SessionTarget,
 )
+from chat_guardian.matcher import MatchChatInfo
 from chat_guardian.repositories import (
     InMemoryChatHistoryStore,
     InMemoryDetectionResultRepository,
@@ -88,7 +87,7 @@ async def test_ingest_event_respects_min_new_messages_threshold() -> None:
             rule_id="r-1",
             name="rule",
             description="d",
-            target_session=SessionTarget(mode=SessionMatchMode.EXACT, query="g-1"),
+            matcher=MatchChatInfo(chat_id="g-1"),
             topic_hints=["hello"],
         )
     )
@@ -133,7 +132,7 @@ async def test_ingest_event_forces_detection_on_timeout() -> None:
             rule_id="r-1",
             name="rule",
             description="d",
-            target_session=SessionTarget(mode=SessionMatchMode.EXACT, query="g-1"),
+            matcher=MatchChatInfo(chat_id="g-1"),
             topic_hints=["hello"],
         )
     )
@@ -192,7 +191,7 @@ async def test_trigger_dedup_merges_context_and_skips_retrigger() -> None:
             rule_id="r-1",
             name="rule",
             description="d",
-            target_session=SessionTarget(mode=SessionMatchMode.EXACT, query="g-1"),
+            matcher=MatchChatInfo(chat_id="g-1"),
             topic_hints=["hello"],
         )
     )

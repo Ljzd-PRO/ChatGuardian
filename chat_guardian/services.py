@@ -36,13 +36,11 @@ from chat_guardian.domain import (
     DetectionResult,
     DetectionRule,
     Feedback,
-    ParticipantConstraint,
     RuleDecision,
     RuleParameterSpec,
-    SessionMatchMode,
-    SessionTarget,
     UserMemoryFact,
 )
+from chat_guardian.matcher import MatchAll, MatchChatInfo, MatchSender
 from chat_guardian.models import RuleBatchSchedulerDiagnosticsModel, DiagnosticsModel
 from chat_guardian.settings import settings
 
@@ -63,6 +61,17 @@ def _extract_json_payload(raw_text: str) -> dict:
         return parsed if isinstance(parsed, dict) else {}
     except json.JSONDecodeError:
         return {}
+
+
+def _build_rule_matcher(chat_id: str | None, users: list[str]):
+    chat_matcher = MatchAll() if not chat_id else MatchChatInfo(chat_id=chat_id)
+    if not users:
+        return chat_matcher
+
+    user_matcher = MatchSender(user_id=users[0])
+    for user_id in users[1:]:
+        user_matcher = user_matcher | MatchSender(user_id=user_id)
+    return chat_matcher & user_matcher
 
 
 class ChatHistoryStore(Protocol):
@@ -183,7 +192,7 @@ class LangChainLLMClient:
                 {
                     "message_id": message.message_id,
                     "sender_id": message.sender_id,
-                    "text": message.extract_plain_text(),
+                    "text": str(message),
                     "timestamp": message.timestamp.isoformat(),
                 }
                 for message in messages
@@ -238,9 +247,9 @@ class LangChainLLMClient:
             "event": {
                 "chat_id": event.chat_id,
                 "sender_id": event.message.sender_id,
-                "message": event.message.extract_plain_text(),
+                "message": str(event.message),
             },
-            "context": [message.extract_plain_text() for message in context],
+            "context": [str(message) for message in context],
         }
         try:
             response = await self.model.ainvoke(
@@ -428,20 +437,6 @@ def build_llm_client() -> LangChainLLMClient:
 
     logger.error(f"❌ 不支持的 LLM 后端: {settings.llm_langchain_backend}")
     raise ValueError(f"Unsupported llm_langchain_backend: {settings.llm_langchain_backend}")
-
-
-class SessionMatcher:
-    """会话匹配器，支持不同匹配模式（Exact / Fuzzy）。"""
-
-    @staticmethod
-    def match(target: SessionTarget, event: ChatEvent) -> bool:
-        if not target.query or target.query.strip() == "*":
-            return True
-            
-        if target.mode == SessionMatchMode.EXACT:
-            return target.query == event.chat_id
-        normalized_query = target.query.lower().strip()
-        return normalized_query in event.chat_id.lower()
 
 
 class RuleBatchScheduler:
@@ -774,8 +769,8 @@ class DetectionEngine:
 
     async def _process_event_with_context(self, event: ChatEvent, context_messages: list[ChatMessage]) -> EngineOutput:
         logger.debug(f"🔍 开始处理事件 | 会话={event.chat_id} | 消息ID={event.message.message_id} | 上下文数={len(context_messages)}")
-        
-        active_rules = [rule for rule in await self.rules.list_enabled() if SessionMatcher.match(rule.target_session, event)]
+
+        active_rules = [rule for rule in await self.rules.list_enabled() if rule.matcher.matches(event)]
         logger.info(f"📋 适用规则 | 总数={len(active_rules)}")
         
         scheduler_request_id = f"{event.platform}:{event.chat_id}:{event.message.message_id}"
@@ -1126,20 +1121,21 @@ class InternalRuleGenerationBackend(RuleGenerationBackend):
         users = self._extract_users(utterance)
         logger.debug(f"  ✓ 提取用户 | 数量={len(users)} | {users}")
         
-        target_text = self._extract_session_query(utterance)
-        logger.debug(f"  ✓ 提取会话 | 目标={target_text}")
+        chat_id = self._extract_chat_id(utterance)
+        logger.debug(f"  ✓ 提取会话 | chat_id={chat_id}")
         
         parameters = [RuleParameterSpec(key="label", description="LLM extracted label", required=False)]
         rule_id = f"rule-{abs(hash((utterance, override_system_prompt))) % 1000000}"
         rule_name = (utterance[:24] + "...") if len(utterance) > 24 else utterance
+
+        matcher = _build_rule_matcher(chat_id, users)
         
         rule = DetectionRule(
             rule_id=rule_id,
             name=rule_name,
             description=utterance,
-            target_session=SessionTarget(mode=SessionMatchMode.FUZZY, query=target_text),
+            matcher=matcher,
             topic_hints=topics,
-            participant_constraint=(None if not users else ParticipantConstraint(participant_ids=set(users))),
             score_threshold=0.6,
             enabled=True,
             parameters=parameters,
@@ -1158,13 +1154,13 @@ class InternalRuleGenerationBackend(RuleGenerationBackend):
         return [item[1:] for item in re.findall(r"@[^\s，,。]+", utterance)]
 
     @staticmethod
-    def _extract_session_query(utterance: str) -> str:
+    def _extract_chat_id(utterance: str) -> str | None:
         patterns = [r"(?:群|私聊|会话)([^，,。]+)", r"在([^，,。]+)里", r"([^，,。]+)中"]
         for pattern in patterns:
             match = re.search(pattern, utterance)
             if match:
                 return match.group(1).strip()
-        return "*"
+        return None
 
 
 class ExternalPromptRuleGenerationBackend(RuleGenerationBackend):
@@ -1196,7 +1192,10 @@ class ExternalPromptRuleGenerationBackend(RuleGenerationBackend):
                 rule_id=raw["rule_id"],
                 name=raw["name"],
                 description=raw["description"],
-                target_session=SessionTarget(mode=SessionMatchMode(raw.get("session_mode", "fuzzy")), query=raw["session_query"]),
+                matcher=_build_rule_matcher(
+                    chat_id=(str(raw["chat_id"]).strip() if raw.get("chat_id") else None),
+                    users=[str(item) for item in raw.get("participant_ids", []) if str(item).strip()],
+                ),
                 topic_hints=raw.get("topic_hints", []),
                 score_threshold=raw.get("score_threshold", 0.6),
                 enabled=raw.get("enabled", True),
@@ -1331,13 +1330,13 @@ class ExternalHookDispatcher:
                 {
                     "message_id": message.message_id,
                     "sender_id": message.sender_id,
-                    "text": message.extract_plain_text(),
+                    "text": str(message),
                     "contents": [
                         {
                             "type": item.type.value,
                             "text": item.text,
                             "image_url": item.image_url,
-                            "mention_user_id": item.mention_user_id,
+                            "mention_user_id": item.mention_user,
                         }
                         for item in message.contents
                     ],

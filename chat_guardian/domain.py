@@ -7,9 +7,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import hashlib
+from typing import TYPE_CHECKING
+
+from pydantic import Field
+from pydantic.dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+
+if TYPE_CHECKING:
+    from chat_guardian.matcher import MatcherBase
 
 
 class ChatType(str, Enum):
@@ -41,6 +48,23 @@ class ContentType(str, Enum):
 
 
 @dataclass(slots=True)
+class UserInfo:
+    """
+    用户信息结构。
+
+    Attributes:
+        user_id: 用户 ID。
+        display_name: 显示名称。
+    """
+
+    user_id: str
+    display_name: str | None = None
+
+    def __str__(self) -> str:
+        return self.display_name or self.user_id
+
+
+@dataclass(slots=True)
 class MessageContent:
     """
     消息内容链中的单个片段。
@@ -49,15 +73,43 @@ class MessageContent:
         type: 片段类型。
         text: 文本内容（type=text 时使用）。
         image_url: 图片地址（type=image 时使用）。
-        mention_user_id: 被提及用户 ID（type=mention 时使用）。
+        mention_user: 被提及用户（type=mention 时使用）。
     """
 
     type: ContentType
     text: str | None = None
     image_url: str | None = None
-    mention_user_id: str | None = None
+    mention_user: UserInfo | None = None
+
+    @staticmethod
+    def _generate_short_id(s: str, length: int = 5) -> str:
+        """
+        为字符串生成固定长度的短标识符
+
+        Args:
+            s: 原始字符串
+            length: 标识符长度，默认5位
+
+        Returns:
+            固定长度的十六进制标识符（0-9, a-f），如需大写可转成upper()
+        """
+        s_bytes = s.encode('utf-8')
+        hash_obj = hashlib.sha1(s_bytes)
+        hash_hex = hash_obj.hexdigest()
+        short_id = hash_hex[:length].upper()
+        return short_id
+
+    def __str__(self) -> str:
+        if self.type == ContentType.TEXT and self.text:
+            return self.text
+        elif self.type == ContentType.IMAGE and self.image_url:
+            return f"[image: {self._generate_short_id(self.image_url)}]"
+        elif self.type == ContentType.MENTION and self.mention_user:
+            return f"@{self.mention_user}"
+        return ""
 
 
+# noinspection PyDataclass
 @dataclass(slots=True)
 class ChatMessage:
     """
@@ -78,24 +130,11 @@ class ChatMessage:
     sender_id: str
     sender_name: str | None
     timestamp: datetime
-    contents: list[MessageContent] = field(default_factory=list)
+    contents: list[MessageContent] = Field(default_factory=list)
     reply_from: ChatMessage | None = None
 
-    def extract_plain_text(self) -> str:
-        """提取消息内容链中的文本表示。
-
-        Returns:
-            将内容链可读化拼接后的文本。
-        """
-        parts: list[str] = []
-        for item in self.contents:
-            if item.type == ContentType.TEXT and item.text:
-                parts.append(item.text)
-            elif item.type == ContentType.MENTION and item.mention_user_id:
-                parts.append(f"@{item.mention_user_id}")
-            elif item.type == ContentType.IMAGE and item.image_url:
-                parts.append("[image]")
-        return " ".join(parts).strip()
+    def __str__(self) -> str:
+        return "".join(str(content) for content in self.contents)
 
 
 @dataclass(slots=True)
@@ -118,45 +157,10 @@ class ChatEvent:
     is_from_self: bool = False
 
 
-class SessionMatchMode(str, Enum):
-    """
-    会话匹配模式：精确或模糊。
+def _default_matcher() -> "MatcherBase":
+    from chat_guardian.matcher import MatchAll
 
-    Attributes:
-        EXACT: 精确匹配。
-        FUZZY: 模糊匹配。
-    """
-
-    EXACT = "exact"
-    FUZZY = "fuzzy"
-
-
-@dataclass(slots=True)
-class SessionTarget:
-    """
-    表示规则所匹配的目标会话。
-
-    Attributes:
-        mode: 匹配模式（`SessionMatchMode`）。
-        query: 用于匹配的查询文本或 ID（取决于 mode）。
-    """
-
-    mode: SessionMatchMode
-    query: str
-
-
-@dataclass(slots=True)
-class ParticipantConstraint:
-    """
-    参与者约束，用于限制规则只针对特定用户集合触发。
-
-    Attributes:
-        participant_ids: 参与者 ID 集合。
-        relation_hint: 关系提示。
-    """
-
-    participant_ids: set[str] = field(default_factory=set)
-    relation_hint: str | None = None
+    return MatchAll()
 
 
 @dataclass(slots=True)
@@ -175,6 +179,7 @@ class RuleParameterSpec:
     required: bool = True
 
 
+# noinspection PyDataclass
 @dataclass(slots=True)
 class DetectionRule:
     """
@@ -184,9 +189,8 @@ class DetectionRule:
         rule_id: 规则唯一标识。
         name: 规则名称。
         description: 规则描述文本。
-        target_session: `SessionTarget`，决定规则应用的会话范围。
+        matcher: 规则匹配器对象，使用 `matcher.matches(event)` 进行事件筛选。
         topic_hints: 主题关键词提示，用于轻量匹配或作为 LLM 提示。
-        participant_constraint: 可选的参与者约束。
         score_threshold: 触发阈值（0-1）。
         enabled: 是否启用。
         parameters: 触发时需要提取的参数规范列表。
@@ -195,14 +199,14 @@ class DetectionRule:
     rule_id: str
     name: str
     description: str
-    target_session: SessionTarget
-    topic_hints: list[str] = field(default_factory=list)
-    participant_constraint: ParticipantConstraint | None = None
+    matcher: object = Field(default_factory=_default_matcher)
+    topic_hints: list[str] = Field(default_factory=list)
     score_threshold: float = 0.6
     enabled: bool = True
-    parameters: list[RuleParameterSpec] = field(default_factory=list)
+    parameters: list[RuleParameterSpec] = Field(default_factory=list)
 
 
+# noinspection PyDataclass
 @dataclass(slots=True)
 class RuleDecision:
     """
@@ -220,7 +224,7 @@ class RuleDecision:
     triggered: bool
     confidence: float
     reason: str
-    extracted_params: dict[str, str] = field(default_factory=dict)
+    extracted_params: dict[str, str] = Field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -292,4 +296,4 @@ class Feedback:
     event_id: str
     score: int
     comment: str | None = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.utcnow)

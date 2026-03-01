@@ -148,7 +148,7 @@ class OneBotAdapter(Adapter):
                     segment_count += 1
                 elif segment_type == "at":
                     mention_id = str(data.get("qq", ""))
-                    contents.append(MessageContent(type=ContentType.MENTION, mention_user_id=mention_id))
+                    contents.append(MessageContent(type=ContentType.MENTION, mention_user=mention_id))
                     logger.debug(f"  ├ 提及用户: {mention_id}")
                     segment_count += 1
                 elif segment_type == "reply" and depth < 1:
