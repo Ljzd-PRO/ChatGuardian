@@ -10,13 +10,12 @@ from __future__ import annotations
 import hashlib
 from typing import TYPE_CHECKING
 
-from pydantic import Field
-from pydantic.dataclasses import dataclass
+from pydantic import BaseModel, Field
 from datetime import datetime
 from enum import Enum
 
 if TYPE_CHECKING:
-    from chat_guardian.matcher import MatcherBase
+    from chat_guardian.matcher import Matcher
 
 
 class ChatType(str, Enum):
@@ -47,8 +46,7 @@ class ContentType(str, Enum):
     MENTION = "mention"
 
 
-@dataclass(slots=True)
-class UserInfo:
+class UserInfo(BaseModel):
     """
     用户信息结构。
 
@@ -64,8 +62,7 @@ class UserInfo:
         return self.display_name or self.user_id
 
 
-@dataclass(slots=True)
-class MessageContent:
+class MessageContent(BaseModel):
     """
     消息内容链中的单个片段。
 
@@ -109,9 +106,7 @@ class MessageContent:
         return ""
 
 
-# noinspection PyDataclass
-@dataclass(slots=True)
-class ChatMessage:
+class ChatMessage(BaseModel):
     """
     表示一条聊天消息的结构。
 
@@ -137,8 +132,7 @@ class ChatMessage:
         return "".join(str(content) for content in self.contents)
 
 
-@dataclass(slots=True)
-class ChatEvent:
+class ChatEvent(BaseModel):
     """
     表示从消息平台流入的事件包装。
 
@@ -157,14 +151,7 @@ class ChatEvent:
     is_from_self: bool = False
 
 
-def _default_matcher() -> "MatcherBase":
-    from chat_guardian.matcher import MatchAll
-
-    return MatchAll()
-
-
-@dataclass(slots=True)
-class RuleParameterSpec:
+class RuleParameterSpec(BaseModel):
     """
     规则参数规范，描述规则在触发时应当提取的结构化字段。
 
@@ -179,9 +166,10 @@ class RuleParameterSpec:
     required: bool = True
 
 
-# noinspection PyDataclass
-@dataclass(slots=True)
-class DetectionRule:
+from chat_guardian.matcher import MatchAll, Matcher
+
+
+class DetectionRule(BaseModel):
     """
     检测规则主体。
 
@@ -199,16 +187,14 @@ class DetectionRule:
     rule_id: str
     name: str
     description: str
-    matcher: object = Field(default_factory=_default_matcher)
+    matcher: Matcher = Field(default_factory=MatchAll)
     topic_hints: list[str] = Field(default_factory=list)
     score_threshold: float = 0.6
     enabled: bool = True
     parameters: list[RuleParameterSpec] = Field(default_factory=list)
 
 
-# noinspection PyDataclass
-@dataclass(slots=True)
-class RuleDecision:
+class RuleDecision(BaseModel):
     """
     单条规则在一次事件评估中的决策结果。
 
@@ -227,8 +213,7 @@ class RuleDecision:
     extracted_params: dict[str, str] = Field(default_factory=dict)
 
 
-@dataclass(slots=True)
-class DetectionResult:
+class DetectionResult(BaseModel):
     """
     单条规则在一次检测中的结果记录。
 
@@ -257,8 +242,7 @@ class DetectionResult:
     suppression_reason: str | None = None
 
 
-@dataclass(slots=True)
-class UserMemoryFact:
+class UserMemoryFact(BaseModel):
     """
     表示系统记忆的一条事实（由用户自己参与的会话生成）。
 
@@ -279,8 +263,7 @@ class UserMemoryFact:
     captured_at: datetime
 
 
-@dataclass(slots=True)
-class Feedback:
+class Feedback(BaseModel):
     """
     用户对一次规则命中后的反馈记录。
 

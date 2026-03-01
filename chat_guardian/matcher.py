@@ -1,8 +1,7 @@
 from abc import ABC
 from typing import Optional, Literal
 
-from pydantic import ConfigDict
-from pydantic.dataclasses import dataclass
+from pydantic import BaseModel, ConfigDict, Field
 
 from chat_guardian.domain import ChatEvent, ContentType
 
@@ -27,10 +26,10 @@ class MatcherBase(ABC):
         raise NotImplementedError("MatcherBase is an abstract class and cannot be instantiated directly")
 
 
-@dataclass(slots=True, config=ConfigDict(arbitrary_types_allowed=True))
-class AndMatcher(MatcherBase):
+class AndMatcher(MatcherBase, BaseModel):
     """表示多个匹配规则的"与"关系"""
-    matchers: list[MatcherBase]
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    matchers: list["Matcher"] = Field(default_factory=list)
 
     def __and__(self, other: MatcherBase) -> "AndMatcher":
         """继续添加"与"条件"""
@@ -41,10 +40,10 @@ class AndMatcher(MatcherBase):
         return all(matcher.matches(event) for matcher in self.matchers)
 
 
-@dataclass(slots=True, config=ConfigDict(arbitrary_types_allowed=True))
-class OrMatcher(MatcherBase):
+class OrMatcher(MatcherBase, BaseModel):
     """表示多个匹配规则的"或"关系"""
-    matchers: list[MatcherBase]
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    matchers: list["Matcher"] = Field(default_factory=list)
 
     def __or__(self, other: MatcherBase) -> "OrMatcher":
         """继续添加"或"条件"""
@@ -55,14 +54,14 @@ class OrMatcher(MatcherBase):
         return any(matcher.matches(event) for matcher in self.matchers)
 
 
-@dataclass(slots=True)
-class MatchAll(MatcherBase):
+class MatchAll(MatcherBase, BaseModel):
     """匹配所有事件的规则"""
+
     def matches(self, events: "ChatEvent") -> bool:
         return True
 
-@dataclass(slots=True)
-class _MatchUserInfo(MatcherBase):
+
+class _MatchUserInfo(MatcherBase, BaseModel):
     user_id: Optional[str] = None
     display_name: Optional[str] = None
 
@@ -70,7 +69,6 @@ class _MatchUserInfo(MatcherBase):
         raise NotImplementedError("This is a base class for user info matchers and should not be used directly")
 
 
-@dataclass(slots=True)
 class MatchSender(_MatchUserInfo):
     def matches(self, event: "ChatEvent") -> bool:
         if not event.message or not event.message.sender_id:
@@ -81,7 +79,6 @@ class MatchSender(_MatchUserInfo):
             return False
         return True
 
-@dataclass(slots=True)
 class MatchMention(_MatchUserInfo):
     def matches(self, event: "ChatEvent") -> bool:
         if not event.message or not event.message.contents:
@@ -95,23 +92,23 @@ class MatchMention(_MatchUserInfo):
                 return True
         return False
 
-@dataclass(slots=True)
-class MatchChatInfo(MatcherBase):
+class MatchChatInfo(MatcherBase, BaseModel):
     chat_id: str
 
     def matches(self, event: "ChatEvent") -> bool:
         return event.chat_id == self.chat_id
 
-@dataclass(slots=True)
-class MatchChatType(MatcherBase):
+class MatchChatType(MatcherBase, BaseModel):
     type: Literal["group", "private"]
 
     def matches(self, event: "ChatEvent") -> bool:
         return event.chat_type.value == self.type
 
-@dataclass(slots=True)
-class MatchAdapter(MatcherBase):
+class MatchAdapter(MatcherBase, BaseModel):
     adapter_name: str
 
     def matches(self, event: "ChatEvent") -> bool:
         return event.platform == self.adapter_name
+
+
+Matcher = MatchAll | MatchChatInfo | MatchSender | MatchMention | MatchChatType | MatchAdapter | AndMatcher | OrMatcher

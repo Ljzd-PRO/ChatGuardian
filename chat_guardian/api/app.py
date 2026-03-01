@@ -10,7 +10,6 @@ from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
-from pydantic import TypeAdapter
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import (
@@ -22,7 +21,6 @@ from chat_guardian.domain import (
     DetectionRule,
     Feedback,
 )
-from chat_guardian.matcher import AndMatcher, MatchAdapter, MatchAll, MatchChatInfo, MatchChatType, MatchMention, MatchSender, OrMatcher
 from chat_guardian.repositories import (
     InMemoryChatHistoryStore,
     InMemoryDetectionResultRepository,
@@ -44,12 +42,6 @@ from chat_guardian.services import (
     SuggestionService,
 )
 from chat_guardian.settings import settings
-
-_DETECTION_RULE_ADAPTER = TypeAdapter(DetectionRule)
-_MATCHER_ADAPTER = TypeAdapter(
-    MatchAll | MatchChatInfo | MatchSender | MatchMention | MatchChatType | MatchAdapter | AndMatcher | OrMatcher
-)
-
 
 class AppContainer:
     def __init__(self):
@@ -101,16 +93,12 @@ class AppContainer:
 
 def _from_payload(payload: DetectionRule) -> DetectionRule:
     """将 API 的 `DetectionRule` 请求体规范化为领域对象。"""
-    data = _DETECTION_RULE_ADAPTER.dump_python(payload, mode="python")
-    data["matcher"] = _MATCHER_ADAPTER.validate_python(data["matcher"])
-    return _DETECTION_RULE_ADAPTER.validate_python(data)
+    return DetectionRule.model_validate(payload.model_dump(mode="python"))
 
 
 def _to_payload(rule: DetectionRule) -> DetectionRule:
     """将领域对象 `DetectionRule` 转换成 API 可序列化对象。"""
-    dumped = _DETECTION_RULE_ADAPTER.dump_python(rule, mode="python")
-    dumped["matcher"] = _MATCHER_ADAPTER.dump_python(rule.matcher, mode="python")
-    return _DETECTION_RULE_ADAPTER.validate_python(dumped)
+    return DetectionRule.model_validate(rule.model_dump(mode="python"))
 
 
 
