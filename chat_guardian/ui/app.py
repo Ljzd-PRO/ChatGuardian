@@ -179,7 +179,7 @@ def page_rule_management():
                     "rule_id": r_id,
                     "name": r_name,
                     "description": r_desc,
-                    "matcher": ({"type": "all"} if not s_query.strip() else {"type": "chat", "chat_id": s_query.strip()}),
+                    "matcher": ({} if not s_query.strip() else {"chat_id": s_query.strip()}),
                     "topic_hints": hints_list,
                     "score_threshold": s_threshold,
                     "enabled": is_enabled,
@@ -203,7 +203,7 @@ def page_rule_management():
                 er_desc = st.text_area("描述", value=r.get('description', ''))
                 
                 matcher = r.get("matcher", {})
-                default_chat_id = matcher.get("chat_id", "") if matcher.get("type") == "chat" else ""
+                default_chat_id = matcher.get("chat_id", "")
                 es_query = st.text_input("会话ID (chat_id，留空则全匹配)", value=default_chat_id)
                 
                 ethre = st.slider("阈值", 0.0, 1.0, float(r.get('score_threshold', 0.6)), 0.05)
@@ -218,7 +218,7 @@ def page_rule_management():
                         "rule_id": r['rule_id'],
                         "name": er_name,
                         "description": er_desc,
-                        "matcher": ({"type": "all"} if not es_query.strip() else {"type": "chat", "chat_id": es_query.strip()}),
+                        "matcher": ({} if not es_query.strip() else {"chat_id": es_query.strip()}),
                         "topic_hints": hints_list,
                         "score_threshold": ethre,
                         "enabled": eenab,
