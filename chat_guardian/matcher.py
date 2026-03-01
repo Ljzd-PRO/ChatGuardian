@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Optional, Literal
+from typing import Annotated, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -28,8 +28,9 @@ class Matcher(BaseModel, ABC):
 
 class AndMatcher(Matcher):
     """表示多个匹配规则的"与"关系"""
+    type: Literal["and"] = "and"
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    matchers: list[Matcher] = Field(default_factory=list)
+    matchers: list["MatcherUnion"] = Field(default_factory=list)
 
     def __and__(self, other: Matcher) -> "AndMatcher":
         """继续添加"与"条件"""
@@ -42,8 +43,9 @@ class AndMatcher(Matcher):
 
 class OrMatcher(Matcher):
     """表示多个匹配规则的"或"关系"""
+    type: Literal["or"] = "or"
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    matchers: list[Matcher] = Field(default_factory=list)
+    matchers: list["MatcherUnion"] = Field(default_factory=list)
 
     def __or__(self, other: Matcher) -> "OrMatcher":
         """继续添加"或"条件"""
@@ -56,6 +58,7 @@ class OrMatcher(Matcher):
 
 class MatchAll(Matcher):
     """匹配所有事件的规则"""
+    type: Literal["all"] = "all"
 
     def matches(self, events: ChatEvent) -> bool:
         return True
@@ -70,6 +73,8 @@ class _MatchUserInfo(Matcher):
 
 
 class MatchSender(_MatchUserInfo):
+    type: Literal["sender"] = "sender"
+
     def matches(self, event: ChatEvent) -> bool:
         if not event.message or not event.message.sender_id:
             return False
@@ -81,6 +86,8 @@ class MatchSender(_MatchUserInfo):
 
 
 class MatchMention(_MatchUserInfo):
+    type: Literal["mention"] = "mention"
+
     def matches(self, event: ChatEvent) -> bool:
         if not event.message or not event.message.contents:
             return False
@@ -95,6 +102,7 @@ class MatchMention(_MatchUserInfo):
 
 
 class MatchChatInfo(Matcher):
+    type: Literal["chat"] = "chat"
     chat_id: str
 
     def matches(self, event: ChatEvent) -> bool:
@@ -102,14 +110,27 @@ class MatchChatInfo(Matcher):
 
 
 class MatchChatType(Matcher):
-    type: Literal["group", "private"]
+    type: Literal["chat_type"] = "chat_type"
+    chat_type: Literal["group", "private"]
 
     def matches(self, event: ChatEvent) -> bool:
-        return event.chat_type.value == self.type
+        return event.chat_type.value == self.chat_type
 
 
 class MatchAdapter(Matcher):
+    type: Literal["adapter"] = "adapter"
     adapter_name: str
 
     def matches(self, event: ChatEvent) -> bool:
         return event.platform == self.adapter_name
+
+
+# Discriminated union of all concrete Matcher types, used for JSON serialization/deserialization.
+MatcherUnion = Annotated[
+    Union[AndMatcher, OrMatcher, MatchAll, MatchSender, MatchMention, MatchChatInfo, MatchChatType, MatchAdapter],
+    Field(discriminator="type"),
+]
+
+# Resolve forward references in recursive models
+AndMatcher.model_rebuild()
+OrMatcher.model_rebuild()
