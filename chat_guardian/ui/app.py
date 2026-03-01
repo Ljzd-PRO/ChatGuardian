@@ -237,11 +237,17 @@ def page_rule_management():
 
 def page_rule_stats():
     st.title("📈 规则触发统计与记录")
-    stats = fetch_json(f"{API_BASE}/rule_stats", default={})
     
-    # Mock data setup if backend doesn't provide yet
-    if not stats or stats.get("stats") == "not_implemented":
-        st.warning("后端没有返回统计数据。为了演示UI，将展示一些模拟数据！")
+    if st.button("刷新数据"):
+        st.rerun()
+        
+    stats_response = fetch_json(f"{API_BASE}/rule_stats", default={})
+    
+    # Check if backend provides actual data
+    if stats_response.get("stats") == "ok":
+        stats = stats_response.get("data", {})
+    else:
+        st.warning("从后端获取数据失败，展示模拟数据！")
         stats = {
             "spam_detection": {
                 "count": 12,
@@ -263,6 +269,10 @@ def page_rule_stats():
             }
         }
     
+    if not stats:
+        st.info("暂无任何规则触发记录。请等待检测引擎捕获违规消息，或者检查您的规则是否开启。")
+        return
+        
     for rule_name, stat in stats.items():
         with st.expander(f"📏 规则：{rule_name} | 🎯 触发次数：{stat.get('count', 0)}次", expanded=False):
             st.write(f"**规则描述**：{stat.get('description', '无')}")

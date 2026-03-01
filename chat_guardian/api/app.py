@@ -278,9 +278,39 @@ def create_app() -> FastAPI:
 
     @app.get("/api/rule_stats")
     async def get_rule_stats():
-        records = await container.db_manager.get_all_results_raw() if hasattr(container, "db_manager") else []
-        # Fallback if DB Manager is not exposed or no raw API.
-        return {"stats": "not_implemented"}
+        stats = {}
+        for rule_id, results in container.detection_result_repository.results_by_rule.items():
+            rule = await container.rule_repository.get(rule_id)
+            if not rule:
+                continue
+
+            # Only include triggered results for the stats dashboard
+            triggered_results = [r for r in results if r.decision.triggered]
+            if not triggered_results:
+                continue
+
+            records = []
+            for r in triggered_results:
+                records.append({
+                    "id": r.result_id,
+                    "trigger_time": r.generated_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    "confidence": round(r.decision.confidence, 2),
+                    "result": "Triggered (Suppressed)" if r.trigger_suppressed else "Triggered",
+                    "rule_name": rule.name,
+                    "messages": [
+                        {"sender": m.sender_name or m.sender_id, "content": m.extract_plain_text()}
+                        for m in r.context_messages
+                    ],
+                    "reason": r.decision.reason,
+                })
+
+            stats[rule.name] = {
+                "count": len(triggered_results),
+                "description": rule.description,
+                "records": sorted(records, key=lambda x: x["trigger_time"], reverse=True)
+            }
+
+        return {"stats": "ok", "data": stats}
 
     @app.get("/api/queues")
     async def get_queues():

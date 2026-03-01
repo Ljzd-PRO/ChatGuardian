@@ -435,6 +435,9 @@ class SessionMatcher:
 
     @staticmethod
     def match(target: SessionTarget, event: ChatEvent) -> bool:
+        if not target.query or target.query.strip() == "*":
+            return True
+            
         if target.mode == SessionMatchMode.EXACT:
             return target.query == event.chat_id
         normalized_query = target.query.lower().strip()
