@@ -6,90 +6,9 @@ API 层请求与响应的 Pydantic 模型定义。
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
-
-
-class RuleParameterPayload(BaseModel):
-    """
-    规则参数规范的序列化模型。
-
-    Attributes:
-        key: 参数键名。
-        description: 参数描述。
-        required: 是否为必填参数。
-    """
-
-    key: str
-    description: str
-    required: bool = True
-
-
-class RulePayload(BaseModel):
-    """
-    规则的完整序列化表示（用于创建/查询）。
-
-    Attributes:
-        rule_id: 规则唯一标识。
-        name: 规则名称。
-        description: 规则描述。
-        matcher: 规则匹配器。
-        topic_hints: 主题关键词提示。
-        score_threshold: 触发阈值。
-        enabled: 是否启用。
-        parameters: 触发时需要提取的参数规范列表。
-    """
-
-    rule_id: str
-    name: str
-    description: str
-    matcher: dict[str, Any]
-    topic_hints: list[str] = Field(default_factory=list)
-    score_threshold: float = 0.6
-    enabled: bool = True
-    parameters: list[RuleParameterPayload] = Field(default_factory=list)
-
-
-class MessagePayload(BaseModel):
-    """
-    消息负载结构，表示单条聊天消息。
-
-    Attributes:
-        message_id: 消息唯一 ID。
-        chat_id: 会话/群组 ID。
-        sender_id: 发送者用户 ID。
-        sender_name: 发送者昵称。
-        contents: 消息内容片段列表。
-        reply_from: 回复的消息。
-        timestamp: 消息时间戳。
-    """
-
-    message_id: str
-    chat_id: str
-    sender_id: str
-    sender_name: str | None = None
-    contents: list["MessageContentPayload"] = Field(default_factory=list)
-    reply_from: "MessagePayload | None" = None
-    timestamp: datetime
-
-
-class MessageContentPayload(BaseModel):
-    """
-    消息内容片段。
-
-    Attributes:
-        type: 片段类型（text/image/mention）。
-        text: 文本内容。
-        image_url: 图片地址。
-        mention_user_id: 被提及用户 ID。
-    """
-
-    type: str
-    text: str | None = None
-    image_url: str | None = None
-    mention_user_id: str | None = None
+from pydantic import BaseModel
 
 
 class DetectRequest(BaseModel):
@@ -106,7 +25,7 @@ class DetectRequest(BaseModel):
     platform: str
     chat_type: str
     is_from_self: bool = False
-    message: MessagePayload
+    message: dict[str, Any]
 
 
 class DetectResponse(BaseModel):
@@ -122,23 +41,6 @@ class DetectResponse(BaseModel):
     event_id: str
     triggered_rule_ids: list[str]
     notified_count: int
-
-
-class FeedbackPayload(BaseModel):
-    """
-    提交反馈的请求模型。
-
-    Attributes:
-        rule_id: 规则 ID。
-        event_id: 事件 ID。
-        score: 评分（1-5）。
-        comment: 文字说明。
-    """
-
-    rule_id: str
-    event_id: str
-    score: int = Field(ge=1, le=5)
-    comment: str | None = None
 
 
 class RuleGenerateRequest(BaseModel):
@@ -165,6 +67,3 @@ class SuggestResponse(BaseModel):
     """
 
     suggestions: list[str]
-
-
-MessagePayload.model_rebuild()

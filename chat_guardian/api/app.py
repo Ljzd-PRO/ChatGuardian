@@ -14,19 +14,15 @@ from pydantic import TypeAdapter
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import (
-    FeedbackPayload,
     RuleGenerateRequest,
-    RuleParameterPayload,
-    RulePayload,
     SuggestResponse,
 )
 from chat_guardian.domain import (
     ChatEvent,
     DetectionRule,
     Feedback,
-    RuleParameterSpec,
 )
-from chat_guardian.matcher import AndMatcher, MatchAdapter, MatchAll, MatchChatInfo, MatchChatType, MatchMention, MatchSender, MatcherBase, OrMatcher
+from chat_guardian.matcher import AndMatcher, MatchAdapter, MatchAll, MatchChatInfo, MatchChatType, MatchMention, MatchSender, OrMatcher
 from chat_guardian.repositories import (
     InMemoryChatHistoryStore,
     InMemoryDetectionResultRepository,
@@ -103,34 +99,18 @@ class AppContainer:
         await self.detection_engine.ingest_event(event)
 
 
-def _from_payload(payload: RulePayload) -> DetectionRule:
-    """将 API 的 `RulePayload` 转换为领域对象 `DetectionRule`。"""
-    data = payload.model_dump(mode="python")
-    data["matcher"] = _MATCHER_ADAPTER.validate_python(payload.matcher)
-    data["parameters"] = [
-        RuleParameterSpec(
-            key=item.key,
-            description=item.description,
-            required=item.required,
-        )
-        for item in payload.parameters
-    ]
+def _from_payload(payload: DetectionRule) -> DetectionRule:
+    """将 API 的 `DetectionRule` 请求体规范化为领域对象。"""
+    data = _DETECTION_RULE_ADAPTER.dump_python(payload, mode="python")
+    data["matcher"] = _MATCHER_ADAPTER.validate_python(data["matcher"])
     return _DETECTION_RULE_ADAPTER.validate_python(data)
 
 
-def _to_payload(rule: DetectionRule) -> RulePayload:
-    """将领域对象 `DetectionRule` 转换成 API 可序列化的 `RulePayload`。"""
+def _to_payload(rule: DetectionRule) -> DetectionRule:
+    """将领域对象 `DetectionRule` 转换成 API 可序列化对象。"""
     dumped = _DETECTION_RULE_ADAPTER.dump_python(rule, mode="python")
     dumped["matcher"] = _MATCHER_ADAPTER.dump_python(rule.matcher, mode="python")
-    dumped["parameters"] = [
-        RuleParameterPayload(
-            key=item.key,
-            description=item.description,
-            required=item.required,
-        ).model_dump(mode="python")
-        for item in rule.parameters
-    ]
-    return RulePayload.model_validate(dumped)
+    return _DETECTION_RULE_ADAPTER.validate_python(dumped)
 
 
 
@@ -207,13 +187,13 @@ def create_app() -> FastAPI:
 </html>
 """
 
-    @app.post("/rules", response_model=RulePayload)
-    async def upsert_rule(payload: RulePayload) -> RulePayload:
+    @app.post("/rules", response_model=DetectionRule)
+    async def upsert_rule(payload: DetectionRule) -> DetectionRule:
         saved = await container.rule_repository.upsert(_from_payload(payload))
         return _to_payload(saved)
 
-    @app.get("/rules/list", response_model=list[RulePayload])
-    async def list_rules() -> list[RulePayload]:
+    @app.get("/rules/list", response_model=list[DetectionRule])
+    async def list_rules() -> list[DetectionRule]:
         rules = await container.rule_repository.list_all()
         return [_to_payload(rule) for rule in rules]
 
@@ -225,15 +205,8 @@ def create_app() -> FastAPI:
         return {"status": "deleted", "rule_id": rule_id, "deleted": True}
 
     @app.post("/feedback")
-    async def submit_feedback(payload: FeedbackPayload) -> dict[str, str]:
-        await container.feedback_repository.add(
-            Feedback(
-                rule_id=payload.rule_id,
-                event_id=payload.event_id,
-                score=payload.score,
-                comment=payload.comment,
-            )
-        )
+    async def submit_feedback(payload: Feedback) -> dict[str, str]:
+        await container.feedback_repository.add(payload)
         return {"status": "accepted"}
 
     @app.get("/suggestions/new-rules/{user_id}", response_model=SuggestResponse)
@@ -246,8 +219,8 @@ def create_app() -> FastAPI:
         suggestions = await container.suggestion_service.suggest_rule_improvements(rule_id)
         return SuggestResponse(suggestions=suggestions)
 
-    @app.post("/rule-generation", response_model=RulePayload)
-    async def generate_rule(payload: RuleGenerateRequest) -> RulePayload:
+    @app.post("/rule-generation", response_model=DetectionRule)
+    async def generate_rule(payload: RuleGenerateRequest) -> DetectionRule:
         try:
             generated = await container.rule_authoring_service.generate_rule(
                 utterance=payload.utterance,
@@ -259,8 +232,8 @@ def create_app() -> FastAPI:
 
         return _to_payload(generated)
 
-    @app.post("/mcp/tools/generate-rule", response_model=RulePayload)
-    async def mcp_generate_rule(payload: RuleGenerateRequest) -> RulePayload:
+    @app.post("/mcp/tools/generate-rule", response_model=DetectionRule)
+    async def mcp_generate_rule(payload: RuleGenerateRequest) -> DetectionRule:
         return await generate_rule(payload)
 
     @app.get("/api/rule_stats")
