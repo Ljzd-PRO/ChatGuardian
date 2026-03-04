@@ -95,7 +95,7 @@ def _messages_to_markdown(messages: list[ChatMessage]) -> str:
     for message in messages:
         display_name = message.sender_name or message.sender_id or "未知发送者"
         human_time = _format_human_timestamp(message.timestamp, tz)
-        lines.append(f"[{human_time}] ({display_name}): {str(message)}")
+        lines.append(f"- [{human_time}] ({display_name}): {str(message)}")
     return "\n".join(lines)
 
 
@@ -212,10 +212,8 @@ class LangChainLLMClient:
             return []
 
         logger.debug(f"🔍 LLM 评估开始 | 消息数={len(messages)} | 规则数={len(rules)}")
-        messages_markdown = _messages_to_markdown(messages)
-        payload = {
-            "聊天消息（Markdown列表）": messages_markdown,
-            "rules": [
+        messages_payload = _messages_to_markdown(messages)
+        rules_payload = [
                 {
                     "rule_id": rule.rule_id,
                     "name": rule.name,
@@ -233,7 +231,13 @@ class LangChainLLMClient:
                 }
                 for rule in rules
             ],
-        }
+        payload = f"""
+## 聊天消息
+{messages_payload}
+
+## 规则列表
+{rules_payload}
+"""
 
         try:
             response = await self.model.ainvoke(
@@ -247,12 +251,12 @@ class LangChainLLMClient:
 根据输入的聊天消息与规则列表，对每条规则给出是否触发的判断。
 
 # 输入格式
-- `聊天消息（Markdown列表）`：按时间顺序排列的可读消息列表，每条消息一行，格式如下：
+- `聊天消息`：按时间顺序排列的可读消息列表，每条消息一行，格式如下：
   - `[YYYY-MM-DD HH:MM:SS TZ] (发送者): 消息内容`
   - 例如：
     - `[2026-03-04 10:30:45 CST] (张三): 你好，今天天气如何？`
     - `[2026-03-04 10:31:12 CST] (李四): 天气不错，适合出游`
-- `rules`：规则对象数组。每个规则包含以下字段：
+- `规则列表`：规则对象列表。每个规则包含以下字段：
   - `rule_id`：规则唯一标识，字符串
   - `name`：规则名称，字符串
   - `description`：规则描述，字符串
@@ -294,14 +298,16 @@ class LangChainLLMClient:
 ```
 """
                     ),
-                    HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
+                    HumanMessage(content=payload),
                 ]
             )
+            logger.debug(f"💬 LLM 输入 | {payload}")
             content = self._response_text(response.content)
             parsed = _extract_json_payload(content)
             decisions = self._parse_decisions(parsed, rules)
             triggered_count = sum(1 for d in decisions if d.triggered)
             logger.info(f"✅ LLM 评估完成 | 触发规则数={triggered_count} | 总规则数={len(rules)}")
+            logger.debug(f"✅ 评估结果 | {decisions}")
             return decisions
         except Exception as e:
             logger.error(f"❌ LLM 评估异常: {e}")
