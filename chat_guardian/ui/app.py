@@ -51,10 +51,11 @@ MATCHER_TYPE_LABELS = {
     "adapter": "🔌 适配器 (Adapter)",
     "and": "🔵 AND 组 (全部满足)",
     "or": "🟣 OR 组 (任一满足)",
+    "not": "🟥 NOT 组 (条件取反)",
 }
 
 LEAF_TYPES = ["all", "sender", "mention", "chat", "chat_type", "adapter"]
-COMPOUND_TYPES = ["and", "or"]
+COMPOUND_TYPES = ["and", "or", "not"]
 ALL_TYPES = COMPOUND_TYPES + LEAF_TYPES
 
 
@@ -69,6 +70,7 @@ def _default_matcher(type_: str) -> dict:
         "adapter": {"type": "adapter", "adapter_name": ""},
         "and": {"type": "and", "matchers": []},
         "or": {"type": "or", "matchers": []},
+        "not": {"type": "not", "matcher": {"type": "all"}},
     }
     return copy.deepcopy(defaults.get(type_, {"type": "all"}))
 
@@ -94,9 +96,16 @@ def _render_matcher_node(root: dict, path: list, sk: str, depth: int = 0) -> Non
 
     if mat_type in COMPOUND_TYPES:
         is_and = mat_type == "and"
-        border_color = "#1565C0" if is_and else "#6A1B9A"
-        bg_color = "#EBF5FB" if is_and else "#F5EEF8"
-        label = "🔵 AND — 所有条件都要满足" if is_and else "🟣 OR — 任一条件满足即可"
+        is_or = mat_type == "or"
+        is_not = mat_type == "not"
+
+        border_color = "#1565C0" if is_and else ("#6A1B9A" if is_or else "#B71C1C")
+        bg_color = "#EBF5FB" if is_and else ("#F5EEF8" if is_or else "#FDEDEC")
+        label = (
+            "🔵 AND — 所有条件都要满足"
+            if is_and
+            else ("🟣 OR — 任一条件满足即可" if is_or else "🟥 NOT — 子条件结果取反")
+        )
 
         # Visual container using a styled div
         st.markdown(
@@ -108,50 +117,84 @@ def _render_matcher_node(root: dict, path: list, sk: str, depth: int = 0) -> Non
         )
 
         # Controls row: switch AND↔OR | delete (non-root)
-        ctrl_cols = st.columns([3, 2, 2, 6] if not is_root else [3, 2, 9])
+        ctrl_cols = st.columns([3, 2, 2, 6] if (not is_root and not is_not) else ([3, 2, 9] if (is_root and not is_not) else ([3, 3, 6] if not is_root else [3, 9])))
         with ctrl_cols[0]:
-            other_type = "or" if is_and else "and"
+            switch_target = "or" if is_and else ("and" if is_or else "or")
             if st.button(
-                f"切换为 {'OR' if is_and else 'AND'}",
+                f"切换为 {switch_target.upper()}",
                 key=f"{sk}_switch_{path_key}",
             ):
-                node["type"] = other_type
+                node["type"] = switch_target
+                if node["type"] != "not" and "matchers" not in node:
+                    existing = node.get("matcher")
+                    node.pop("matcher", None)
+                    node["matchers"] = [existing] if isinstance(existing, dict) else []
+                if node["type"] == "not":
+                    first = node.get("matchers", [{}])
+                    node.pop("matchers", None)
+                    node["matcher"] = first[0] if first and isinstance(first[0], dict) else {"type": "all"}
                 st.rerun()
-        with ctrl_cols[1]:
-            # Add AND sub-group
-            if st.button("➕ 子AND", key=f"{sk}_add_and_{path_key}"):
-                node.setdefault("matchers", []).append(_default_matcher("and"))
-                st.rerun()
-        with ctrl_cols[2]:
-            # Add OR sub-group
-            if st.button("➕ 子OR", key=f"{sk}_add_or_{path_key}"):
-                node.setdefault("matchers", []).append(_default_matcher("or"))
-                st.rerun()
-        if not is_root:
-            with ctrl_cols[3]:
-                if st.button("🗑️ 删除此组", key=f"{sk}_del_{path_key}"):
-                    parent = _get_node(root, path[:-2])
-                    parent["matchers"].pop(path[-1])
+        if not is_not:
+            with ctrl_cols[1]:
+                if st.button("➕ 子AND", key=f"{sk}_add_and_{path_key}"):
+                    node.setdefault("matchers", []).append(_default_matcher("and"))
                     st.rerun()
+            with ctrl_cols[2]:
+                if st.button("➕ 子OR", key=f"{sk}_add_or_{path_key}"):
+                    node.setdefault("matchers", []).append(_default_matcher("or"))
+                    st.rerun()
+            if not is_root:
+                with ctrl_cols[3]:
+                    if st.button("🗑️ 删除此组", key=f"{sk}_del_{path_key}"):
+                        parent = _get_node(root, path[:-2])
+                        if path[-2] == "matchers":
+                            parent["matchers"].pop(path[-1])
+                        else:
+                            parent[path[-2]] = {"type": "all"}
+                        st.rerun()
 
-        # Render children
-        children = node.get("matchers", [])
-        if not children:
-            st.caption(
-                f"{'　' * (depth + 1)}（此组内暂无条件，请通过下方按钮添加子条件）"
-            )
-        for i in range(len(children)):
-            _render_matcher_node(root, path + ["matchers", i], sk, depth + 1)
+            children = node.get("matchers", [])
+            if not children:
+                st.caption(
+                    f"{'　' * (depth + 1)}（此组内暂无条件，请通过下方按钮添加子条件）"
+                )
+            for i in range(len(children)):
+                _render_matcher_node(root, path + ["matchers", i], sk, depth + 1)
 
-        # Add-leaf buttons row
-        add_cols = st.columns(len(LEAF_TYPES))
-        for j, lt in enumerate(LEAF_TYPES):
-            if add_cols[j].button(
-                f"➕ {MATCHER_TYPE_LABELS[lt]}",
-                key=f"{sk}_addleaf_{lt}_{path_key}",
-            ):
-                node.setdefault("matchers", []).append(_default_matcher(lt))
+            add_cols = st.columns(len(LEAF_TYPES) + 1)
+            if add_cols[0].button("➕ 子NOT", key=f"{sk}_add_not_{path_key}"):
+                node.setdefault("matchers", []).append(_default_matcher("not"))
                 st.rerun()
+            for j, lt in enumerate(LEAF_TYPES, start=1):
+                if add_cols[j].button(
+                    f"➕ {MATCHER_TYPE_LABELS[lt]}",
+                    key=f"{sk}_addleaf_{lt}_{path_key}",
+                ):
+                    node.setdefault("matchers", []).append(_default_matcher(lt))
+                    st.rerun()
+        else:
+            with ctrl_cols[1]:
+                if st.button("切换为 AND", key=f"{sk}_not_to_and_{path_key}"):
+                    current_child = node.get("matcher")
+                    node["type"] = "and"
+                    node["matchers"] = [current_child] if isinstance(current_child, dict) else []
+                    node.pop("matcher", None)
+                    st.rerun()
+            if not is_root:
+                with ctrl_cols[2]:
+                    if st.button("🗑️ 删除此组", key=f"{sk}_del_not_{path_key}"):
+                        parent = _get_node(root, path[:-2])
+                        if path[-2] == "matchers":
+                            parent["matchers"].pop(path[-1])
+                        else:
+                            parent[path[-2]] = {"type": "all"}
+                        st.rerun()
+
+            child = node.get("matcher")
+            if not isinstance(child, dict):
+                node["matcher"] = {"type": "all"}
+
+            _render_matcher_node(root, path + ["matcher"], sk, depth + 1)
 
     else:
         # Leaf matcher
@@ -182,14 +225,20 @@ def _render_matcher_node(root: dict, path: list, sk: str, depth: int = 0) -> Non
                     root.update(new_node)
                 else:
                     parent = _get_node(root, path[:-2])
-                    parent["matchers"][path[-1]] = new_node
+                    if path[-2] == "matchers":
+                        parent["matchers"][path[-1]] = new_node
+                    else:
+                        parent[path[-2]] = new_node
                 st.rerun()
 
         with del_col:
             st.write("")  # spacer for alignment
             if not is_root and st.button("🗑️", key=f"{sk}_del_{path_key}"):
                 parent = _get_node(root, path[:-2])
-                parent["matchers"].pop(path[-1])
+                if path[-2] == "matchers":
+                    parent["matchers"].pop(path[-1])
+                else:
+                    parent[path[-2]] = {"type": "all"}
                 st.rerun()
 
         # Editable fields for this leaf type
@@ -273,8 +322,8 @@ def render_matcher_editor(session_key: str, initial_matcher: dict) -> dict:
     st.markdown("#### 🎯 Matcher 条件编辑器")
     st.caption(
         "在此处可视化地构建规则的触发条件。 "
-        "🔵 AND 组要求所有子条件都满足，🟣 OR 组只需任一子条件满足。 "
-        "可以嵌套 AND/OR 组实现复杂逻辑。"
+        "🔵 AND 组要求所有子条件都满足，🟣 OR 组只需任一子条件满足，🟥 NOT 组会对子条件取反。 "
+        "支持混合嵌套 AND/OR/NOT 组实现复杂逻辑。"
     )
 
     # Allow changing the root type

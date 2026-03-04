@@ -21,6 +21,10 @@ class Matcher(BaseModel, ABC):
             return OrMatcher(matchers=self.matchers + [other])
         return OrMatcher(matchers=[self, other])
 
+    def __invert__(self) -> "NotMatcher":
+        """使用 ~ 运算符创建"非"规则"""
+        return NotMatcher(matcher=self)
+
     def matches(self, event: ChatEvent) -> bool:
         """检查事件是否匹配规则，需在子类中实现具体逻辑"""
         raise NotImplementedError("MatcherBase is an abstract class and cannot be instantiated directly")
@@ -54,6 +58,17 @@ class OrMatcher(Matcher):
     def matches(self, event: ChatEvent) -> bool:
         """事件满足任一规则即匹配成功"""
         return any(matcher.matches(event) for matcher in self.matchers)
+
+
+class NotMatcher(Matcher):
+    """表示单个匹配规则的"非"关系"""
+    type: Literal["not"] = "not"
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    matcher: "MatcherUnion" = Field(default_factory=lambda: MatchAll())
+
+    def matches(self, event: ChatEvent) -> bool:
+        """事件满足子规则时返回 False，否则返回 True"""
+        return not self.matcher.matches(event)
 
 
 class MatchAll(Matcher):
@@ -127,10 +142,11 @@ class MatchAdapter(Matcher):
 
 # Discriminated union of all concrete Matcher types, used for JSON serialization/deserialization.
 MatcherUnion = Annotated[
-    Union[AndMatcher, OrMatcher, MatchAll, MatchSender, MatchMention, MatchChatInfo, MatchChatType, MatchAdapter],
+    Union[AndMatcher, OrMatcher, NotMatcher, MatchAll, MatchSender, MatchMention, MatchChatInfo, MatchChatType, MatchAdapter],
     Field(discriminator="type"),
 ]
 
 # Resolve forward references in recursive models
 AndMatcher.model_rebuild()
 OrMatcher.model_rebuild()
+NotMatcher.model_rebuild()
