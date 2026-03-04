@@ -7,8 +7,9 @@ FastAPI 应用与路由定义。
 from __future__ import annotations
 
 import os
+from collections import deque
 from contextlib import asynccontextmanager
-from datetime import datetime, date
+from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -162,9 +163,11 @@ def create_app() -> FastAPI:
     app = FastAPI(title="ChatGuardian API", version="0.1.0", lifespan=_app_lifespan)
     app.state.container = container
 
+    # CORS: allow all origins in development; restrict in production via settings
+    cors_origins = ["*"] if settings.environment != "prod" else []
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=cors_origins,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -390,10 +393,7 @@ def create_app() -> FastAPI:
 
     # ── Logs ─────────────────────────────────────────────────────────────────
 
-    _log_buffer: "deque[dict]"
-
-    from collections import deque
-    _log_buffer = deque(maxlen=500)
+    _log_buffer: deque[dict] = deque(maxlen=500)
 
     try:
         from loguru import logger as _loguru_logger
@@ -461,9 +461,22 @@ def create_app() -> FastAPI:
             "enabled_adapters": s.enabled_adapters,
         }
 
+    # Allowlist of settings keys that can be modified via the API
+    _SETTINGS_ALLOWLIST = {
+        "app_name", "environment",
+        "llm_langchain_backend", "llm_langchain_model", "llm_langchain_api_base",
+        "llm_langchain_api_key", "llm_langchain_temperature", "llm_timeout_seconds",
+        "llm_max_parallel_batches", "llm_rules_per_batch",
+        "context_message_limit", "detection_cooldown_seconds", "detection_min_new_messages",
+        "email_notifier_enabled", "email_notifier_to_email",
+        "smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_sender",
+        "bark_notifier_enabled", "bark_device_key", "bark_server_url", "bark_group", "bark_level",
+        "enabled_adapters",
+    }
+
     @app.post("/api/settings")
     async def update_settings(payload: dict):
-        """Persist provided settings keys to the .env file."""
+        """Persist allowed settings keys to the .env file."""
         env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
         env_path = os.path.abspath(env_path)
 
@@ -477,6 +490,8 @@ def create_app() -> FastAPI:
                         existing[k.strip()] = v.strip()
 
         for key, value in payload.items():
+            if key not in _SETTINGS_ALLOWLIST:
+                raise HTTPException(status_code=400, detail=f"Unknown or disallowed setting: {key}")
             env_key = f"CHAT_GUARDIAN_{key.upper()}"
             existing[env_key] = str(value)
 
