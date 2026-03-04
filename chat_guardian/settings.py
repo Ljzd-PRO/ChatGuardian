@@ -57,6 +57,8 @@ class Settings(BaseSettings):
         onebot_port: OneBot WebSocket 服务器监听端口。
         onebot_access_token: OneBot 访问令牌。
         telegram_bot_token: Telegram Bot Token。
+        telegram_polling_timeout: Telegram 长轮询超时时间（秒）。
+        telegram_drop_pending_updates: 启动时是否丢弃待处理的 Telegram 更新。
         wechat_endpoint: WeChat 端点。
         feishu_app_id: 飞书 App ID。
         virtual_adapter_chat_count: 虚拟 adapter 聊天数。
@@ -133,6 +135,8 @@ class Settings(BaseSettings):
     onebot_access_token: Optional[str] = None
 
     telegram_bot_token: Optional[str] = None
+    telegram_polling_timeout: int = 10
+    telegram_drop_pending_updates: bool = False
     wechat_endpoint: Optional[str] = None
     feishu_app_id: Optional[str] = None
 
