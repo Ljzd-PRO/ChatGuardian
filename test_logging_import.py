@@ -13,6 +13,7 @@ async def main():
     try:
         print("🔍 Testing services.py import...")
         from chat_guardian import services
+        from chat_guardian import notifiers
         print("✅ services module imported successfully")
         
         # Check that loguru is available
@@ -24,8 +25,8 @@ async def main():
         assert hasattr(services, 'DetectionEngine')
         assert hasattr(services, 'RuleBatchScheduler')
         assert hasattr(services, 'SelfMessageMemoryService')
-        assert hasattr(services, 'EmailNotifier')
         assert hasattr(services, 'ExternalHookDispatcher')
+        assert hasattr(notifiers, 'EmailNotifier')
         print("✅ All key service classes available")
         
         # Test basic logger

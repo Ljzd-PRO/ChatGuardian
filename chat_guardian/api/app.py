@@ -21,6 +21,7 @@ from chat_guardian.domain import (
     DetectionRule,
     Feedback,
 )
+from chat_guardian.notifiers import EmailNotifier, NotificationConfig
 from chat_guardian.repositories import (
     InMemoryChatHistoryStore,
     InMemoryDetectionResultRepository,
@@ -32,11 +33,9 @@ from chat_guardian.services import (
     build_llm_client,
     ContextWindowService,
     DetectionEngine,
-    EmailNotifier,
     ExternalHookDispatcher,
     ExternalPromptRuleGenerationBackend,
     InternalRuleGenerationBackend,
-    NotificationConfig,
     RuleAuthoringService,
     SelfMessageMemoryService,
     SuggestionService,
@@ -89,19 +88,6 @@ class AppContainer:
         """Adapter 统一消息入口：先处理 self-memory，再进入检测触发流程。"""
         await self.self_message_service.process_if_self_message(event)
         await self.detection_engine.ingest_event(event)
-
-
-def _from_payload(payload: DetectionRule) -> DetectionRule:
-    """将 API 的 `DetectionRule` 请求体规范化为领域对象。"""
-    return DetectionRule.model_validate(payload.model_dump(mode="python"))
-
-
-def _to_payload(rule: DetectionRule) -> DetectionRule:
-    """将领域对象 `DetectionRule` 转换成 API 可序列化对象。"""
-    return DetectionRule.model_validate(rule.model_dump(mode="python"))
-
-
-
 
 
 def create_app() -> FastAPI:
@@ -177,13 +163,13 @@ def create_app() -> FastAPI:
 
     @app.post("/rules", response_model=DetectionRule)
     async def upsert_rule(payload: DetectionRule) -> DetectionRule:
-        saved = await container.rule_repository.upsert(_from_payload(payload))
-        return _to_payload(saved)
+        saved = await container.rule_repository.upsert(payload)
+        return saved
 
     @app.get("/rules/list", response_model=list[DetectionRule])
     async def list_rules() -> list[DetectionRule]:
         rules = await container.rule_repository.list_all()
-        return [_to_payload(rule) for rule in rules]
+        return rules
 
     @app.post("/rules/delete/{rule_id}")
     async def delete_rule(rule_id: str) -> dict[str, str | bool]:
@@ -218,7 +204,7 @@ def create_app() -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-        return _to_payload(generated)
+        return generated
 
     @app.post("/mcp/tools/generate-rule", response_model=DetectionRule)
     async def mcp_generate_rule(payload: RuleGenerateRequest) -> DetectionRule:

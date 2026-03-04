@@ -20,15 +20,15 @@ import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Callable, Protocol, Coroutine, Any, Union
+from typing import Callable, Protocol, Coroutine, Any, Union, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
-from aiosmtplib import SMTP
 from loguru import logger
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
+from chat_guardian.notifiers import Notifier
 
 from chat_guardian.domain import (
     ChatEvent,
@@ -206,7 +206,7 @@ class LangChainLLMClient:
         self.ollama_base_url = ollama_base_url
         logger.info(f"🤖 LLM 客户端已初始化 | backend={backend} | model={model_name} | api_key_configured={api_key_configured}")
 
-    async def evaluate(self, messages: list[ChatMessage], rules: list[DetectionRule]) -> list[RuleDecision]:
+    async def evaluate(self, messages: list[ChatMessage], rules: list[DetectionRule]) -> Optional[list[RuleDecision]]:
         if not rules:
             logger.debug(f"📋 规则列表为空，返回空决策")
             return []
@@ -305,7 +305,7 @@ class LangChainLLMClient:
             return decisions
         except Exception as e:
             logger.error(f"❌ LLM 评估异常: {e}")
-            return self._fallback_decisions(rules, e)
+            return None
 
     async def extract_self_participation(self, event: ChatEvent, context: list[ChatMessage]) -> list[UserMemoryFact]:
         logger.debug(f"💬 开始提取用户 {event.message.sender_id} 的内存事实 | 上下文消息数={len(context)}")
@@ -762,7 +762,7 @@ class DetectionEngine:
         context_service: ContextWindowService,
         llm_client: LangChainLLMClient,
         result_repository: DetectionResultRepository,
-        notifiers: list["Notifier"],
+        notifiers: list[Notifier],
         hook_dispatcher: "ExternalHookDispatcher",
         batch_scheduler: RuleBatchScheduler | None = None,
     ):
@@ -1299,73 +1299,6 @@ class RuleAuthoringService:
         
         logger.success(f"✅ 规则生成完成 | rule_id={rule.rule_id} | name={rule.name}")
         return rule
-
-
-class Notifier(Protocol):
-    """通知器协议，表示一种能够发送通知（邮件/短信/第三方 API 等）的实现。"""
-
-    async def notify(self, event: ChatEvent, decision: RuleDecision, context_messages: list[ChatMessage]) -> bool: ...
-
-
-@dataclass(slots=True)
-class NotificationConfig:
-    """通知配置（目前仅包含邮件接收方）。"""
-
-    to_email: str | None
-
-
-class EmailNotifier(Notifier):
-    """基于 SMTP 的邮件通知实现。"""
-
-    def __init__(self, config: NotificationConfig):
-        self.config = config
-
-    async def notify(self, event: ChatEvent, decision: RuleDecision, _context_messages: list[ChatMessage]) -> bool:
-        """发送邮件通知。
-
-        在未配置 SMTP 或接收邮箱时，返回 False 表示未发送。
-        """
-        if not self.config.to_email or not settings.smtp_host or not settings.smtp_sender:
-            logger.warning(f"⚠️ 邮件通知未配置 | to_email={bool(self.config.to_email)} | smtp_host={bool(settings.smtp_host)}")
-            return False
-
-        logger.debug(f"📧 准备发送邮件通知 | 收件人={self.config.to_email} | 规则={decision.rule_id}")
-        
-        subject = f"[ChatGuardian] Rule Triggered: {decision.rule_id}"
-        content = {
-            "chat_id": event.chat_id,
-            "message_id": event.message.message_id,
-            "reason": decision.reason,
-            "confidence": decision.confidence,
-            "params": decision.extracted_params,
-        }
-        body = json.dumps(content, ensure_ascii=False, indent=2)
-
-        try:
-            smtp = SMTP(hostname=settings.smtp_host, port=settings.smtp_port, use_tls=False)
-            await smtp.connect()
-            logger.debug(f"  ✓ SMTP 连接成功")
-            
-            if settings.smtp_username and settings.smtp_password:
-                await smtp.login(settings.smtp_username, settings.smtp_password)
-                logger.debug(f"  ✓ SMTP 认证成功")
-            
-            await smtp.sendmail(
-                settings.smtp_sender,
-                [self.config.to_email],
-                (
-                    f"From: {settings.smtp_sender}\r\n"
-                    f"To: {self.config.to_email}\r\n"
-                    f"Subject: {subject}\r\n\r\n"
-                    f"{body}"
-                ),
-            )
-            await smtp.quit()
-            logger.success(f"✅ 邮件已发送 | 收件人={self.config.to_email} | 规则={decision.rule_id}")
-            return True
-        except Exception as e:
-            logger.error(f"❌ 邮件发送失败: {e}")
-            return False
 
 
 class ExternalHookDispatcher:
