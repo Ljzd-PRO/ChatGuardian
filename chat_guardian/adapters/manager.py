@@ -7,7 +7,7 @@ from chat_guardian.settings import Settings
 from .base import Adapter
 from .feishu import FeishuAdapter
 from .onebot import OneBotAdapter, OneBotAdapterConfig
-from .telegram import TelegramAdapter
+from .telegram import TelegramAdapter, TelegramAdapterConfig
 from .virtual import VirtualAdapter, VirtualAdapterConfig, VirtualScriptedMessage, load_virtual_scripted_messages
 from .wechat import WeChatAdapter
 
@@ -41,7 +41,17 @@ def build_adapters_from_settings(app_settings: Settings) -> list[Adapter]:
             )
         )
     if "telegram" in enabled:
-        adapters.append(TelegramAdapter())
+        if not app_settings.telegram_bot_token:
+            raise ValueError("Telegram 适配器已启用，但 CHAT_GUARDIAN_TELEGRAM_BOT_TOKEN 未配置")
+        adapters.append(
+            TelegramAdapter(
+                TelegramAdapterConfig(
+                    bot_token=app_settings.telegram_bot_token,
+                    polling_timeout=app_settings.telegram_polling_timeout,
+                    drop_pending_updates=app_settings.telegram_drop_pending_updates,
+                )
+            )
+        )
     if "wechat" in enabled:
         adapters.append(WeChatAdapter())
     if "feishu" in enabled:
