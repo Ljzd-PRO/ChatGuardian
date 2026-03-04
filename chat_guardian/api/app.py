@@ -51,17 +51,54 @@ from chat_guardian.settings import settings
 @asynccontextmanager
 async def _app_lifespan(app: FastAPI):
     """应用生命周期管理：启动时自动启动 adapters，关闭时自动停止。"""
+    import signal
+    import threading
     from loguru import logger
     container = app.state.container
+
+    # 安装信号处理器以记录用户主动停止程序的操作（仅在主线程中有效）
+    _prev_sigint = signal.getsignal(signal.SIGINT)
+    _prev_sigterm = signal.getsignal(signal.SIGTERM)
+    _shutdown_by_signal = False
+
+    def _on_sigint(sig: int, frame: object) -> None:
+        nonlocal _shutdown_by_signal
+        _shutdown_by_signal = True
+        logger.warning("👋 接收到 CTRL+C 中断信号，用户正在停止程序...")
+        if callable(_prev_sigint):
+            _prev_sigint(sig, frame)  # type: ignore[arg-type]
+
+    def _on_sigterm(sig: int, frame: object) -> None:
+        nonlocal _shutdown_by_signal
+        _shutdown_by_signal = True
+        logger.warning("⚡ 接收到 SIGTERM 终止信号，程序即将停止...")
+        if callable(_prev_sigterm):
+            _prev_sigterm(sig, frame)  # type: ignore[arg-type]
+
+    _is_main_thread = threading.current_thread() is threading.main_thread()
+    if _is_main_thread:
+        signal.signal(signal.SIGINT, _on_sigint)
+        signal.signal(signal.SIGTERM, _on_sigterm)
+
     # 启动
     if container.adapter_manager.adapters:
         adapter_names = [adapter.name for adapter in container.adapter_manager.adapters]
         logger.info(f"🚀 应用启动，自动启动 adapters: {adapter_names}")
         await container.adapter_manager.start_all()
-    yield
-    # 关闭
-    logger.info("🛑 应用关闭，停止所有 adapters")
-    await container.adapter_manager.stop_all()
+    try:
+        yield
+    finally:
+        # 关闭
+        if _shutdown_by_signal:
+            logger.info("🛑 用户停止了程序，正在关闭应用...")
+        else:
+            logger.info("🛑 应用关闭，停止所有 adapters")
+        await container.adapter_manager.stop_all()
+        logger.info("✅ 应用程序已成功停止")
+
+        if _is_main_thread:
+            signal.signal(signal.SIGINT, _prev_sigint)
+            signal.signal(signal.SIGTERM, _prev_sigterm)
 
 
 class AppContainer:

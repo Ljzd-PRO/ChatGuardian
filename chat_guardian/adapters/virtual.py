@@ -101,12 +101,9 @@ class VirtualAdapter(Adapter):
     async def stop(self) -> None:
         self._running = False
         if self._tasks:
-            try:
-                await asyncio.wait_for(asyncio.gather(*self._tasks, return_exceptions=True), timeout=20.0)
-            except asyncio.TimeoutError:
-                for task in self._tasks:
-                    task.cancel()
-                await asyncio.gather(*self._tasks, return_exceptions=True)
+            for task in self._tasks:
+                task.cancel()
+            await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks = []
     async def _simulate_chat(self, chat_id: str) -> None:
         member_count = max(2, self.config.members_per_chat)
