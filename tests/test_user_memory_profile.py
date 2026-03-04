@@ -15,7 +15,7 @@ from chat_guardian.domain import (
     UserMemoryFact,
 )
 from chat_guardian.repositories import MemoryRepository
-from chat_guardian.services import ContextWindowService, SelfMessageMemoryService
+from chat_guardian.services import SelfMessageMemoryService
 
 
 # ---------------------------------------------------------------------------
@@ -71,7 +71,8 @@ def test_user_memory_fact_serialization_roundtrip() -> None:
         user_id="u-1",
         user_name="老张",
         interests={
-            "黑苹果": InterestTopicStat(score=13, last_active="2026-03-04 15:30:00", related_chat=["g123"], keywords=["白屏"]),
+            "黑苹果": InterestTopicStat(score=13, last_active="2026-03-04 15:30:00", related_chat=["g123"],
+                                        keywords=["白屏"]),
         },
         active_groups=[ActiveGroupStat(group_id="g123", frequency=9, last_talk="2026-03-04")],
         frequent_contacts={

@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 
 from chat_guardian.settings import Settings
-
 from .base import Adapter
 from .feishu import FeishuAdapter
 from .onebot import OneBotAdapter, OneBotAdapterConfig

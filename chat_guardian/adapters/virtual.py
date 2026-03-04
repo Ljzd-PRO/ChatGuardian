@@ -1,14 +1,16 @@
 from __future__ import annotations
+
 import asyncio
+import json
 import random
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-import json
-from typing import TYPE_CHECKING
-from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, MessageContent
+
 from chat_guardian.adapters.base import Adapter, EventHandler
+from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, MessageContent
+
 
 @dataclass(slots=True)
 class VirtualAdapterConfig:
@@ -20,6 +22,7 @@ class VirtualAdapterConfig:
     random_seed: int = 42
     scripted_messages: list["VirtualScriptedMessage"] | None = None
 
+
 @dataclass(slots=True)
 class VirtualScriptedMessage:
     chat_id: str
@@ -29,6 +32,7 @@ class VirtualScriptedMessage:
     delay_seconds: float = 0.1
     chat_type: ChatType = ChatType.GROUP
     is_from_self: bool = False
+
 
 def load_virtual_scripted_messages(script_path: str) -> list[VirtualScriptedMessage]:
     path = Path(script_path)
@@ -74,8 +78,10 @@ def load_virtual_scripted_messages(script_path: str) -> list[VirtualScriptedMess
         )
     return messages
 
+
 class VirtualAdapter(Adapter):
     name = "virtual"
+
     def __init__(self, config: VirtualAdapterConfig):
         self.config = config
         self._handlers: list[EventHandler] = []
@@ -83,10 +89,13 @@ class VirtualAdapter(Adapter):
         self._tasks: list[asyncio.Task[None]] = []
         self._rng = random.Random(config.random_seed)
         self._message_sequences: dict[str, int] = defaultdict(int)
+
     def register_handler(self, handler: EventHandler) -> None:
         self._handlers.append(handler)
+
     def is_running(self) -> bool:
         return self._running
+
     async def start(self) -> None:
         if self._running:
             return
@@ -98,6 +107,7 @@ class VirtualAdapter(Adapter):
             asyncio.create_task(self._simulate_chat(chat_id=f"virtual-group-{index + 1}"))
             for index in range(max(1, self.config.chat_count))
         ]
+
     async def stop(self) -> None:
         self._running = False
         if self._tasks:
@@ -105,6 +115,7 @@ class VirtualAdapter(Adapter):
                 task.cancel()
             await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks = []
+
     async def _simulate_chat(self, chat_id: str) -> None:
         member_count = max(2, self.config.members_per_chat)
         members = [f"user-{chat_id}-{idx + 1}" for idx in range(member_count)]
@@ -136,6 +147,7 @@ class VirtualAdapter(Adapter):
                 is_from_self=False,
             )
             await asyncio.gather(*(handler(event) for handler in self._handlers), return_exceptions=True)
+
     async def _run_scripted_messages(self, scripted_messages: list[VirtualScriptedMessage]) -> None:
         for item in scripted_messages:
             if not self._running:

@@ -1,6 +1,5 @@
-from datetime import datetime
-
 import asyncio
+from datetime import datetime
 
 from chat_guardian.domain import (
     ChatEvent,

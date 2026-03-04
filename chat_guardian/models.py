@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field
 from typing import Optional
+
+from pydantic import BaseModel, Field
+
 
 class DiagnosticsModel(BaseModel):
     """
@@ -19,6 +21,7 @@ class DiagnosticsModel(BaseModel):
     api_base: Optional[str] = Field(default=None)
     api_key_configured: bool = Field(...)
     ollama_base_url: Optional[str] = Field(default=None)
+
 
 class RuleBatchSchedulerMetricsModel(BaseModel):
     """
@@ -48,6 +51,7 @@ class RuleBatchSchedulerMetricsModel(BaseModel):
     idempotency_inflight_hits: int = Field(...)
     rate_limit_wait_count: int = Field(...)
     rate_limit_wait_ms: float = Field(...)
+
 
 class RuleBatchSchedulerDiagnosticsModel(BaseModel):
     """

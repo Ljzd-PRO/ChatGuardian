@@ -1,7 +1,3 @@
-from __future__ import annotations
-
-from chat_guardian.models import RuleBatchSchedulerMetricsModel
-
 """
 核心服务与基础实现。
 
@@ -17,6 +13,8 @@ from chat_guardian.models import RuleBatchSchedulerMetricsModel
 所有对外依赖（如真实 LLM、消息平台、持久化）均通过协议抽象，便于替换。
 """
 
+from __future__ import annotations
+
 import asyncio
 import hashlib
 import json
@@ -28,11 +26,10 @@ from typing import Callable, Coroutine, Any, Union, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
-from loguru import logger
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
-from chat_guardian.notifiers import Notifier
+from langchain_openai import ChatOpenAI
+from loguru import logger
 
 from chat_guardian.domain import (
     ActiveGroupStat,
@@ -41,7 +38,6 @@ from chat_guardian.domain import (
     ChatType,
     DetectionResult,
     DetectionRule,
-    Feedback,
     FrequentContactStat,
     InterestTopicStat,
     RelatedTopicStat,
@@ -49,6 +45,8 @@ from chat_guardian.domain import (
     UserMemoryFact,
 )
 from chat_guardian.models import RuleBatchSchedulerDiagnosticsModel, DiagnosticsModel
+from chat_guardian.models import RuleBatchSchedulerMetricsModel
+from chat_guardian.notifiers import Notifier
 from chat_guardian.repositories import (
     ChatHistoryStore,
     DetectionResultRepository,
@@ -111,13 +109,13 @@ class LangChainLLMClient:
     """
 
     def __init__(
-        self,
-        chat_model: Union[ChatOpenAI | ChatOllama],
-        backend: str,
-        model_name: str,
-        api_base: str | None,
-        api_key_configured: bool,
-        ollama_base_url: str | None,
+            self,
+            chat_model: Union[ChatOpenAI | ChatOllama],
+            backend: str,
+            model_name: str,
+            api_base: str | None,
+            api_key_configured: bool,
+            ollama_base_url: str | None,
     ):
         self.model = chat_model
         self.backend = backend
@@ -125,7 +123,8 @@ class LangChainLLMClient:
         self.api_base = api_base
         self.api_key_configured = api_key_configured
         self.ollama_base_url = ollama_base_url
-        logger.info(f"🤖 LLM 客户端已初始化 | backend={backend} | model={model_name} | api_key_configured={api_key_configured}")
+        logger.info(
+            f"🤖 LLM 客户端已初始化 | backend={backend} | model={model_name} | api_key_configured={api_key_configured}")
 
     async def evaluate(self, messages: list[ChatMessage], rules: list[DetectionRule]) -> Optional[list[RuleDecision]]:
         if not rules:
@@ -164,7 +163,7 @@ class LangChainLLMClient:
             response = await self.model.ainvoke(
                 [
                     SystemMessage(
-                                                content="""
+                        content="""
 # 角色
 你是聊天规则检测模型。
 
@@ -235,10 +234,10 @@ class LangChainLLMClient:
             return None
 
     async def extract_self_participation(
-        self,
-        event: ChatEvent,
-        context: list[ChatMessage],
-        existing_topics: list[str] | None = None,
+            self,
+            event: ChatEvent,
+            context: list[ChatMessage],
+            existing_topics: list[str] | None = None,
     ) -> dict | None:
         """从目标用户发言及上下文中提取参与画像数据。
 
@@ -349,7 +348,6 @@ class LangChainLLMClient:
         except Exception as e:
             logger.error(f"❌ 参与画像提取异常: {e}")
             return None
-
 
     @staticmethod
     def _response_text(content: object) -> str:
@@ -496,14 +494,14 @@ class RuleBatchScheduler:
     """
 
     def __init__(
-        self,
-        llm_client: LangChainLLMClient,
-        batch_size: int,
-        max_parallel_batches: int,
-        batch_timeout_seconds: float,
-        max_retries: int,
-        rate_limit_per_second: float,
-        idempotency_cache_size: int,
+            self,
+            llm_client: LangChainLLMClient,
+            batch_size: int,
+            max_parallel_batches: int,
+            batch_timeout_seconds: float,
+            max_retries: int,
+            rate_limit_per_second: float,
+            idempotency_cache_size: int,
     ):
         self.llm_client = llm_client
         self.batch_size = max(1, batch_size)
@@ -535,10 +533,10 @@ class RuleBatchScheduler:
         )
 
     async def evaluate_rules(
-        self,
-        messages: list[ChatMessage],
-        rules: list[DetectionRule],
-        request_id: str,
+            self,
+            messages: list[ChatMessage],
+            rules: list[DetectionRule],
+            request_id: str,
     ) -> list[RuleDecision]:
         """执行规则批调度并返回合并后的决策结果。"""
         if not rules:
@@ -546,14 +544,15 @@ class RuleBatchScheduler:
             return []
 
         logger.debug(f"📦 开始规则批调度 | 请求ID={request_id} | 规则数={len(rules)} | 批大小={self.batch_size}")
-        batches = [rules[i : i + self.batch_size] for i in range(0, len(rules), self.batch_size)]
+        batches = [rules[i: i + self.batch_size] for i in range(0, len(rules), self.batch_size)]
         self._metrics.total_requests += 1
         self._metrics.total_batches += len(batches)
         logger.info(f"  📊 批分割完成 | 批次数={len(batches)} | 最大并行={self.max_parallel_batches}")
 
         async def run_batch(index: int, batch_rules: list[DetectionRule]) -> list[RuleDecision]:
             batch_request_id = self._build_batch_request_id(request_id, messages, batch_rules, index)
-            logger.debug(f"  🔄 执行批次 {index+1}/{len(batches)} | 批ID={batch_request_id} | 规则数={len(batch_rules)}")
+            logger.debug(
+                f"  🔄 执行批次 {index + 1}/{len(batches)} | 批ID={batch_request_id} | 规则数={len(batch_rules)}")
             return await self._run_idempotent(batch_request_id, lambda: self._execute_batch(messages, batch_rules))
 
         nested_results = await asyncio.gather(*(run_batch(index, batch) for index, batch in enumerate(batches)))
@@ -563,10 +562,10 @@ class RuleBatchScheduler:
 
     @staticmethod
     def _build_batch_request_id(
-        request_id: str,
-        messages: list[ChatMessage],
-        rules: list[DetectionRule],
-        batch_index: int,
+            request_id: str,
+            messages: list[ChatMessage],
+            rules: list[DetectionRule],
+            batch_index: int,
     ) -> str:
         message_part = "|".join(message.message_id for message in messages)
         rule_part = "|".join(rule.rule_id for rule in rules)
@@ -574,9 +573,9 @@ class RuleBatchScheduler:
         return f"rb:{digest}"
 
     async def _run_idempotent(
-        self,
-        request_id: str,
-        executor: Callable[[], Coroutine[Any, Any, list[RuleDecision]]],
+            self,
+            request_id: str,
+            executor: Callable[[], Coroutine[Any, Any, list[RuleDecision]]],
     ) -> list[RuleDecision]:
         async with self._idempotency_lock:
             cached = self._completed.get(request_id)
@@ -607,9 +606,9 @@ class RuleBatchScheduler:
         return result
 
     async def _execute_batch(
-        self,
-        messages: list[ChatMessage],
-        rules: list[DetectionRule],
+            self,
+            messages: list[ChatMessage],
+            rules: list[DetectionRule],
     ) -> list[RuleDecision]:
         async with self._parallel_semaphore:
             last_error: Exception | None = None
@@ -617,29 +616,30 @@ class RuleBatchScheduler:
                 try:
                     await self._acquire_rate_limit_slot()
                     self._metrics.total_llm_calls += 1
-                    logger.debug(f"🔄 执行第 {attempt+1}/{self.max_retries+1} 次 LLM 调用 | 规则数={len(rules)}")
+                    logger.debug(f"🔄 执行第 {attempt + 1}/{self.max_retries + 1} 次 LLM 调用 | 规则数={len(rules)}")
                     decisions = await asyncio.wait_for(
                         self.llm_client.evaluate(messages=messages, rules=rules),
                         timeout=self.batch_timeout_seconds,
                     )
                     self._metrics.successful_batches += 1
-                    logger.info(f"✅ LLM 批次执行成功 | 决策数={len(decisions)} | 触发={sum(1 for d in decisions if d.triggered)}")
+                    logger.info(
+                        f"✅ LLM 批次执行成功 | 决策数={len(decisions)} | 触发={sum(1 for d in decisions if d.triggered)}")
                     return decisions
                 except asyncio.TimeoutError as e:
                     last_error = e
                     self._metrics.batch_timeouts += 1
-                    logger.warning(f"⚠️ 批次超时 (attempt {attempt+1}): 超时={self.batch_timeout_seconds}s")
+                    logger.warning(f"⚠️ 批次超时 (attempt {attempt + 1}): 超时={self.batch_timeout_seconds}s")
                     if attempt < self.max_retries:
                         self._metrics.retry_attempts += 1
                         logger.info(f"  🔄 将在 100ms 后重试...")
                         await asyncio.sleep(0.1)
                 except Exception as e:
                     last_error = e
-                    logger.error(f"❌ 批次执行异常 (attempt {attempt+1}): {e}")
+                    logger.error(f"❌ 批次执行异常 (attempt {attempt + 1}): {e}")
                     if attempt < self.max_retries:
                         self._metrics.retry_attempts += 1
                         await asyncio.sleep(0.1)
-            
+
             self._metrics.fallback_batches += 1
             logger.error(f"❌ 批次执行失败，使用备用决策 | 最后错误={last_error}")
             return self._fallback_decisions(rules, last_error)
@@ -736,15 +736,16 @@ class DetectionEngine:
     - 将规则按批次并行提交给 LLMClient 进行判断；
     - 将检测结果写入结果仓储并触发通知/外部 Hook。
     """
+
     def __init__(
-        self,
-        rules: RuleRepository,
-        context_service: ContextWindowService,
-        llm_client: LangChainLLMClient,
-        result_repository: DetectionResultRepository,
-        notifiers: list[Notifier],
-        hook_dispatcher: "ExternalHookDispatcher",
-        batch_scheduler: RuleBatchScheduler | None = None,
+            self,
+            rules: RuleRepository,
+            context_service: ContextWindowService,
+            llm_client: LangChainLLMClient,
+            result_repository: DetectionResultRepository,
+            notifiers: list[Notifier],
+            hook_dispatcher: "ExternalHookDispatcher",
+            batch_scheduler: RuleBatchScheduler | None = None,
     ):
         self.rules = rules
         self.context_service = context_service
@@ -785,7 +786,7 @@ class DetectionEngine:
             raise ValueError("When detection_min_new_messages > 1, detection_wait_timeout_seconds must be > 0")
 
         logger.debug(f"📥 接收事件 | 平台={event.platform} | 会话={event.chat_id} | 消息ID={event.message.message_id}")
-        
+
         await self.context_service.store.enqueue_message(
             platform=event.platform,
             chat_type=event.chat_type.value,
@@ -800,7 +801,7 @@ class DetectionEngine:
         min_new = max(1, settings.detection_min_new_messages)
         pending = await self.context_service.store.pending_size(event.platform, event.chat_type.value, event.chat_id)
         logger.info(f"📊 队列状态 | 待处理={pending} | 最小触发={min_new}")
-        
+
         if pending < min_new:
             logger.debug(f"⏳ 消息不足，等待更多消息或超时触发...")
             return None
@@ -814,11 +815,12 @@ class DetectionEngine:
         )
 
     async def _process_event_with_context(self, event: ChatEvent, context_messages: list[ChatMessage]) -> EngineOutput:
-        logger.debug(f"🔍 开始处理事件 | 会话={event.chat_id} | 消息ID={event.message.message_id} | 上下文数={len(context_messages)}")
+        logger.debug(
+            f"🔍 开始处理事件 | 会话={event.chat_id} | 消息ID={event.message.message_id} | 上下文数={len(context_messages)}")
 
         active_rules = [rule for rule in await self.rules.list_enabled() if rule.matcher.matches(event)]
         logger.info(f"📋 适用规则 | 总数={len(active_rules)}")
-        
+
         scheduler_request_id = f"{event.platform}:{event.chat_id}:{event.message.message_id}"
         decisions = await self.batch_scheduler.evaluate_rules(
             messages=context_messages,
@@ -837,7 +839,8 @@ class DetectionEngine:
 
             if decision.triggered and context_messages:
                 earliest_message_id = context_messages[0].message_id
-                is_in_last = await self.result_repository.contains_message_in_last_triggered(decision.rule_id, earliest_message_id)
+                is_in_last = await self.result_repository.contains_message_in_last_triggered(decision.rule_id,
+                                                                                             earliest_message_id)
                 if is_in_last:
                     logger.warning(f"⚠️ 规则 {decision.rule_id} 抑制: 上下文与最后触发重叠")
                     await self.result_repository.merge_into_last_triggered(decision.rule_id, context_messages)
@@ -858,23 +861,25 @@ class DetectionEngine:
             )
             await self.result_repository.add(result)
             all_results.append(result)
-            logger.debug(f"  📍 生成结果 | rule_id={decision.rule_id} | triggered={decision.triggered} | suppressed={suppressed}")
+            logger.debug(
+                f"  📍 生成结果 | rule_id={decision.rule_id} | triggered={decision.triggered} | suppressed={suppressed}")
 
             if not decision.triggered or suppressed:
                 continue
 
             triggered_rule_ids.append(decision.rule_id)
             logger.success(f"🎯 规则触发! | rule_id={decision.rule_id} | confidence={decision.confidence:.2f}")
-            
+
             for notifier in self.notifiers:
                 sent = await notifier.notify(event, decision, context_messages)
                 notify_count += 1 if sent else 0
                 logger.debug(f"  📢 通知器 {notifier.__class__.__name__} 已派发")
-            
+
             await self.hook_dispatcher.dispatch(event, decision, context_messages)
             logger.debug(f"  🔗 Hook 已派发")
 
-        logger.info(f"✅ 事件处理完成 | 事件ID={event_id} | 结果数={len(all_results)} | 触发数={len(triggered_rule_ids)} | 通知数={notify_count}")
+        logger.info(
+            f"✅ 事件处理完成 | 事件ID={event_id} | 结果数={len(all_results)} | 触发数={len(triggered_rule_ids)} | 通知数={notify_count}")
         return EngineOutput(
             event_id=event_id,
             results=all_results,
@@ -883,11 +888,11 @@ class DetectionEngine:
         )
 
     async def _try_trigger(
-        self,
-        platform: str,
-        chat_type: str,
-        chat_id: str,
-        force_all_pending: bool,
+            self,
+            platform: str,
+            chat_type: str,
+            chat_id: str,
+            force_all_pending: bool,
     ) -> EngineOutput | None:
         """尝试触发一次检测。
 
@@ -907,9 +912,9 @@ class DetectionEngine:
         async with state.lock:
             now = datetime.utcnow()
             cooldown = max(0.0, settings.detection_cooldown_seconds)
-            
+
             logger.debug(f"🔒 获取会话锁 | 会话={chat_id} | force_all={force_all_pending}")
-            
+
             if state.last_detection_at and cooldown > 0:
                 due = state.last_detection_at + timedelta(seconds=cooldown)
                 if now < due:
@@ -936,11 +941,11 @@ class DetectionEngine:
             return output
 
     async def _drain_pending_and_detect(
-        self,
-        platform: str,
-        chat_type: str,
-        chat_id: str,
-        force_all_pending: bool,
+            self,
+            platform: str,
+            chat_type: str,
+            chat_id: str,
+            force_all_pending: bool,
     ) -> EngineOutput | None:
         """从 pending 中取出一批消息写入历史并以最后一条为锚触发检测。
 
@@ -951,7 +956,7 @@ class DetectionEngine:
         """
         min_new = max(1, settings.detection_min_new_messages)
         max_count = None if force_all_pending else min_new
-        
+
         logger.debug(f"📤 开始从队列中取出消息 | max_count={max_count} | force_all={force_all_pending}")
 
         pending_messages = await self.context_service.store.pop_pending_messages(
@@ -984,16 +989,16 @@ class DetectionEngine:
         )
         context_messages = await self.context_service.build_context(event)
         logger.debug(f"  ✓ 构建上下文 | 上下文消息数={len(context_messages)}")
-        
+
         return await self._process_event_with_context(event, context_messages)
 
     async def _ensure_cooldown_task(
-        self,
-        platform: str,
-        chat_type: str,
-        chat_id: str,
-        state: ChannelRuntimeState,
-        delay_seconds: float,
+            self,
+            platform: str,
+            chat_type: str,
+            chat_id: str,
+            state: ChannelRuntimeState,
+            delay_seconds: float,
     ) -> None:
         """安排一个冷却到期后的重试任务。
 
@@ -1018,11 +1023,11 @@ class DetectionEngine:
         state.cooldown_task = asyncio.create_task(_run())
 
     async def _ensure_timeout_task(
-        self,
-        platform: str,
-        chat_type: str,
-        chat_id: str,
-        state: ChannelRuntimeState,
+            self,
+            platform: str,
+            chat_type: str,
+            chat_id: str,
+            state: ChannelRuntimeState,
     ) -> None:
         """根据当前 pending 状态与配置，安排或取消等待超时强制触发的任务。
 
@@ -1058,10 +1063,12 @@ class DetectionEngine:
 
         state.timeout_task = asyncio.create_task(_run())
 
+
 class SelfMessageMemoryService:
     """当用户/机器人自身发言时，识别并累积更新用户行为画像的服务。"""
 
-    def __init__(self, llm_client: LangChainLLMClient, memory_repository: MemoryRepository, context_service: ContextWindowService):
+    def __init__(self, llm_client: LangChainLLMClient, memory_repository: MemoryRepository,
+                 context_service: ContextWindowService):
         self.llm_client = llm_client
         self.memory_repository = memory_repository
         self.context_service = context_service
@@ -1215,14 +1222,14 @@ class SuggestionService:
         logger.debug(f"📊 为规则 {rule_id} 生成改进建议")
         feedbacks = await self.feedback_repository.list_by_rule(rule_id)
         logger.debug(f"  ✓ 查询反馈 | 反馈数={len(feedbacks)}")
-        
+
         if not feedbacks:
             logger.info(f"ℹ️ 规则 {rule_id} 无反馈，无法生成建议")
             return ["暂无反馈数据，可先补充正负样本描述。"]
 
         avg_score = sum(feedback.score for feedback in feedbacks) / len(feedbacks)
         logger.debug(f"  📈 平均反馈评分={avg_score:.2f}")
-        
+
         suggestions = []
         if avg_score < 3:
             suggestions.append("命中质量偏低：建议补充排除条件并提高触发阈值。")
@@ -1232,7 +1239,7 @@ class SuggestionService:
         text_feedback = [feedback.comment for feedback in feedbacks if feedback.comment]
         if text_feedback:
             suggestions.append(f"可合并 {len(text_feedback)} 条用户意见形成新版规则描述。")
-        
+
         logger.success(f"✅ 改进建议生成完成 | 建议数={len(suggestions)}")
         return suggestions
 

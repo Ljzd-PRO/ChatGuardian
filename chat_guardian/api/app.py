@@ -130,7 +130,8 @@ class AppContainer:
         )
 
         self.suggestion_service = SuggestionService(self.memory_repository, self.feedback_repository)
-        self.self_message_service = SelfMessageMemoryService(self.llm_client, self.memory_repository, self.context_service)
+        self.self_message_service = SelfMessageMemoryService(self.llm_client, self.memory_repository,
+                                                             self.context_service)
         notifiers = build_notifiers_from_settings()
 
         self.detection_engine = DetectionEngine(
@@ -340,9 +341,8 @@ def create_app() -> FastAPI:
         return [
             {
                 "name": adapter.name,
-                "running": True # Need to check if there's a task or similar, mock running for now.
+                "running": True  # Need to check if there's a task or similar, mock running for now.
             } for adapter in container.adapter_manager.adapters
         ]
 
     return app
-

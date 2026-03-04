@@ -8,14 +8,14 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import datetime
+from enum import Enum
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
-from datetime import datetime
-from enum import Enum
 
 if TYPE_CHECKING:
-    from chat_guardian.matcher import Matcher
+    pass
 
 
 class ChatType(str, Enum):
@@ -166,7 +166,7 @@ class RuleParameterSpec(BaseModel):
     required: bool = True
 
 
-from chat_guardian.matcher import MatchAll, Matcher, MatcherUnion
+from chat_guardian.matcher import MatchAll, MatcherUnion
 
 
 class DetectionRule(BaseModel):

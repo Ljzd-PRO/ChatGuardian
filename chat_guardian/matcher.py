@@ -142,7 +142,8 @@ class MatchAdapter(Matcher):
 
 # Discriminated union of all concrete Matcher types, used for JSON serialization/deserialization.
 MatcherUnion = Annotated[
-    Union[AndMatcher, OrMatcher, NotMatcher, MatchAll, MatchSender, MatchMention, MatchChatInfo, MatchChatType, MatchAdapter],
+    Union[
+        AndMatcher, OrMatcher, NotMatcher, MatchAll, MatchSender, MatchMention, MatchChatInfo, MatchChatType, MatchAdapter],
     Field(discriminator="type"),
 ]
 

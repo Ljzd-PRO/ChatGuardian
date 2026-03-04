@@ -30,7 +30,8 @@ class EmailNotifier(Notifier):
         在未配置 SMTP 或接收邮箱时，返回 False 表示未发送。
         """
         if not self.config.to_email or not settings.smtp_host or not settings.smtp_sender:
-            logger.warning(f"⚠️ 邮件通知未配置 | to_email={bool(self.config.to_email)} | smtp_host={bool(settings.smtp_host)}")
+            logger.warning(
+                f"⚠️ 邮件通知未配置 | to_email={bool(self.config.to_email)} | smtp_host={bool(settings.smtp_host)}")
             return False
 
         logger.debug(f"📧 准备发送邮件通知 | 收件人={self.config.to_email} | 规则={decision.rule_id}")

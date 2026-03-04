@@ -1,7 +1,7 @@
+import asyncio
 from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
-import asyncio
 
 from chat_guardian.api.app import create_app
 from chat_guardian.domain import ChatMessage, ChatEvent, ChatType, MessageContent, ContentType, UserInfo

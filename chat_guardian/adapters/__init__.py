@@ -9,12 +9,12 @@
 from __future__ import annotations
 
 from .base import Adapter, EventHandler
+from .feishu import FeishuAdapter
 from .manager import AdapterManager, build_adapters_from_settings
 from .onebot import OneBotAdapter, OneBotAdapterConfig
 from .telegram import TelegramAdapter
-from .wechat import WeChatAdapter
-from .feishu import FeishuAdapter
 from .virtual import VirtualAdapter, VirtualAdapterConfig, VirtualScriptedMessage, load_virtual_scripted_messages
+from .wechat import WeChatAdapter
 
 __all__ = [
     "Adapter",

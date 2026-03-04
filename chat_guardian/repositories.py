@@ -98,6 +98,7 @@ def _get_db_manager(database_url: str | None) -> _RepositoryDatabase | None:
         _DB_MANAGERS[normalized_key] = manager
     return manager
 
+
 class ChatHistoryStore:
     """将消息按 adapter/chat_type/chat_id 分类保存在内存中。
 
@@ -140,7 +141,8 @@ class ChatHistoryStore:
                 while len(bucket) > self.history_list_limit:
                     bucket.popleft()
 
-    def _insert_chat_message(self, bucket: str, platform: str, chat_type: str, chat_id: str, message: ChatMessage) -> None:
+    def _insert_chat_message(self, bucket: str, platform: str, chat_type: str, chat_id: str,
+                             message: ChatMessage) -> None:
         if self._db is None:
             return
 
@@ -156,7 +158,8 @@ class ChatHistoryStore:
             )
             session.commit()
 
-    def _delete_oldest_chat_messages(self, bucket: str, platform: str, chat_type: str, chat_id: str, count: int) -> None:
+    def _delete_oldest_chat_messages(self, bucket: str, platform: str, chat_type: str, chat_id: str,
+                                     count: int) -> None:
         if self._db is None or count <= 0:
             return
 
@@ -180,7 +183,8 @@ class ChatHistoryStore:
     def _chat_type_key(chat_type: ChatType | str) -> str:
         return chat_type.value if isinstance(chat_type, ChatType) else str(chat_type)
 
-    async def enqueue_message(self, platform: str, chat_type: ChatType | str, chat_id: str, message: ChatMessage) -> None:
+    async def enqueue_message(self, platform: str, chat_type: ChatType | str, chat_id: str,
+                              message: ChatMessage) -> None:
         """将新消息追加到未处理队列（按 platform/chat_type/chat_id 分类）。
 
         如果队列超过 `pending_queue_limit`，会从最旧处丢弃消息以保证容量上限。
@@ -207,10 +211,10 @@ class ChatHistoryStore:
         return len(self.pending[platform][self._chat_type_key(chat_type)][chat_id])
 
     async def oldest_pending_timestamp(
-        self,
-        platform: str,
-        chat_type: ChatType | str,
-        chat_id: str,
+            self,
+            platform: str,
+            chat_type: ChatType | str,
+            chat_id: str,
     ) -> datetime | None:
         """返回队列中最早一条未处理消息的时间戳，如果队列为空返回 None。"""
         bucket = self.pending[platform][self._chat_type_key(chat_type)][chat_id]
@@ -219,11 +223,11 @@ class ChatHistoryStore:
         return bucket[0].timestamp
 
     async def pop_pending_messages(
-        self,
-        platform: str,
-        chat_type: ChatType | str,
-        chat_id: str,
-        max_count: int | None,
+            self,
+            platform: str,
+            chat_type: ChatType | str,
+            chat_id: str,
+            max_count: int | None,
     ) -> list[ChatMessage]:
         """从未处理队列头部弹出最多 `max_count` 条消息并返回。
 
@@ -242,11 +246,11 @@ class ChatHistoryStore:
         return items
 
     async def append_history_message(
-        self,
-        platform: str,
-        chat_type: ChatType | str,
-        chat_id: str,
-        message: ChatMessage,
+            self,
+            platform: str,
+            chat_type: ChatType | str,
+            chat_id: str,
+            message: ChatMessage,
     ) -> None:
         """将单条消息追加到已处理滚动历史中，超过上限会从旧端丢弃。"""
         chat_type_key = self._chat_type_key(chat_type)
@@ -261,23 +265,23 @@ class ChatHistoryStore:
             bucket.popleft()
 
     async def append_history_messages(
-        self,
-        platform: str,
-        chat_type: ChatType | str,
-        chat_id: str,
-        messages: list[ChatMessage],
+            self,
+            platform: str,
+            chat_type: ChatType | str,
+            chat_id: str,
+            messages: list[ChatMessage],
     ) -> None:
         """将多条消息按顺序追加到已处理滚动历史中。"""
         for message in messages:
             await self.append_history_message(platform, chat_type, chat_id, message)
 
     async def recent_history_messages(
-        self,
-        platform: str,
-        chat_type: ChatType | str,
-        chat_id: str,
-        before_message_id: str | None,
-        limit: int,
+            self,
+            platform: str,
+            chat_type: ChatType | str,
+            chat_id: str,
+            before_message_id: str | None,
+            limit: int,
     ) -> list[ChatMessage]:
         """获取指定会话在 `before_message_id` 之前的最近若干条历史消息。
 
@@ -296,6 +300,7 @@ class ChatHistoryStore:
             except StopIteration:
                 pass
         return bucket[-limit:]
+
 
 class RuleRepository:
     """内存中的规则存储实现，支持上载/列举已启用规则。"""
@@ -434,7 +439,8 @@ class DetectionResultRepository:
             self.results_by_rule[result.rule_id].append(result)
             if result.decision.triggered and not result.trigger_suppressed:
                 self.last_triggered_by_rule[result.rule_id] = result
-                self.last_triggered_message_ids[result.rule_id] = {message.message_id for message in result.context_messages}
+                self.last_triggered_message_ids[result.rule_id] = {message.message_id for message in
+                                                                   result.context_messages}
 
     async def add(self, result: DetectionResult) -> None:
         """新增一条检测结果，并同步更新按规则索引。"""
@@ -456,7 +462,8 @@ class DetectionResultRepository:
 
         if result.decision.triggered and not result.trigger_suppressed:
             self.last_triggered_by_rule[result.rule_id] = result
-            self.last_triggered_message_ids[result.rule_id] = {message.message_id for message in result.context_messages}
+            self.last_triggered_message_ids[result.rule_id] = {message.message_id for message in
+                                                               result.context_messages}
 
     async def list_by_rule(self, rule_id: str) -> list[DetectionResult]:
         """返回指定规则的全部检测结果。"""
@@ -466,7 +473,8 @@ class DetectionResultRepository:
         """O(1) 判断某消息是否在该规则最近一次“已触发且未抑制”的结果里。"""
         return message_id in self.last_triggered_message_ids.get(rule_id, set())
 
-    async def merge_into_last_triggered(self, rule_id: str, new_context_messages: list[ChatMessage]) -> DetectionResult | None:
+    async def merge_into_last_triggered(self, rule_id: str,
+                                        new_context_messages: list[ChatMessage]) -> DetectionResult | None:
         """将新增上下文消息并入该规则最近一次触发结果，避免重复触发。"""
         last = self.last_triggered_by_rule.get(rule_id)
         if last is None:

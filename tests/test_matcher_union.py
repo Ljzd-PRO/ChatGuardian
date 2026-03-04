@@ -6,8 +6,6 @@ that AND/OR nesting works, and that DetectionRule accepts the full union.
 """
 from datetime import datetime
 
-import pytest
-
 from chat_guardian.domain import (
     ChatEvent,
     ChatMessage,
@@ -30,11 +28,11 @@ from chat_guardian.matcher import (
 
 
 def _make_event(
-    chat_type: ChatType = ChatType.GROUP,
-    chat_id: str = "c-1",
-    sender_id: str = "u-1",
-    sender_name: str = "user",
-    platform: str = "onebot",
+        chat_type: ChatType = ChatType.GROUP,
+        chat_id: str = "c-1",
+        sender_id: str = "u-1",
+        sender_name: str = "user",
+        platform: str = "onebot",
 ) -> ChatEvent:
     msg = ChatMessage(
         message_id="m-1",

@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import chat_guardian.notifiers.bark as bark_module
 from chat_guardian.domain import (
     ChatEvent,
     ChatMessage,
@@ -9,7 +10,6 @@ from chat_guardian.domain import (
     RuleDecision,
 )
 from chat_guardian.notifiers.bark import BarkNotificationConfig, BarkNotifier
-import chat_guardian.notifiers.bark as bark_module
 
 
 class _FakeResponse:

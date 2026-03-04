@@ -46,7 +46,7 @@ class InternalRuleGenerationBackend(RuleGenerationBackend):
     @staticmethod
     def _extract_topics(utterance: str) -> list[str]:
         terms = [term for term in re.split(r"[，,。\s]+", utterance) if term]
-        filtered = [term for term in terms if len(term) >= 2 and not term.startswith("@")] 
+        filtered = [term for term in terms if len(term) >= 2 and not term.startswith("@")]
         return filtered[:6]
 
     @staticmethod

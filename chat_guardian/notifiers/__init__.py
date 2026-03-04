@@ -6,8 +6,8 @@
 - 具体通知器实现见 notifiers 子模块。
 """
 
-from .base import Notifier
 from .bark import BarkNotifier, BarkNotificationConfig, build_bark_notifier_from_settings
+from .base import Notifier
 from .email import EmailNotifier, NotificationConfig, build_email_notifier_from_settings
 
 
@@ -24,11 +24,12 @@ def build_notifiers_from_settings() -> list[Notifier]:
 
     return notifiers
 
+
 __all__ = [
-	"Notifier",
-	"EmailNotifier",
-	"NotificationConfig",
-	"BarkNotifier",
-	"BarkNotificationConfig",
-	"build_notifiers_from_settings",
+    "Notifier",
+    "EmailNotifier",
+    "NotificationConfig",
+    "BarkNotifier",
+    "BarkNotificationConfig",
+    "build_notifiers_from_settings",
 ]

@@ -1,6 +1,7 @@
 from __future__ import annotations
-import os
+
 import asyncio
+import os
 
 from chat_guardian.adapters import AdapterManager
 from chat_guardian.adapters.virtual import VirtualAdapter, VirtualAdapterConfig, VirtualScriptedMessage
@@ -9,6 +10,7 @@ from chat_guardian.matcher import MatchChatInfo
 from chat_guardian.repositories import ChatHistoryStore, DetectionResultRepository, RuleRepository
 from chat_guardian.services import ContextWindowService, DetectionEngine, ExternalHookDispatcher, build_llm_client
 from chat_guardian.settings import settings
+
 
 async def main():
     # 配置 DeepSeek API，优先从环境变量读取
@@ -35,7 +37,7 @@ async def main():
     for idx, topic in enumerate(topics):
         await rule_repo.upsert(
             DetectionRule(
-                rule_id=f"rule-{idx+1}",
+                rule_id=f"rule-{idx + 1}",
                 name=f"检测主题-{topic}",
                 description=f"检测主题：{topic}",
                 matcher=MatchChatInfo(chat_id="virtual-group"),
@@ -60,30 +62,51 @@ async def main():
     # 聊天消息
     scripted_messages = [
         # 香菜话题
-        VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-1", sender_name="A", text="我还好，有香菜挑出来就好了", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-2", sender_name="B", text="我老公吃香菜会吐", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-3", sender_name="C", text="不知道是不是过敏", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-4", sender_name="D", text="我女朋友也不吃香菜", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-2", sender_id="u-5", sender_name="E", text="每次都记得备注不加", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-2", sender_id="u-1", sender_name="A", text="实在有就挑给我", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-2", sender_id="u-2", sender_name="B", text="这样啊", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-3", sender_id="u-6", sender_name="F", text="我们这桌也有人不吃香菜", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-3", sender_id="u-3", sender_name="C", text="下次统一备注不要放香菜", delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-1", sender_name="A",
+                               text="我还好，有香菜挑出来就好了", delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-2", sender_name="B", text="我老公吃香菜会吐",
+                               delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-3", sender_name="C", text="不知道是不是过敏",
+                               delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-4", sender_name="D", text="我女朋友也不吃香菜",
+                               delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-2", sender_id="u-5", sender_name="E", text="每次都记得备注不加",
+                               delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-2", sender_id="u-1", sender_name="A", text="实在有就挑给我",
+                               delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-2", sender_id="u-2", sender_name="B", text="这样啊",
+                               delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-3", sender_id="u-6", sender_name="F",
+                               text="我们这桌也有人不吃香菜", delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-3", sender_id="u-3", sender_name="C",
+                               text="下次统一备注不要放香菜", delay_seconds=0),
         # 电动汽车品牌选择
-        VirtualScriptedMessage(chat_id="virtual-group-4", sender_id="u-7", sender_name="G", text="最近在看电动车，特斯拉和比亚迪怎么选？", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-4", sender_id="u-8", sender_name="H", text="我觉得比亚迪性价比高，售后也方便。", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-4", sender_id="u-9", sender_name="I", text="特斯拉自动驾驶体验不错，就是贵点。", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-4", sender_id="u-7", sender_name="G", text="主要是家里能不能装充电桩还没定。", delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-4", sender_id="u-7", sender_name="G",
+                               text="最近在看电动车，特斯拉和比亚迪怎么选？", delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-4", sender_id="u-8", sender_name="H",
+                               text="我觉得比亚迪性价比高，售后也方便。", delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-4", sender_id="u-9", sender_name="I",
+                               text="特斯拉自动驾驶体验不错，就是贵点。", delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-4", sender_id="u-7", sender_name="G",
+                               text="主要是家里能不能装充电桩还没定。", delay_seconds=0),
         # 单机游戏讨论
-        VirtualScriptedMessage(chat_id="virtual-group-5", sender_id="u-10", sender_name="J", text="最近有啥好玩的单机游戏推荐吗？", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-5", sender_id="u-11", sender_name="K", text="我刚通关了《艾尔登法环》，超赞！", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-5", sender_id="u-12", sender_name="L", text="喜欢解谜的话可以试试《未上锁的房间》系列。", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-5", sender_id="u-10", sender_name="J", text="感谢，回头都试试！", delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-5", sender_id="u-10", sender_name="J",
+                               text="最近有啥好玩的单机游戏推荐吗？", delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-5", sender_id="u-11", sender_name="K",
+                               text="我刚通关了《艾尔登法环》，超赞！", delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-5", sender_id="u-12", sender_name="L",
+                               text="喜欢解谜的话可以试试《未上锁的房间》系列。", delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-5", sender_id="u-10", sender_name="J", text="感谢，回头都试试！",
+                               delay_seconds=0),
         # 电子设备选择
-        VirtualScriptedMessage(chat_id="virtual-group-6", sender_id="u-13", sender_name="M", text="想换个平板，iPad 和小米平板怎么选？", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-6", sender_id="u-14", sender_name="N", text="iPad生态好，适合画画和学习。", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-6", sender_id="u-15", sender_name="O", text="小米平板性价比高，安卓自由度大。", delay_seconds=0),
-        VirtualScriptedMessage(chat_id="virtual-group-6", sender_id="u-13", sender_name="M", text="主要是预算有限，可能会选小米。", delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-6", sender_id="u-13", sender_name="M",
+                               text="想换个平板，iPad 和小米平板怎么选？", delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-6", sender_id="u-14", sender_name="N",
+                               text="iPad生态好，适合画画和学习。", delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-6", sender_id="u-15", sender_name="O",
+                               text="小米平板性价比高，安卓自由度大。", delay_seconds=0),
+        VirtualScriptedMessage(chat_id="virtual-group-6", sender_id="u-13", sender_name="M",
+                               text="主要是预算有限，可能会选小米。", delay_seconds=0),
     ]
 
     manager = AdapterManager([VirtualAdapter(VirtualAdapterConfig(scripted_messages=scripted_messages))])
@@ -113,7 +136,8 @@ async def main():
             results = result_repo.results
             if len(results) > last_count:
                 for result in results[last_count:]:
-                    print(f"[DETECT] rule_id={result.rule_id}, topic={result.decision.reason}, params={result.decision.extracted_params}")
+                    print(
+                        f"[DETECT] rule_id={result.rule_id}, topic={result.decision.reason}, params={result.decision.extracted_params}")
                 last_count = len(results)
             diagnostics = engine.batch_scheduler.diagnostics()
             metrics = diagnostics.metrics
@@ -137,6 +161,7 @@ async def main():
     for result in result_repo.results:
         print(f"rule_id={result.rule_id}, topic={result.decision.reason}, params={result.decision.extracted_params}")
     print("--- END ---\n")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

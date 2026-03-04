@@ -12,10 +12,10 @@ class RuleAuthoringService:
         self.external_backend = external_backend
 
     async def generate_rule(
-        self,
-        utterance: str,
-        use_external: bool,
-        override_system_prompt: str | None = None,
+            self,
+            utterance: str,
+            use_external: bool,
+            override_system_prompt: str | None = None,
     ) -> DetectionRule:
         logger.debug(f"📝 开始规则生成 | use_external={use_external} | 文本长度={len(utterance)}")
 

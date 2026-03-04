@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import os
-
 import asyncio
+import os
 
 import pytest
 
@@ -45,7 +44,8 @@ async def test_virtual_adapter_with_deepseek_real_run() -> None:
     try:
         settings.llm_langchain_backend = "openai_compatible"
         settings.llm_langchain_model = os.getenv("CHAT_GUARDIAN_LLM_LANGCHAIN_MODEL", "deepseek-chat")
-        settings.llm_langchain_api_base = os.getenv("CHAT_GUARDIAN_LLM_LANGCHAIN_API_BASE", "https://api.deepseek.com/v1")
+        settings.llm_langchain_api_base = os.getenv("CHAT_GUARDIAN_LLM_LANGCHAIN_API_BASE",
+                                                    "https://api.deepseek.com/v1")
         settings.llm_langchain_api_key = api_key
 
         settings.llm_rules_per_batch = 2
@@ -85,15 +85,24 @@ async def test_virtual_adapter_with_deepseek_real_run() -> None:
         )
 
         scripted_messages = [
-            VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-1", sender_name="A", text="我还好，有香菜挑出来就好了", delay_seconds=0.05),
-            VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-2", sender_name="B", text="我老公吃香菜会吐", delay_seconds=0.12),
-            VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-3", sender_name="C", text="不知道是不是过敏", delay_seconds=0.09),
-            VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-4", sender_name="D", text="我女朋友也不吃香菜", delay_seconds=0.11),
-            VirtualScriptedMessage(chat_id="virtual-group-2", sender_id="u-5", sender_name="E", text="每次都记得备注不加", delay_seconds=0.07),
-            VirtualScriptedMessage(chat_id="virtual-group-2", sender_id="u-1", sender_name="A", text="实在有就挑给我", delay_seconds=0.08),
-            VirtualScriptedMessage(chat_id="virtual-group-2", sender_id="u-2", sender_name="B", text="这样啊", delay_seconds=0.06),
-            VirtualScriptedMessage(chat_id="virtual-group-3", sender_id="u-6", sender_name="F", text="我们这桌也有人不吃香菜", delay_seconds=0.10),
-            VirtualScriptedMessage(chat_id="virtual-group-3", sender_id="u-3", sender_name="C", text="下次统一备注不要放香菜", delay_seconds=0.12),
+            VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-1", sender_name="A",
+                                   text="我还好，有香菜挑出来就好了", delay_seconds=0.05),
+            VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-2", sender_name="B", text="我老公吃香菜会吐",
+                                   delay_seconds=0.12),
+            VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-3", sender_name="C", text="不知道是不是过敏",
+                                   delay_seconds=0.09),
+            VirtualScriptedMessage(chat_id="virtual-group-1", sender_id="u-4", sender_name="D",
+                                   text="我女朋友也不吃香菜", delay_seconds=0.11),
+            VirtualScriptedMessage(chat_id="virtual-group-2", sender_id="u-5", sender_name="E",
+                                   text="每次都记得备注不加", delay_seconds=0.07),
+            VirtualScriptedMessage(chat_id="virtual-group-2", sender_id="u-1", sender_name="A", text="实在有就挑给我",
+                                   delay_seconds=0.08),
+            VirtualScriptedMessage(chat_id="virtual-group-2", sender_id="u-2", sender_name="B", text="这样啊",
+                                   delay_seconds=0.06),
+            VirtualScriptedMessage(chat_id="virtual-group-3", sender_id="u-6", sender_name="F",
+                                   text="我们这桌也有人不吃香菜", delay_seconds=0.10),
+            VirtualScriptedMessage(chat_id="virtual-group-3", sender_id="u-3", sender_name="C",
+                                   text="下次统一备注不要放香菜", delay_seconds=0.12),
         ]
 
         manager = AdapterManager([VirtualAdapter(VirtualAdapterConfig(scripted_messages=scripted_messages))])
