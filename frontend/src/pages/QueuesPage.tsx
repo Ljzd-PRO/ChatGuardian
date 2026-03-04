@@ -38,10 +38,10 @@ function QueueTable({ messages }: { messages: QueueMessage[] }) {
           selectedKeys={[typeFilter]}
           onSelectionChange={k => setTypeFilter(Array.from(k)[0] as string ?? 'all')}
         >
-          <>
-            <SelectItem key="all">All types</SelectItem>
-            {types.map(t => <SelectItem key={t}>{t}</SelectItem>)}
-          </>
+          {[
+            <SelectItem key="all">All types</SelectItem>,
+            ...types.map(t => <SelectItem key={t}>{t}</SelectItem>),
+          ]}
         </Select>
       </div>
       <Table aria-label="Messages" removeWrapper>

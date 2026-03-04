@@ -390,7 +390,10 @@ def create_app() -> FastAPI:
 
     # ── Logs ─────────────────────────────────────────────────────────────────
 
-    _log_buffer: list[dict] = []
+    _log_buffer: "deque[dict]"
+
+    from collections import deque
+    _log_buffer = deque(maxlen=500)
 
     try:
         from loguru import logger as _loguru_logger
@@ -404,8 +407,6 @@ def create_app() -> FastAPI:
                     "message": record["message"],
                 }
             )
-            if len(_log_buffer) > 500:
-                _log_buffer.pop(0)
 
         _loguru_logger.add(_sink, format="{message}")
     except Exception:
@@ -413,7 +414,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/logs")
     async def get_logs(limit: int = 100):
-        return list(reversed(_log_buffer[-limit:]))
+        return list(reversed(list(_log_buffer)[-limit:]))
 
     # ── User Profiles ─────────────────────────────────────────────────────────
 
