@@ -28,17 +28,23 @@ function LeafEditor({ value, onChange }: { value: MatcherUnion; onChange: (m: Ma
       case 'chat': onChange({ type: 'chat', chat_id: '' }); break
       case 'chat_type': onChange({ type: 'chat_type', chat_type: 'group' }); break
       case 'adapter': onChange({ type: 'adapter', adapter_name: '' }); break
+      case 'and': onChange({ type: 'and', matchers: [] }); break
+      case 'or': onChange({ type: 'or', matchers: [] }); break
+      case 'not': onChange({ type: 'not', matcher: { type: 'all' } }); break
       default: onChange({ type: 'all' })
     }
   }
 
   const typeOptions = [
-    { value: 'all', label: 'All' },
-    { value: 'sender', label: 'Sender' },
-    { value: 'mention', label: 'Mention' },
-    { value: 'chat', label: 'Chat' },
-    { value: 'chat_type', label: 'Chat Type' },
-    { value: 'adapter', label: 'Adapter' },
+    { value: 'all', label: '🌟 全匹配 (All)' },
+    { value: 'sender', label: '👤 发送者 (Sender)' },
+    { value: 'mention', label: '📢 @提及 (Mention)' },
+    { value: 'chat', label: '💬 聊天室 (Chat)' },
+    { value: 'chat_type', label: '📝 聊天类型 (Chat Type)' },
+    { value: 'adapter', label: '🔌 适配器 (Adapter)' },
+    { value: 'and', label: '🔵 AND 组 (全部满足)' },
+    { value: 'or', label: '🟣 OR 组 (任一满足)' },
+    { value: 'not', label: '🟥 NOT 组 (条件取反)' },
   ]
 
   return (
@@ -47,7 +53,7 @@ function LeafEditor({ value, onChange }: { value: MatcherUnion; onChange: (m: Ma
         value={type}
         onChange={handleTypeChange}
         options={typeOptions}
-        style={{ width: 120 }}
+        style={{ width: 200 }}
         size="small"
       />
       {(type === 'sender' || type === 'mention') && (
@@ -95,9 +101,15 @@ function LeafEditor({ value, onChange }: { value: MatcherUnion; onChange: (m: Ma
           onChange={e => onChange({ type: 'adapter', adapter_name: e.target.value })}
         />
       )}
-      {type === 'all' && <Tag color="blue">Match All</Tag>}
+      {type === 'all' && <Tag color="blue">匹配所有消息</Tag>}
     </Space>
   )
+}
+
+const GROUP_LABELS: Record<string, string> = {
+  and: '🔵 AND — 所有条件都要满足',
+  or: '🟣 OR — 任一条件满足即可',
+  not: '🟥 NOT — 子条件结果取反',
 }
 
 export default function MatcherEditor({ value, onChange, onDelete }: MatcherEditorProps) {
@@ -108,6 +120,11 @@ export default function MatcherEditor({ value, onChange, onDelete }: MatcherEdit
     value.type === 'and' ? '#1677ff' :
     value.type === 'or' ? '#722ed1' :
     value.type === 'not' ? '#ff4d4f' : '#d9d9d9'
+
+  const bgColor =
+    value.type === 'and' ? '#f0f7ff' :
+    value.type === 'or' ? '#f9f0ff' :
+    value.type === 'not' ? '#fff1f0' : 'transparent'
 
   function addChild(childType: 'and' | 'or' | 'not' | 'leaf') {
     let child: MatcherUnion
@@ -146,11 +163,13 @@ export default function MatcherEditor({ value, onChange, onDelete }: MatcherEdit
   }
 
   return (
-    <div style={{ borderLeft: `3px solid ${borderColor}`, paddingLeft: 12, marginBottom: 8 }}>
+    <div style={{ borderLeft: `3px solid ${borderColor}`, background: bgColor, paddingLeft: 12, paddingTop: 6, paddingBottom: 6, marginBottom: 8, borderRadius: '0 4px 4px 0' }}>
       <Space style={{ marginBottom: 4 }}>
-        <Tag color={value.type === 'and' ? 'blue' : value.type === 'or' ? 'purple' : value.type === 'not' ? 'red' : 'default'}>
-          {value.type.toUpperCase()}
-        </Tag>
+        {(isGroup || isNot) && (
+          <Tag color={value.type === 'and' ? 'blue' : value.type === 'or' ? 'purple' : 'red'} style={{ fontWeight: 600 }}>
+            {GROUP_LABELS[value.type]}
+          </Tag>
+        )}
         {onDelete && (
           <Button size="small" danger icon={<DeleteOutlined />} onClick={onDelete} />
         )}
@@ -166,11 +185,14 @@ export default function MatcherEditor({ value, onChange, onDelete }: MatcherEdit
               onDelete={() => deleteChild(i)}
             />
           ))}
-          <Space>
-            <Button size="small" icon={<PlusOutlined />} onClick={() => addChild('leaf')}>Leaf</Button>
-            <Button size="small" icon={<PlusOutlined />} onClick={() => addChild('and')} style={{ color: '#1677ff' }}>AND</Button>
-            <Button size="small" icon={<PlusOutlined />} onClick={() => addChild('or')} style={{ color: '#722ed1' }}>OR</Button>
-            <Button size="small" icon={<PlusOutlined />} onClick={() => addChild('not')} style={{ color: '#ff4d4f' }}>NOT</Button>
+          {(value as AndMatcher | OrMatcher).matchers.length === 0 && (
+            <div style={{ color: '#aaa', marginBottom: 6, fontSize: 12 }}>（此组内暂无条件，请通过下方按钮添加子条件）</div>
+          )}
+          <Space wrap>
+            <Button size="small" icon={<PlusOutlined />} onClick={() => addChild('leaf')}>➕ 条件</Button>
+            <Button size="small" icon={<PlusOutlined />} onClick={() => addChild('and')} style={{ color: '#1677ff', borderColor: '#1677ff' }}>🔵 AND 子组</Button>
+            <Button size="small" icon={<PlusOutlined />} onClick={() => addChild('or')} style={{ color: '#722ed1', borderColor: '#722ed1' }}>🟣 OR 子组</Button>
+            <Button size="small" icon={<PlusOutlined />} onClick={() => addChild('not')} style={{ color: '#ff4d4f', borderColor: '#ff4d4f' }}>🟥 NOT 子组</Button>
           </Space>
         </>
       )}
