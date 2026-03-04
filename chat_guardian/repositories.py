@@ -9,10 +9,80 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from datetime import datetime
+from typing import Protocol
 
 from chat_guardian.domain import ChatMessage, ChatType, DetectionResult, DetectionRule, Feedback, UserMemoryFact
-from chat_guardian.services import ChatHistoryStore, RuleRepository, FeedbackRepository, DetectionResultRepository, \
-    MemoryRepository
+
+
+class ChatHistoryStore(Protocol):
+    """消息缓冲与历史存储协议。"""
+
+    async def enqueue_message(self, platform: str, chat_type: str, chat_id: str, message: ChatMessage) -> None: ...
+
+    async def pending_size(self, platform: str, chat_type: str, chat_id: str) -> int: ...
+
+    async def pop_pending_messages(
+        self,
+        platform: str,
+        chat_type: str,
+        chat_id: str,
+        max_count: int | None,
+    ) -> list[ChatMessage]: ...
+
+    async def append_history_messages(
+        self,
+        platform: str,
+        chat_type: str,
+        chat_id: str,
+        messages: list[ChatMessage],
+    ) -> None: ...
+
+    async def recent_history_messages(
+        self,
+        platform: str,
+        chat_type: str,
+        chat_id: str,
+        before_message_id: str | None,
+        limit: int,
+    ) -> list[ChatMessage]: ...
+
+
+class RuleRepository(Protocol):
+    """规则仓储协议，支持列举/上载/查询规则。"""
+
+    async def list_enabled(self) -> list[DetectionRule]: ...
+
+    async def upsert(self, rule: DetectionRule) -> DetectionRule: ...
+
+    async def get(self, rule_id: str) -> DetectionRule | None: ...
+
+
+class FeedbackRepository(Protocol):
+    """用户反馈仓储协议。"""
+
+    async def add(self, feedback: Feedback) -> None: ...
+
+    async def list_by_rule(self, rule_id: str) -> list[Feedback]: ...
+
+
+class MemoryRepository(Protocol):
+    """用户记忆事实仓储协议。"""
+
+    async def add_fact(self, fact: UserMemoryFact) -> None: ...
+
+    async def list_user_facts(self, user_id: str) -> list[UserMemoryFact]: ...
+
+
+class DetectionResultRepository(Protocol):
+    """检测结果持久化（或临时记录）接口。"""
+
+    async def add(self, result: DetectionResult) -> None: ...
+
+    async def list_by_rule(self, rule_id: str) -> list[DetectionResult]: ...
+
+    async def contains_message_in_last_triggered(self, rule_id: str, message_id: str) -> bool: ...
+
+    async def merge_into_last_triggered(self, rule_id: str, new_context_messages: list[ChatMessage]) -> DetectionResult | None: ...
 
 
 class InMemoryChatHistoryStore(ChatHistoryStore):
