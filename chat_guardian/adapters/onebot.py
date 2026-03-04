@@ -29,6 +29,7 @@ class OneBotAdapter(Adapter):
         self._running = False
         self._ready = False
         self._server_task: asyncio.Task[None] | None = None
+        self._shutdown_event: asyncio.Event | None = None
         self._bot = CQHttp(access_token=config.access_token or "")
         logger.info(f"📦 OneBot 适配器已初始化 | host={config.host} | port={config.port} | token_configured={bool(config.access_token)}")
         self._register_bot_callbacks()
@@ -46,11 +47,17 @@ class OneBotAdapter(Adapter):
             logger.warning(f"⚠️ OneBot 适配器当前已运行，忽略重复启动请求")
             return
         self._running = True
+        self._shutdown_event = asyncio.Event()
         logger.info(f"🚀 正在启动 OneBot 适配器 | 监听地址={self.config.host}:{self.config.port}")
         try:
-            # 启动内置的 Quart 服务器，等待 OneBot 实例连接
+            # 启动内置的 Quart/Hypercorn 服务器，等待 OneBot 实例连接。
+            # 显式传入 shutdown_trigger 以防止 Hypercorn 覆盖 uvicorn 的信号处理器。
             self._server_task = asyncio.create_task(
-                self._bot.run_task(host=self.config.host, port=self.config.port)
+                self._bot.run_task(
+                    host=self.config.host,
+                    port=self.config.port,
+                    shutdown_trigger=self._shutdown_event.wait,
+                )
             )
             logger.success(f"✅ OneBot WebSocket 服务器已启动 | 反向连接地址: ws://{self.config.host}:{self.config.port}/ws")
         except Exception as e:
@@ -63,6 +70,9 @@ class OneBotAdapter(Adapter):
         logger.info(f"🛑 正在停止 OneBot 适配器...")
         self._running = False
         self._ready = False
+        if self._shutdown_event:
+            self._shutdown_event.set()
+            self._shutdown_event = None
         if self._server_task:
             self._server_task.cancel()
             try:
