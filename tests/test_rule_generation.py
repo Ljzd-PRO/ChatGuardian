@@ -1,4 +1,4 @@
-from chat_guardian.services import InternalRuleGenerationBackend
+from chat_guardian.rule_authoring import InternalRuleGenerationBackend
 
 
 async def test_internal_rule_generation_is_generic() -> None:

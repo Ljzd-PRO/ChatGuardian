@@ -7,8 +7,12 @@ from chat_guardian.models import RuleBatchSchedulerMetricsModel
 
 此模块包含：
 - 服务接口（Repository、LLM 客户端等）的协议定义；
-- 开发阶段可用的内置实现（LangChain LLM、内存存储、Email 通知、外部 Hook 派发器）；
-- 检测引擎、上下文窗口、规则生成、记忆写入与建议服务。
+- 开发阶段可用的内置实现（LangChain LLM、内存存储、外部 Hook 派发器）；
+- 检测引擎、上下文窗口、记忆写入与建议服务。
+
+说明：
+- 通知器实现已迁移至 `chat_guardian.notifiers`；
+- 规则生成与编排已迁移至 `chat_guardian.rule_authoring`。
 
 所有对外依赖（如真实 LLM、消息平台、持久化）均通过协议抽象，便于替换。
 """
@@ -38,10 +42,8 @@ from chat_guardian.domain import (
     DetectionRule,
     Feedback,
     RuleDecision,
-    RuleParameterSpec,
     UserMemoryFact,
 )
-from chat_guardian.matcher import MatchAll, MatchChatInfo, MatchSender
 from chat_guardian.models import RuleBatchSchedulerDiagnosticsModel, DiagnosticsModel
 from chat_guardian.settings import settings
 
@@ -62,17 +64,6 @@ def _extract_json_payload(raw_text: str) -> dict:
         return parsed if isinstance(parsed, dict) else {}
     except json.JSONDecodeError:
         return {}
-
-
-def _build_rule_matcher(chat_id: str | None, users: list[str]):
-    chat_matcher = MatchAll() if not chat_id else MatchChatInfo(chat_id=chat_id)
-    if not users:
-        return chat_matcher
-
-    user_matcher = MatchSender(user_id=users[0])
-    for user_id in users[1:]:
-        user_matcher = user_matcher | MatchSender(user_id=user_id)
-    return chat_matcher & user_matcher
 
 
 def _resolve_llm_display_timezone() -> ZoneInfo:
@@ -1170,141 +1161,6 @@ class SuggestionService:
         
         logger.success(f"✅ 改进建议生成完成 | 建议数={len(suggestions)}")
         return suggestions
-
-
-class RuleGenerationBackend(Protocol):
-    """规则生成后端抽象：将一句话或文本转换为 `DetectionRule`。"""
-
-    async def generate(self, utterance: str, override_system_prompt: str | None = None) -> DetectionRule: ...
-
-
-class InternalRuleGenerationBackend(RuleGenerationBackend):
-    """简单的内置规则生成器。
-
-    基于文本拆分与正则规则抽取候选主题、参与者与目标会话，产出一个初步可编辑的规则草案。
-    """
-
-    async def generate(self, utterance: str, override_system_prompt: str | None = None) -> DetectionRule:
-        logger.debug(f"🔧 内部规则生成器处理 | 文本长度={len(utterance)}")
-        
-        topics = self._extract_topics(utterance)
-        logger.debug(f"  ✓ 提取主题 | 数量={len(topics)} | {topics[:3]}")
-        
-        users = self._extract_users(utterance)
-        logger.debug(f"  ✓ 提取用户 | 数量={len(users)} | {users}")
-        
-        chat_id = self._extract_chat_id(utterance)
-        logger.debug(f"  ✓ 提取会话 | chat_id={chat_id}")
-        
-        parameters = [RuleParameterSpec(key="label", description="LLM extracted label", required=False)]
-        rule_id = f"rule-{abs(hash((utterance, override_system_prompt))) % 1000000}"
-        rule_name = (utterance[:24] + "...") if len(utterance) > 24 else utterance
-
-        matcher = _build_rule_matcher(chat_id, users)
-        
-        rule = DetectionRule(
-            rule_id=rule_id,
-            name=rule_name,
-            description=utterance,
-            matcher=matcher,
-            topic_hints=topics,
-            score_threshold=0.6,
-            enabled=True,
-            parameters=parameters,
-        )
-        logger.success(f"✅ 内部规则已生成 | rule_id={rule_id}")
-        return rule
-
-    @staticmethod
-    def _extract_topics(utterance: str) -> list[str]:
-        terms = [term for term in re.split(r"[，,。\s]+", utterance) if term]
-        filtered = [term for term in terms if len(term) >= 2 and not term.startswith("@")]
-        return filtered[:6]
-
-    @staticmethod
-    def _extract_users(utterance: str) -> list[str]:
-        return [item[1:] for item in re.findall(r"@[^\s，,。]+", utterance)]
-
-    @staticmethod
-    def _extract_chat_id(utterance: str) -> str | None:
-        patterns = [r"(?:群|私聊|会话)([^，,。]+)", r"在([^，,。]+)里", r"([^，,。]+)中"]
-        for pattern in patterns:
-            match = re.search(pattern, utterance)
-            if match:
-                return match.group(1).strip()
-        return None
-
-
-class ExternalPromptRuleGenerationBackend(RuleGenerationBackend):
-    def __init__(self, endpoint: str):
-        self.endpoint = endpoint
-
-    async def generate(self, utterance: str, override_system_prompt: str | None = None) -> DetectionRule:
-        logger.debug(f"🌐 外部规则生成器: 向 {self.endpoint} 发起请求 | 文本长度={len(utterance)}")
-        
-        payload = {"utterance": utterance, "system_prompt": override_system_prompt}
-        try:
-            async with httpx.AsyncClient(timeout=settings.llm_timeout_seconds) as client:
-                response = await client.post(self.endpoint, json=payload)
-                response.raise_for_status()
-                logger.debug(f"  ✓ 外部服务响应 | status={response.status_code}")
-                
-                raw = response.json()
-
-            parameters = [
-                RuleParameterSpec(
-                    key=item["key"],
-                    description=item.get("description", ""),
-                    required=item.get("required", True),
-                )
-                for item in raw.get("parameters", [])
-            ]
-
-            rule = DetectionRule(
-                rule_id=raw["rule_id"],
-                name=raw["name"],
-                description=raw["description"],
-                matcher=_build_rule_matcher(
-                    chat_id=(str(raw["chat_id"]).strip() if raw.get("chat_id") else None),
-                    users=[str(item) for item in raw.get("participant_ids", []) if str(item).strip()],
-                ),
-                topic_hints=raw.get("topic_hints", []),
-                score_threshold=raw.get("score_threshold", 0.6),
-                enabled=raw.get("enabled", True),
-                parameters=parameters,
-            )
-            logger.success(f"✅ 外部规则已生成 | rule_id={rule.rule_id}")
-            return rule
-        except Exception as e:
-            logger.error(f"❌ 外部规则生成失败: {e}")
-            raise
-
-
-class RuleAuthoringService:
-    def __init__(self, internal_backend: RuleGenerationBackend, external_backend: RuleGenerationBackend | None):
-        self.internal_backend = internal_backend
-        self.external_backend = external_backend
-
-    async def generate_rule(
-        self,
-        utterance: str,
-        use_external: bool,
-        override_system_prompt: str | None = None,
-    ) -> DetectionRule:
-        logger.debug(f"📝 开始规则生成 | use_external={use_external} | 文本长度={len(utterance)}")
-        
-        if use_external:
-            if self.external_backend is None:
-                logger.error(f"❌ 外部生成后端未配置")
-                raise ValueError("External generation backend is not configured")
-            logger.info(f"🌐 使用外部后端生成规则...")
-            rule = await self.external_backend.generate(utterance, override_system_prompt)
-        else:
-            logger.info(f"⚙️ 使用内部后端生成规则...")
-            rule = await self.internal_backend.generate(utterance, override_system_prompt)
-        
-        logger.success(f"✅ 规则生成完成 | rule_id={rule.rule_id} | name={rule.name}")
-        return rule
 
 
 class ExternalHookDispatcher:

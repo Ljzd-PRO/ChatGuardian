@@ -31,14 +31,16 @@ from chat_guardian.repositories import (
     InMemoryMemoryRepository,
     InMemoryRuleRepository,
 )
+from chat_guardian.rule_authoring import (
+    ExternalPromptRuleGenerationBackend,
+    InternalRuleGenerationBackend,
+    RuleAuthoringService,
+)
 from chat_guardian.services import (
     build_llm_client,
     ContextWindowService,
     DetectionEngine,
     ExternalHookDispatcher,
-    ExternalPromptRuleGenerationBackend,
-    InternalRuleGenerationBackend,
-    RuleAuthoringService,
     SelfMessageMemoryService,
     SuggestionService,
 )
