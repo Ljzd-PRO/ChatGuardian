@@ -31,6 +31,7 @@ from chat_guardian.repositories import (
     FeedbackRepository,
     MemoryRepository,
     RuleRepository,
+    SettingsRepository,
 )
 from chat_guardian.rule_authoring import (
     ExternalPromptRuleGenerationBackend,
@@ -45,7 +46,7 @@ from chat_guardian.services import (
     SelfMessageMemoryService,
     SuggestionService,
 )
-from chat_guardian.settings import settings
+from chat_guardian.settings import settings, Settings
 
 
 @asynccontextmanager
@@ -107,6 +108,17 @@ class AppContainer:
 
         该容器用于在 `create_app` 中创建单例服务实例，便于路由直接使用。
         """
+        # 首先从数据库加载配置，确保后续服务使用最新配置
+        self.settings_repository = SettingsRepository(database_url=settings.database_url)
+        db_settings = self.settings_repository.load_all()
+        for key, value in db_settings.items():
+            if key != "database_url" and hasattr(settings, key):
+                try:
+                    setattr(settings, key, value)
+                except Exception as exc:
+                    from loguru import logger
+                    logger.warning(f"⚠️ 配置项 '{key}' 加载失败，已使用默认值: {exc}")
+
         self.chat_history_store = ChatHistoryStore(
             pending_queue_limit=settings.pending_queue_limit,
             history_list_limit=settings.history_list_limit,
@@ -344,5 +356,32 @@ def create_app() -> FastAPI:
                 "running": True  # Need to check if there's a task or similar, mock running for now.
             } for adapter in container.adapter_manager.adapters
         ]
+
+    @app.get("/api/settings")
+    async def get_settings_api() -> dict:
+        """返回当前所有可配置项（不含 database_url）。"""
+        return settings.model_dump(exclude={"database_url"})
+
+    @app.post("/api/settings")
+    async def update_settings_api(updates: dict) -> dict:
+        """批量更新配置项，保存到数据库并立即生效。database_url 不可通过此接口修改。"""
+        updates.pop("database_url", None)
+
+        current = settings.model_dump()
+        current.update(updates)
+        current["database_url"] = settings.database_url
+
+        try:
+            validated = Settings.model_validate(current)
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+        validated_dict = validated.model_dump(exclude={"database_url"})
+        container.settings_repository.save(validated_dict)
+
+        for key, value in validated_dict.items():
+            setattr(settings, key, value)
+
+        return validated_dict
 
     return app
