@@ -6,11 +6,14 @@ FastAPI 应用与路由定义。
 
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import (
@@ -158,6 +161,15 @@ def create_app() -> FastAPI:
     app = FastAPI(title="ChatGuardian API", version="0.1.0", lifespan=_app_lifespan)
     # Expose the application container on app.state for testing and integrations.
     app.state.container = container
+
+    # CORS middleware – allow the React dev server (port 5173) and any same-origin requests
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -343,6 +355,29 @@ def create_app() -> FastAPI:
                 "running": True # Need to check if there's a task or similar, mock running for now.
             } for adapter in container.adapter_manager.adapters
         ]
+
+    # Serve the React frontend from the pre-built dist directory.
+    # Mount static assets first so the asset paths are resolved before the SPA catch-all.
+    _frontend_dist = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
+    _frontend_dist = os.path.abspath(_frontend_dist)
+    if os.path.isdir(_frontend_dist):
+        # Serve the static assets sub-directory directly so that
+        # /app/assets/* is handled by StaticFiles (correct Content-Type).
+        _assets_dir = os.path.join(_frontend_dist, "assets")
+        if os.path.isdir(_assets_dir):
+            app.mount("/app/assets", StaticFiles(directory=_assets_dir), name="frontend_assets")
+
+        # Serve the vite.svg icon
+        @app.get("/app/vite.svg", include_in_schema=False)
+        async def serve_vite_svg():
+            return FileResponse(os.path.join(_frontend_dist, "vite.svg"))
+
+        # SPA catch-all: serve index.html for all /app/* routes not matched above
+        @app.get("/app", include_in_schema=False)
+        @app.get("/app/", include_in_schema=False)
+        @app.get("/app/{full_path:path}", include_in_schema=False)
+        async def serve_spa(full_path: str = ""):  # noqa: ARG001
+            return FileResponse(os.path.join(_frontend_dist, "index.html"))
 
     return app
 
