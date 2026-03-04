@@ -70,3 +70,14 @@ class EmailNotifier(Notifier):
         except Exception as e:
             logger.error(f"❌ 邮件发送失败: {e}")
             return False
+
+
+def build_email_notifier_from_settings() -> EmailNotifier | None:
+    if not settings.email_notifier_enabled:
+        return None
+
+    if not settings.email_notifier_to_email:
+        logger.warning("⚠️ Email 通知器已启用但未配置收件人，跳过注册")
+        return None
+
+    return EmailNotifier(NotificationConfig(to_email=settings.email_notifier_to_email))

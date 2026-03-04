@@ -41,6 +41,14 @@ class Settings(BaseSettings):
         smtp_username: SMTP 用户名。
         smtp_password: SMTP 密码。
         smtp_sender: SMTP 发件人。
+        email_notifier_enabled: 是否启用 Email 通知器。
+        email_notifier_to_email: Email 通知器收件人。
+        bark_notifier_enabled: 是否启用 Bark 通知器。
+        bark_device_key: Bark 设备 Key。
+        bark_device_keys: Bark 设备 Key 数组（用于批量推送）。
+        bark_server_url: Bark 服务地址。
+        bark_group: Bark 推送分组。
+        bark_level: Bark 推送级别（如 active/timeSensitive/passive/critical）。
         hook_timeout_seconds: 外部 Hook 超时时间（秒）。
         enable_internal_rule_generation: 是否启用内置规则生成。
         external_rule_generation_endpoint: 外部规则生成 API 地址。
@@ -99,6 +107,16 @@ class Settings(BaseSettings):
     smtp_username: Optional[str] = None
     smtp_password: Optional[str] = None
     smtp_sender: Optional[str] = None
+
+    email_notifier_enabled: bool = False
+    email_notifier_to_email: Optional[str] = None
+
+    bark_notifier_enabled: bool = False
+    bark_device_key: Optional[str] = None
+    bark_device_keys: list[str] = []
+    bark_server_url: str = "https://api.day.app"
+    bark_group: Optional[str] = None
+    bark_level: Optional[str] = None
 
     # 外部 Hook 与规则生成端点
     hook_timeout_seconds: float = 8.0

@@ -21,7 +21,9 @@ from chat_guardian.domain import (
     DetectionRule,
     Feedback,
 )
-from chat_guardian.notifiers import EmailNotifier, NotificationConfig
+from chat_guardian.notifiers import (
+    build_notifiers_from_settings,
+)
 from chat_guardian.repositories import (
     InMemoryChatHistoryStore,
     InMemoryDetectionResultRepository,
@@ -71,12 +73,14 @@ class AppContainer:
 
         self.suggestion_service = SuggestionService(self.memory_repository, self.feedback_repository)
         self.self_message_service = SelfMessageMemoryService(self.llm_client, self.memory_repository, self.context_service)
+        notifiers = build_notifiers_from_settings()
+
         self.detection_engine = DetectionEngine(
             rules=self.rule_repository,
             context_service=self.context_service,
             llm_client=self.llm_client,
             result_repository=self.detection_result_repository,
-            notifiers=[EmailNotifier(NotificationConfig(to_email=None))],
+            notifiers=notifiers,
             hook_dispatcher=ExternalHookDispatcher(hook_endpoints=[]),
         )
 

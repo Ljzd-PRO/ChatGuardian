@@ -7,6 +7,28 @@
 """
 
 from .base import Notifier
-from .email import EmailNotifier, NotificationConfig
+from .bark import BarkNotifier, BarkNotificationConfig, build_bark_notifier_from_settings
+from .email import EmailNotifier, NotificationConfig, build_email_notifier_from_settings
 
-__all__ = ["Notifier", "EmailNotifier", "NotificationConfig"]
+
+def build_notifiers_from_settings() -> list[Notifier]:
+    notifiers: list[Notifier] = []
+
+    email_notifier = build_email_notifier_from_settings()
+    if email_notifier is not None:
+        notifiers.append(email_notifier)
+
+    bark_notifier = build_bark_notifier_from_settings()
+    if bark_notifier is not None:
+        notifiers.append(bark_notifier)
+
+    return notifiers
+
+__all__ = [
+	"Notifier",
+	"EmailNotifier",
+	"NotificationConfig",
+	"BarkNotifier",
+	"BarkNotificationConfig",
+	"build_notifiers_from_settings",
+]
