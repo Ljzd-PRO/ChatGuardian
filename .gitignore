@@ -10,8 +10,8 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
-!frontend/dist/
+# Ignore root dist/ only (frontend/dist/ is the built React app and must be committed)
+/dist/
 downloads/
 eggs/
 .eggs/
