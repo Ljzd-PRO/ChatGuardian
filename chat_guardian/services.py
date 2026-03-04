@@ -35,12 +35,16 @@ from langchain_ollama import ChatOllama
 from chat_guardian.notifiers import Notifier
 
 from chat_guardian.domain import (
+    ActiveGroupStat,
     ChatEvent,
     ChatMessage,
     ChatType,
     DetectionResult,
     DetectionRule,
     Feedback,
+    FrequentContactStat,
+    InterestTopicStat,
+    RelatedTopicStat,
     RuleDecision,
     UserMemoryFact,
 )
@@ -230,69 +234,122 @@ class LangChainLLMClient:
             logger.error(f"❌ LLM 评估异常: {e}")
             return None
 
-    async def extract_self_participation(self, event: ChatEvent, context: list[ChatMessage]) -> list[UserMemoryFact]:
-        logger.debug(f"💬 开始提取用户 {event.message.sender_id} 的内存事实 | 上下文消息数={len(context)}")
-        payload = {
-            "event": {
-                "chat_id": event.chat_id,
-                "sender_id": event.message.sender_id,
-                "message": str(event.message),
+    async def extract_self_participation(
+        self,
+        event: ChatEvent,
+        context: list[ChatMessage],
+        existing_topics: list[str] | None = None,
+    ) -> dict | None:
+        """从目标用户发言及上下文中提取参与画像数据。
+
+        Args:
+            event: 触发检测的消息事件（来自目标用户自身）。
+            context: 构建好的上下文消息列表。
+            existing_topics: 用户画像中已有的话题名称列表，用于去重（不生成近义词话题）。
+
+        Returns:
+            包含 user_name、topics、interactions 的原始字典；失败时返回 None。
+        """
+        if existing_topics is None:
+            existing_topics = []
+        logger.debug(
+            f"💬 开始提取用户 {event.message.sender_id} 的参与画像 | "
+            f"上下文消息数={len(context)} | 已有话题数={len(existing_topics)}"
+        )
+        payload = json.dumps(
+            {
+                "target_user": {
+                    "user_id": event.message.sender_id,
+                    "sender_name": event.message.sender_name or "",
+                    "chat_id": event.chat_id,
+                    "message": str(event.message),
+                },
+                "context": [str(message) for message in context],
+                "existing_topics": existing_topics,
             },
-            "context": [str(message) for message in context],
-        }
+            ensure_ascii=False,
+        )
         try:
             response = await self.model.ainvoke(
                 [
                     SystemMessage(
-                        content=(
-                            "请从用户本人发言与上下文中提取可记忆事实，严格输出 JSON。"
-                            '输出结构：{"facts":[{"topic":"...","counterpart_user_ids":["u1"],"confidence":0~1}]}'
-                        )
+                        content="""
+# 角色
+你是用户行为画像提取模型。
+
+# 任务
+分析目标用户在聊天记录中的参与情况，提取用户的话题偏好与社交互动关系，输出结构化 JSON。
+
+# 输入格式
+- `target_user`：目标用户信息，包含：
+  - `user_id`：用户 ID
+  - `sender_name`：本次消息的发送者名称（即目标用户当前昵称）
+  - `chat_id`：所在群聊/会话 ID
+  - `message`：目标用户本次发送的消息
+- `context`：按时间顺序排列的上下文消息列表，每条消息格式：
+  - `[YYYY-MM-DD HH:MM:SS TZ] (发送者): 消息内容`
+- `existing_topics`：用户画像中已有的话题名称列表，用于去重
+
+# 分析原则
+- 仅分析目标用户参与的内容，不分析与目标用户无关的对话
+- 若两人有明显的对话互动（问答、回应等），视为互动关系
+- `user_name` 从 `target_user.sender_name` 获取，如能在上下文中确认更准确的名称可更新
+- 话题名称不得与 `existing_topics` 中的任何名称语义重复（即不能是近义词）
+- 若无明确话题或互动，对应列表留空即可
+
+# 输出要求（必须遵守）
+1. 只输出一个 JSON 对象，不要输出任何额外解释文本
+2. JSON 必须包含以下字段：
+   - `user_name`: string（目标用户昵称，从 sender_name 获取或确认）
+   - `topics`: array，每项包含：
+     - `name`: string（话题名称，不得是 existing_topics 的近义词）
+     - `score`: number（本次参与强度，1~5 的整数）
+     - `keywords`: string[]（可选，该话题相关关键词）
+   - `interactions`: array，每项包含：
+     - `user_id`: string（互动对象的用户 ID，从消息发送者 ID 中获取）
+     - `user_name`: string（互动对象的名称）
+     - `topics`: string[]（与该对象交流时涉及的话题名称）
+
+# 输出示例
+```json
+{
+    "user_name": "老张",
+    "topics": [
+        {"name": "黑苹果", "score": 3, "keywords": ["白屏", "安装"]},
+        {"name": "汽车", "score": 2, "keywords": ["续航"]}
+    ],
+    "interactions": [
+        {"user_id": "u456", "user_name": "小李", "topics": ["黑苹果"]}
+    ]
+}
+```
+"""
                     ),
-                    HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
+                    HumanMessage(content=payload),
                 ]
             )
             content = self._response_text(response.content)
             parsed = _extract_json_payload(content)
 
-            raw_facts = parsed.get("facts", [])
-            if not isinstance(raw_facts, list):
-                logger.warning(f"⚠️ 内存事实格式异常: 非列表类型")
-                return []
+            topics = parsed.get("topics", [])
+            interactions = parsed.get("interactions", [])
+            if not isinstance(topics, list):
+                topics = []
+            if not isinstance(interactions, list):
+                interactions = []
 
-            results: list[UserMemoryFact] = []
-            for item in raw_facts:
-                if not isinstance(item, dict):
-                    continue
-                topic = str(item.get("topic", "")).strip()
-                if not topic:
-                    continue
-                counterparts_raw = item.get("counterpart_user_ids", [])
-                if not isinstance(counterparts_raw, list):
-                    counterparts_raw = []
-                counterparts = [str(value) for value in counterparts_raw if str(value).strip()]
-                try:
-                    confidence = float(item.get("confidence", 0.3))
-                except (TypeError, ValueError):
-                    confidence = 0.3
-                confidence = min(1.0, max(0.0, confidence))
-
-                fact = UserMemoryFact(
-                    user_id=event.message.sender_id,
-                    chat_id=event.chat_id,
-                    topic=topic,
-                    counterpart_user_ids=counterparts[:5],
-                    confidence=confidence,
-                    captured_at=datetime.utcnow(),
-                )
-                results.append(fact)
-                logger.debug(f"  ✓ 提取事实: topic={topic} | confidence={confidence:.2f}")
-            
-            logger.info(f"✅ 内存事实提取完成 | 提取数量={len(results)}")
-            return results
+            logger.info(
+                f"✅ 参与画像提取完成 | 话题数={len(topics)} | 互动数={len(interactions)}"
+            )
+            return {
+                "user_name": str(parsed.get("user_name", "") or ""),
+                "topics": topics,
+                "interactions": interactions,
+            }
         except Exception as e:
-            logger.error(f"❌ 内存事实提取异常: {e}")
-            return []
+            logger.error(f"❌ 参与画像提取异常: {e}")
+            return None
+
 
     @staticmethod
     def _response_text(content: object) -> str:
@@ -1002,7 +1059,7 @@ class DetectionEngine:
         state.timeout_task = asyncio.create_task(_run())
 
 class SelfMessageMemoryService:
-    """当用户/机器人自身发言时，识别并写入记忆事实的服务。"""
+    """当用户/机器人自身发言时，识别并累积更新用户行为画像的服务。"""
 
     def __init__(self, llm_client: LangChainLLMClient, memory_repository: MemoryRepository, context_service: ContextWindowService):
         self.llm_client = llm_client
@@ -1010,29 +1067,121 @@ class SelfMessageMemoryService:
         self.context_service = context_service
 
     async def process_if_self_message(self, event: ChatEvent) -> int:
-        """如果事件来自自身，调用 LLM 提取记忆事实并存储。
+        """如果事件来自自身，调用 LLM 提取参与数据并累积到用户画像。
 
         Returns:
-            写入的事实数量。
+            更新的画像数量（0 表示未更新，1 表示已更新）。
         """
         if not event.is_from_self:
             logger.debug(f"ℹ️ 非自身消息，跳过内存处理 | 发送者={event.message.sender_id}")
             return 0
-        
-        logger.debug(f"💾 自身消息检测 | 发送者={event.message.sender_id} | 消息ID={event.message.message_id}")
+
+        user_id = event.message.sender_id
+        logger.debug(f"💾 自身消息检测 | 发送者={user_id} | 消息ID={event.message.message_id}")
+
         context_messages = await self.context_service.build_context(event)
         logger.debug(f"  ✓ 构建上下文 | 消息数={len(context_messages)}")
-        
-        facts = await self.llm_client.extract_self_participation(event, context_messages)
-        logger.debug(f"  ✓ LLM 提取完成 | 事实数={len(facts)}")
-        
-        for fact in facts:
-            await self.memory_repository.add_fact(fact)
-            logger.debug(f"    ✓ 保存事实: topic={fact.topic}")
-        
-        if facts:
-            logger.success(f"✅ 内存事实已保存 | 数量={len(facts)}")
-        return len(facts)
+
+        existing_profile = await self.memory_repository.get_profile(user_id)
+        existing_topics = list(existing_profile.interests.keys()) if existing_profile else []
+        logger.debug(f"  ✓ 已有话题 | 数量={len(existing_topics)}")
+
+        extract = await self.llm_client.extract_self_participation(event, context_messages, existing_topics)
+        if extract is None:
+            logger.warning(f"⚠️ 参与画像提取失败，跳过更新 | 用户={user_id}")
+            return 0
+        logger.debug(f"  ✓ LLM 提取完成 | 话题数={len(extract.get('topics', []))}")
+
+        now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        today_str = datetime.utcnow().strftime("%Y-%m-%d")
+
+        profile = existing_profile or UserMemoryFact(
+            user_id=user_id,
+            user_name=event.message.sender_name or "",
+        )
+
+        # 更新昵称
+        if extract.get("user_name"):
+            profile.user_name = extract["user_name"]
+
+        # 累积话题兴趣
+        for topic_data in extract.get("topics", []):
+            if not isinstance(topic_data, dict):
+                continue
+            name = str(topic_data.get("name", "")).strip()
+            if not name:
+                continue
+            try:
+                score = max(1, min(5, int(topic_data.get("score", 1))))
+            except (TypeError, ValueError):
+                score = 1
+            keywords = [str(k).strip() for k in topic_data.get("keywords", []) if str(k).strip()]
+
+            if name in profile.interests:
+                stat = profile.interests[name]
+                stat.score += score
+                stat.last_active = now_str
+                existing_kw = set(stat.keywords)
+                stat.keywords.extend(kw for kw in keywords if kw not in existing_kw)
+                if event.chat_id not in stat.related_chat:
+                    stat.related_chat.append(event.chat_id)
+            else:
+                profile.interests[name] = InterestTopicStat(
+                    score=score,
+                    last_active=now_str,
+                    related_chat=[event.chat_id],
+                    keywords=keywords,
+                )
+            logger.debug(f"    ✓ 更新话题: {name} | score+={score}")
+
+        # 累积活跃群聊
+        for group_stat in profile.active_groups:
+            if group_stat.group_id == event.chat_id:
+                group_stat.frequency += 1
+                group_stat.last_talk = today_str
+                break
+        else:
+            profile.active_groups.append(ActiveGroupStat(
+                group_id=event.chat_id,
+                frequency=1,
+                last_talk=today_str,
+            ))
+
+        # 累积常联系群友
+        for interaction in extract.get("interactions", []):
+            if not isinstance(interaction, dict):
+                continue
+            uid = str(interaction.get("user_id", "")).strip()
+            uname = str(interaction.get("user_name", "")).strip()
+            interact_topics = [str(t).strip() for t in interaction.get("topics", []) if str(t).strip()]
+            if not uid:
+                continue
+
+            if uid not in profile.frequent_contacts:
+                profile.frequent_contacts[uid] = FrequentContactStat(
+                    name=uname,
+                    interaction_count=0,
+                    last_interact=now_str,
+                )
+            contact = profile.frequent_contacts[uid]
+            if uname:
+                contact.name = uname
+            contact.interaction_count += 1
+            contact.last_interact = now_str
+            if event.chat_id not in contact.related_groups:
+                contact.related_groups.append(event.chat_id)
+
+            for topic in interact_topics:
+                if topic in contact.related_topics:
+                    contact.related_topics[topic].score += 1
+                    contact.related_topics[topic].last_talk = now_str
+                else:
+                    contact.related_topics[topic] = RelatedTopicStat(score=1, last_talk=now_str)
+            logger.debug(f"    ✓ 更新互动: uid={uid} | 话题={interact_topics}")
+
+        await self.memory_repository.upsert_profile(profile)
+        logger.success(f"✅ 用户画像已更新 | 用户={user_id} | 话题总数={len(profile.interests)}")
+        return 1
 
 
 class SuggestionService:
@@ -1047,19 +1196,18 @@ class SuggestionService:
 
     async def suggest_new_rules(self, user_id: str) -> list[str]:
         logger.debug(f"🔍 为用户 {user_id} 查找可建议的规则")
-        facts = await self.memory_repository.list_user_facts(user_id)
-        logger.debug(f"  ✓ 查询用户事实 | 事实数={len(facts)}")
-        
-        if not facts:
-            logger.info(f"ℹ️ 用户 {user_id} 无记忆事实，无法生成建议")
+        profile = await self.memory_repository.get_profile(user_id)
+        logger.debug(f"  ✓ 查询用户画像 | 话题数={len(profile.interests) if profile else 0}")
+
+        if not profile or not profile.interests:
+            logger.info(f"ℹ️ 用户 {user_id} 无画像数据，无法生成建议")
             return []
 
-        topic_counts: dict[str, int] = {}
-        for fact in facts:
-            topic_counts[fact.topic] = topic_counts.get(fact.topic, 0) + 1
-
-        ranked = sorted(topic_counts.items(), key=lambda item: item[1], reverse=True)
-        suggestions = [f"为高频主题 '{topic}' 创建提醒规则（出现次数 {count}）" for topic, count in ranked[:5]]
+        ranked = sorted(profile.interests.items(), key=lambda item: item[1].score, reverse=True)
+        suggestions = [
+            f"为高频主题 '{topic}' 创建提醒规则（累计话题分 {stat.score}）"
+            for topic, stat in ranked[:5]
+        ]
         logger.success(f"✅ 规则建议生成完成 | 数量={len(suggestions)}")
         return suggestions
 
