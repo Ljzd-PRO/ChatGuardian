@@ -10,9 +10,9 @@ from chat_guardian.adapters import AdapterManager, VirtualAdapter, VirtualAdapte
 from chat_guardian.domain import DetectionRule
 from chat_guardian.matcher import MatchChatInfo
 from chat_guardian.repositories import (
-    InMemoryChatHistoryStore,
-    InMemoryDetectionResultRepository,
-    InMemoryRuleRepository,
+    ChatHistoryStore,
+    DetectionResultRepository,
+    RuleRepository,
 )
 from chat_guardian.services import ContextWindowService, DetectionEngine, ExternalHookDispatcher, build_llm_client
 from chat_guardian.settings import settings
@@ -57,9 +57,9 @@ async def test_virtual_adapter_with_deepseek_real_run() -> None:
         settings.detection_min_new_messages = 3
         settings.detection_wait_timeout_seconds = 1.5
 
-        history_store = InMemoryChatHistoryStore(pending_queue_limit=500, history_list_limit=2000)
-        rule_repo = InMemoryRuleRepository()
-        result_repo = InMemoryDetectionResultRepository()
+        history_store = ChatHistoryStore(pending_queue_limit=500, history_list_limit=2000)
+        rule_repo = RuleRepository()
+        result_repo = DetectionResultRepository()
         llm_client = build_llm_client()
 
         for idx, topic in enumerate(["部署计划", "数据库迁移", "模型效果评估", "告警阈值"]):

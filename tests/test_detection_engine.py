@@ -11,9 +11,9 @@ from chat_guardian.domain import (
 )
 from chat_guardian.matcher import MatchChatInfo
 from chat_guardian.repositories import (
-    InMemoryChatHistoryStore,
-    InMemoryDetectionResultRepository,
-    InMemoryRuleRepository,
+    ChatHistoryStore,
+    DetectionResultRepository,
+    RuleRepository,
 )
 from chat_guardian.services import ContextWindowService, DetectionEngine, ExternalHookDispatcher
 from chat_guardian.settings import settings
@@ -50,9 +50,9 @@ async def test_rules_are_split_into_batches() -> None:
     settings.llm_rules_per_batch = 2
     settings.llm_max_parallel_batches = 3
 
-    history = InMemoryChatHistoryStore()
-    rules_repo = InMemoryRuleRepository()
-    results_repo = InMemoryDetectionResultRepository()
+    history = ChatHistoryStore()
+    rules_repo = RuleRepository()
+    results_repo = DetectionResultRepository()
     llm = FakeLLM()
 
     for index in range(5):

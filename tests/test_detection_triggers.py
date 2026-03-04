@@ -13,9 +13,9 @@ from chat_guardian.domain import (
 )
 from chat_guardian.matcher import MatchChatInfo
 from chat_guardian.repositories import (
-    InMemoryChatHistoryStore,
-    InMemoryDetectionResultRepository,
-    InMemoryRuleRepository,
+    ChatHistoryStore,
+    DetectionResultRepository,
+    RuleRepository,
 )
 from chat_guardian.services import ContextWindowService, DetectionEngine, ExternalHookDispatcher
 from chat_guardian.settings import settings
@@ -78,9 +78,9 @@ async def test_ingest_event_respects_min_new_messages_threshold() -> None:
     settings.detection_cooldown_seconds = 0.0
     settings.detection_wait_timeout_seconds = 0.2
 
-    store = InMemoryChatHistoryStore(pending_queue_limit=100, history_list_limit=100)
-    rules_repo = InMemoryRuleRepository()
-    results_repo = InMemoryDetectionResultRepository()
+    store = ChatHistoryStore(pending_queue_limit=100, history_list_limit=100)
+    rules_repo = RuleRepository()
+    results_repo = DetectionResultRepository()
 
     await rules_repo.upsert(
         DetectionRule(
@@ -123,9 +123,9 @@ async def test_ingest_event_forces_detection_on_timeout() -> None:
     settings.detection_cooldown_seconds = 0.0
     settings.detection_wait_timeout_seconds = 0.05
 
-    store = InMemoryChatHistoryStore(pending_queue_limit=100, history_list_limit=100)
-    rules_repo = InMemoryRuleRepository()
-    results_repo = InMemoryDetectionResultRepository()
+    store = ChatHistoryStore(pending_queue_limit=100, history_list_limit=100)
+    rules_repo = RuleRepository()
+    results_repo = DetectionResultRepository()
 
     await rules_repo.upsert(
         DetectionRule(
@@ -181,9 +181,9 @@ async def test_trigger_dedup_merges_context_and_skips_retrigger() -> None:
     settings.detection_cooldown_seconds = 0.0
     settings.detection_wait_timeout_seconds = 1.0
 
-    store = InMemoryChatHistoryStore(pending_queue_limit=100, history_list_limit=100)
-    rules_repo = InMemoryRuleRepository()
-    results_repo = InMemoryDetectionResultRepository()
+    store = ChatHistoryStore(pending_queue_limit=100, history_list_limit=100)
+    rules_repo = RuleRepository()
+    results_repo = DetectionResultRepository()
     notifier = CountingNotifier()
 
     await rules_repo.upsert(

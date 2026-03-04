@@ -25,11 +25,11 @@ from chat_guardian.notifiers import (
     build_notifiers_from_settings,
 )
 from chat_guardian.repositories import (
-    InMemoryChatHistoryStore,
-    InMemoryDetectionResultRepository,
-    InMemoryFeedbackRepository,
-    InMemoryMemoryRepository,
-    InMemoryRuleRepository,
+    ChatHistoryStore,
+    DetectionResultRepository,
+    FeedbackRepository,
+    MemoryRepository,
+    RuleRepository,
 )
 from chat_guardian.rule_authoring import (
     ExternalPromptRuleGenerationBackend,
@@ -52,14 +52,14 @@ class AppContainer:
 
         该容器用于在 `create_app` 中创建单例服务实例，便于路由直接使用。
         """
-        self.chat_history_store = InMemoryChatHistoryStore(
+        self.chat_history_store = ChatHistoryStore(
             pending_queue_limit=settings.pending_queue_limit,
             history_list_limit=settings.history_list_limit,
         )
-        self.rule_repository = InMemoryRuleRepository()
-        self.feedback_repository = InMemoryFeedbackRepository()
-        self.memory_repository = InMemoryMemoryRepository()
-        self.detection_result_repository = InMemoryDetectionResultRepository()
+        self.rule_repository = RuleRepository()
+        self.feedback_repository = FeedbackRepository()
+        self.memory_repository = MemoryRepository()
+        self.detection_result_repository = DetectionResultRepository()
 
         self.llm_client = build_llm_client()
         self.context_service = ContextWindowService(self.chat_history_store)

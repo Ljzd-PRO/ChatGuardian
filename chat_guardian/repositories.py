@@ -9,83 +9,10 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from datetime import datetime
-from typing import Protocol
 
 from chat_guardian.domain import ChatMessage, ChatType, DetectionResult, DetectionRule, Feedback, UserMemoryFact
 
-
-class ChatHistoryStore(Protocol):
-    """消息缓冲与历史存储协议。"""
-
-    async def enqueue_message(self, platform: str, chat_type: str, chat_id: str, message: ChatMessage) -> None: ...
-
-    async def pending_size(self, platform: str, chat_type: str, chat_id: str) -> int: ...
-
-    async def pop_pending_messages(
-        self,
-        platform: str,
-        chat_type: str,
-        chat_id: str,
-        max_count: int | None,
-    ) -> list[ChatMessage]: ...
-
-    async def append_history_messages(
-        self,
-        platform: str,
-        chat_type: str,
-        chat_id: str,
-        messages: list[ChatMessage],
-    ) -> None: ...
-
-    async def recent_history_messages(
-        self,
-        platform: str,
-        chat_type: str,
-        chat_id: str,
-        before_message_id: str | None,
-        limit: int,
-    ) -> list[ChatMessage]: ...
-
-
-class RuleRepository(Protocol):
-    """规则仓储协议，支持列举/上载/查询规则。"""
-
-    async def list_enabled(self) -> list[DetectionRule]: ...
-
-    async def upsert(self, rule: DetectionRule) -> DetectionRule: ...
-
-    async def get(self, rule_id: str) -> DetectionRule | None: ...
-
-
-class FeedbackRepository(Protocol):
-    """用户反馈仓储协议。"""
-
-    async def add(self, feedback: Feedback) -> None: ...
-
-    async def list_by_rule(self, rule_id: str) -> list[Feedback]: ...
-
-
-class MemoryRepository(Protocol):
-    """用户记忆事实仓储协议。"""
-
-    async def add_fact(self, fact: UserMemoryFact) -> None: ...
-
-    async def list_user_facts(self, user_id: str) -> list[UserMemoryFact]: ...
-
-
-class DetectionResultRepository(Protocol):
-    """检测结果持久化（或临时记录）接口。"""
-
-    async def add(self, result: DetectionResult) -> None: ...
-
-    async def list_by_rule(self, rule_id: str) -> list[DetectionResult]: ...
-
-    async def contains_message_in_last_triggered(self, rule_id: str, message_id: str) -> bool: ...
-
-    async def merge_into_last_triggered(self, rule_id: str, new_context_messages: list[ChatMessage]) -> DetectionResult | None: ...
-
-
-class InMemoryChatHistoryStore(ChatHistoryStore):
+class ChatHistoryStore:
     """将消息按 adapter/chat_type/chat_id 分类保存在内存中。
 
     Methods:
@@ -211,7 +138,7 @@ class InMemoryChatHistoryStore(ChatHistoryStore):
                 pass
         return bucket[-limit:]
 
-class InMemoryRuleRepository(RuleRepository):
+class RuleRepository:
     """内存中的规则存储实现，支持上载/列举已启用规则。"""
 
     def __init__(self):
@@ -237,7 +164,7 @@ class InMemoryRuleRepository(RuleRepository):
         return True
 
 
-class InMemoryFeedbackRepository(FeedbackRepository):
+class FeedbackRepository:
     """简单的反馈存储（按规则分组）。"""
 
     def __init__(self):
@@ -250,7 +177,7 @@ class InMemoryFeedbackRepository(FeedbackRepository):
         return list(self.feedback_by_rule.get(rule_id, []))
 
 
-class InMemoryMemoryRepository(MemoryRepository):
+class MemoryRepository:
     """用户记忆事实的内存实现，用于存储 `UserMemoryFact`。"""
 
     def __init__(self):
@@ -263,7 +190,7 @@ class InMemoryMemoryRepository(MemoryRepository):
         return list(self.facts_by_user.get(user_id, []))
 
 
-class InMemoryDetectionResultRepository(DetectionResultRepository):
+class DetectionResultRepository:
     """按规则索引检测结果，并维护最近触发结果的 O(1) 查询结构。"""
 
     def __init__(self):

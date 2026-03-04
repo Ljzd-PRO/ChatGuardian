@@ -6,7 +6,7 @@ from chat_guardian.adapters import AdapterManager
 from chat_guardian.adapters.virtual import VirtualAdapter, VirtualAdapterConfig, VirtualScriptedMessage
 from chat_guardian.domain import DetectionRule
 from chat_guardian.matcher import MatchChatInfo
-from chat_guardian.repositories import InMemoryChatHistoryStore, InMemoryDetectionResultRepository, InMemoryRuleRepository
+from chat_guardian.repositories import ChatHistoryStore, DetectionResultRepository, RuleRepository
 from chat_guardian.services import ContextWindowService, DetectionEngine, ExternalHookDispatcher, build_llm_client
 from chat_guardian.settings import settings
 
@@ -31,7 +31,7 @@ async def main():
 
     # 检测主题
     topics = ["电子产品", "汽车", "股市", "音乐"]
-    rule_repo = InMemoryRuleRepository()
+    rule_repo = RuleRepository()
     for idx, topic in enumerate(topics):
         await rule_repo.upsert(
             DetectionRule(
@@ -45,8 +45,8 @@ async def main():
             )
         )
 
-    history_store = InMemoryChatHistoryStore(pending_queue_limit=500, history_list_limit=2000)
-    result_repo = InMemoryDetectionResultRepository()
+    history_store = ChatHistoryStore(pending_queue_limit=500, history_list_limit=2000)
+    result_repo = DetectionResultRepository()
     llm_client = build_llm_client()
     engine = DetectionEngine(
         rules=rule_repo,

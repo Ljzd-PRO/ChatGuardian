@@ -122,7 +122,7 @@ docker compose up --build
 
 - 消息平台：补全 `telegram` / `wechat` / `feishu` 插件实现。
 - LLM：替换 `LLMClient` 实现（云端、本地模型统一适配）。
-- 存储：替换 `InMemory*Repository` 为 SQLAlchemy ORM 实现。
+- 存储：替换 `*Repository`、`ChatHistoryStore` 等为 SQLAlchemy ORM 实现。
 - 通知：新增 `Notifier` 实现（邮件以外渠道）。
 - 外部自动化：通过 `ExternalHookDispatcher` 注入自定义 API。
 
