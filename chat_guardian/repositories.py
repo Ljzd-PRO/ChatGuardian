@@ -376,31 +376,39 @@ class FeedbackRepository:
 
 
 class MemoryRepository:
-    """用户记忆事实的内存实现，用于存储 `UserMemoryFact`。"""
+    """用户画像存储，每个用户唯一一份 `UserMemoryFact` 画像，支持增量合并更新。"""
 
     def __init__(self, database_url: str | None = None):
         self._db = _get_db_manager(database_url)
-        self.facts_by_user: dict[str, list[UserMemoryFact]] = defaultdict(list)
+        self.profiles: dict[str, UserMemoryFact] = {}
         self._load_from_db()
 
     def _load_from_db(self) -> None:
         if self._db is None:
             return
         with self._db.session_factory() as session:
-            rows = session.scalars(select(_MemoryFactRecord).order_by(_MemoryFactRecord.id)).all()
+            rows = session.scalars(select(_MemoryFactRecord)).all()
         for row in rows:
-            fact = UserMemoryFact.model_validate_json(row.payload_json)
-            self.facts_by_user[fact.user_id].append(fact)
+            profile = UserMemoryFact.model_validate_json(row.payload_json)
+            self.profiles[profile.user_id] = profile
 
-    async def add_fact(self, fact: UserMemoryFact) -> None:
-        self.facts_by_user[fact.user_id].append(fact)
+    async def upsert_profile(self, profile: UserMemoryFact) -> None:
+        """保存或更新用户画像（每个用户仅保留一条记录）。"""
+        self.profiles[profile.user_id] = profile
         if self._db is not None:
             with self._db.session_factory() as session:
-                session.add(_MemoryFactRecord(user_id=fact.user_id, payload_json=fact.model_dump_json()))
+                existing = session.scalar(
+                    select(_MemoryFactRecord).where(_MemoryFactRecord.user_id == profile.user_id)
+                )
+                if existing:
+                    existing.payload_json = profile.model_dump_json()
+                else:
+                    session.add(_MemoryFactRecord(user_id=profile.user_id, payload_json=profile.model_dump_json()))
                 session.commit()
 
-    async def list_user_facts(self, user_id: str) -> list[UserMemoryFact]:
-        return list(self.facts_by_user.get(user_id, []))
+    async def get_profile(self, user_id: str) -> UserMemoryFact | None:
+        """获取指定用户的画像，不存在则返回 None。"""
+        return self.profiles.get(user_id)
 
 
 class DetectionResultRepository:

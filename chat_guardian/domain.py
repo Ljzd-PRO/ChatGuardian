@@ -242,25 +242,87 @@ class DetectionResult(BaseModel):
     suppression_reason: str | None = None
 
 
+class InterestTopicStat(BaseModel):
+    """
+    某一话题的兴趣统计数据。
+
+    Attributes:
+        score: 累计参与分（每次检测到参与则累加）。
+        last_active: 最近活跃时间，格式为 YYYY-MM-DD HH:MM:SS。
+        related_chat: 涉及该话题的群聊/会话 ID 列表。
+        keywords: 该话题相关的核心关键词列表。
+    """
+
+    score: int = 0
+    last_active: str = ""
+    related_chat: list[str] = Field(default_factory=list)
+    keywords: list[str] = Field(default_factory=list)
+
+
+class ActiveGroupStat(BaseModel):
+    """
+    用户在某群聊中的活跃统计数据。
+
+    Attributes:
+        group_id: 群聊/会话 ID。
+        frequency: 累计发言次数。
+        last_talk: 最近发言日期，格式为 YYYY-MM-DD。
+    """
+
+    group_id: str
+    frequency: int = 0
+    last_talk: str = ""
+
+
+class RelatedTopicStat(BaseModel):
+    """
+    与某联系人在某话题下的互动统计。
+
+    Attributes:
+        score: 该话题下的互动分。
+        last_talk: 最近互动时间，格式为 YYYY-MM-DD HH:MM:SS。
+    """
+
+    score: int = 0
+    last_talk: str = ""
+
+
+class FrequentContactStat(BaseModel):
+    """
+    与某群友的互动统计数据。
+
+    Attributes:
+        name: 群友昵称（每次自动更新）。
+        interaction_count: 总互动次数。
+        last_interact: 最近互动时间，格式为 YYYY-MM-DD HH:MM:SS。
+        related_topics: 和该群友常聊的话题，以话题名为键。
+        related_groups: 和该群友共同活跃的群聊/会话 ID 列表。
+    """
+
+    name: str = ""
+    interaction_count: int = 0
+    last_interact: str = ""
+    related_topics: dict[str, RelatedTopicStat] = Field(default_factory=dict)
+    related_groups: list[str] = Field(default_factory=list)
+
+
 class UserMemoryFact(BaseModel):
     """
-    表示系统记忆的一条事实（由用户自己参与的会话生成）。
+    用户行为画像（由用户自己参与的会话持续累积生成）。
 
     Attributes:
         user_id: 用户 ID。
-        chat_id: 会话 ID。
-        topic: 主题。
-        counterpart_user_ids: 对方用户 ID 列表。
-        confidence: 置信度。
-        captured_at: 采集时间。
+        user_name: 用户昵称（每次自动更新）。
+        interests: 话题兴趣画像，以话题名为键。
+        active_groups: 活跃群聊列表。
+        frequent_contacts: 常联系群友，以用户 ID 为键。
     """
 
     user_id: str
-    chat_id: str
-    topic: str
-    counterpart_user_ids: list[str]
-    confidence: float
-    captured_at: datetime
+    user_name: str = ""
+    interests: dict[str, InterestTopicStat] = Field(default_factory=dict)
+    active_groups: list[ActiveGroupStat] = Field(default_factory=list)
+    frequent_contacts: dict[str, FrequentContactStat] = Field(default_factory=dict)
 
 
 class Feedback(BaseModel):
