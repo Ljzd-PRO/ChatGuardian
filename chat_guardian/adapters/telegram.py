@@ -1,4 +1,4 @@
-from chat_guardian.adapters import Adapter, EventHandler
+from chat_guardian.adapters.base import Adapter, EventHandler
 
 class TelegramAdapter(Adapter):
     """Telegram 适配器占位实现。"""

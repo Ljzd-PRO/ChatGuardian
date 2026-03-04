@@ -8,7 +8,7 @@ from pathlib import Path
 import json
 from typing import TYPE_CHECKING
 from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, MessageContent
-from chat_guardian.adapters import Adapter, EventHandler
+from chat_guardian.adapters.base import Adapter, EventHandler
 
 @dataclass(slots=True)
 class VirtualAdapterConfig:

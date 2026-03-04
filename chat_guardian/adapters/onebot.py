@@ -7,7 +7,7 @@ from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, 
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from loguru import logger
-from chat_guardian.adapters import Adapter, EventHandler
+from chat_guardian.adapters.base import Adapter, EventHandler
 
 @dataclass(slots=True)
 class OneBotAdapterConfig:

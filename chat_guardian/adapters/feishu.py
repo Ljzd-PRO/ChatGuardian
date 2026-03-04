@@ -1,4 +1,4 @@
-from chat_guardian.adapters import Adapter, EventHandler
+from chat_guardian.adapters.base import Adapter, EventHandler
 
 class FeishuAdapter(Adapter):
     """飞书适配器占位实现。"""
