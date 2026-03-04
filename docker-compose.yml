@@ -9,4 +9,4 @@ services:
     env_file:
       - .env
     volumes:
-      - ./chat_guardian.db:/app/chat_guardian.db
+      - ./db.sqlite:/app/db.sqlite

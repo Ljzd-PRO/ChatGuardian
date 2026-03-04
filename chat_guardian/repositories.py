@@ -1,16 +1,102 @@
 """
-内存存储实现（用于本地开发与测试）。
+Repository 实现：内存缓存 + SQLAlchemy 持久化。
 
-该模块提供简单的、非持久化的实现以便在开发阶段快速运行系统。生产环境应替换
-为基于数据库的 Repository 实现。
+默认用于本地开发时可通过 SQLite 文件持久化（例如 `db.sqlite`），并在启动时自动
+将已有数据加载到内存索引结构，兼顾运行时访问效率与重启后数据保留。
 """
 
 from __future__ import annotations
 
 from collections import defaultdict, deque
 from datetime import datetime
+from typing import Any
+
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, delete, select
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from chat_guardian.domain import ChatMessage, ChatType, DetectionResult, DetectionRule, Feedback, UserMemoryFact
+
+
+class _Base(DeclarativeBase):
+    pass
+
+
+class _ChatMessageRecord(_Base):
+    __tablename__ = "chat_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    bucket: Mapped[str] = mapped_column(String(16), index=True)
+    platform: Mapped[str] = mapped_column(String(64), index=True)
+    chat_type: Mapped[str] = mapped_column(String(32), index=True)
+    chat_id: Mapped[str] = mapped_column(String(128), index=True)
+    message_json: Mapped[str] = mapped_column(Text)
+
+
+class _RuleRecord(_Base):
+    __tablename__ = "rules"
+
+    rule_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    payload_json: Mapped[str] = mapped_column(Text)
+
+
+class _FeedbackRecord(_Base):
+    __tablename__ = "feedback"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    rule_id: Mapped[str] = mapped_column(String(128), index=True)
+    payload_json: Mapped[str] = mapped_column(Text)
+
+
+class _MemoryFactRecord(_Base):
+    __tablename__ = "memory_facts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(128), index=True)
+    payload_json: Mapped[str] = mapped_column(Text)
+
+
+class _DetectionResultRecord(_Base):
+    __tablename__ = "detection_results"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    rule_id: Mapped[str] = mapped_column(String(128), index=True)
+    generated_at: Mapped[datetime] = mapped_column(DateTime)
+    triggered: Mapped[bool] = mapped_column(Boolean, index=True)
+    trigger_suppressed: Mapped[bool] = mapped_column(Boolean, index=True)
+    payload_json: Mapped[str] = mapped_column(Text)
+
+
+class _RepositoryDatabase:
+    def __init__(self, database_url: str):
+        normalized_url = normalize_database_url(database_url)
+        engine_kwargs: dict[str, Any] = {"future": True}
+        if normalized_url.startswith("sqlite"):
+            engine_kwargs["connect_args"] = {"check_same_thread": False}
+
+        self.engine = create_engine(normalized_url, **engine_kwargs)
+        self.session_factory = sessionmaker(bind=self.engine, expire_on_commit=False)
+        _Base.metadata.create_all(self.engine)
+
+
+def normalize_database_url(database_url: str) -> str:
+    if database_url.startswith("sqlite+aiosqlite://"):
+        return database_url.replace("sqlite+aiosqlite://", "sqlite://", 1)
+    return database_url
+
+
+_DB_MANAGERS: dict[str, _RepositoryDatabase] = {}
+
+
+def _get_db_manager(database_url: str | None) -> _RepositoryDatabase | None:
+    if not database_url:
+        return None
+
+    normalized_key = normalize_database_url(database_url)
+    manager = _DB_MANAGERS.get(normalized_key)
+    if manager is None:
+        manager = _RepositoryDatabase(normalized_key)
+        _DB_MANAGERS[normalized_key] = manager
+    return manager
 
 class ChatHistoryStore:
     """将消息按 adapter/chat_type/chat_id 分类保存在内存中。
@@ -22,15 +108,73 @@ class ChatHistoryStore:
         recent_history_messages: 获取指定消息之前的最近若干条历史消息（按时间升序）。
     """
 
-    def __init__(self, pending_queue_limit: int = 200, history_list_limit: int = 1000):
+    def __init__(self, pending_queue_limit: int = 200, history_list_limit: int = 1000, database_url: str | None = None):
         self.pending_queue_limit = pending_queue_limit
         self.history_list_limit = history_list_limit
+        self._db = _get_db_manager(database_url)
         self.pending: dict[str, dict[str, dict[str, deque[ChatMessage]]]] = defaultdict(
             lambda: defaultdict(lambda: defaultdict(deque))
         )
         self.history: dict[str, dict[str, dict[str, deque[ChatMessage]]]] = defaultdict(
             lambda: defaultdict(lambda: defaultdict(deque))
         )
+        self._load_from_db()
+
+    def _load_from_db(self) -> None:
+        if self._db is None:
+            return
+
+        with self._db.session_factory() as session:
+            rows = session.scalars(select(_ChatMessageRecord).order_by(_ChatMessageRecord.id)).all()
+
+        for row in rows:
+            message = ChatMessage.model_validate_json(row.message_json)
+            if row.bucket == "pending":
+                bucket = self.pending[row.platform][row.chat_type][row.chat_id]
+                bucket.append(message)
+                while len(bucket) > self.pending_queue_limit:
+                    bucket.popleft()
+            else:
+                bucket = self.history[row.platform][row.chat_type][row.chat_id]
+                bucket.append(message)
+                while len(bucket) > self.history_list_limit:
+                    bucket.popleft()
+
+    def _insert_chat_message(self, bucket: str, platform: str, chat_type: str, chat_id: str, message: ChatMessage) -> None:
+        if self._db is None:
+            return
+
+        with self._db.session_factory() as session:
+            session.add(
+                _ChatMessageRecord(
+                    bucket=bucket,
+                    platform=platform,
+                    chat_type=chat_type,
+                    chat_id=chat_id,
+                    message_json=message.model_dump_json(),
+                )
+            )
+            session.commit()
+
+    def _delete_oldest_chat_messages(self, bucket: str, platform: str, chat_type: str, chat_id: str, count: int) -> None:
+        if self._db is None or count <= 0:
+            return
+
+        with self._db.session_factory() as session:
+            ids = session.scalars(
+                select(_ChatMessageRecord.id)
+                .where(
+                    _ChatMessageRecord.bucket == bucket,
+                    _ChatMessageRecord.platform == platform,
+                    _ChatMessageRecord.chat_type == chat_type,
+                    _ChatMessageRecord.chat_id == chat_id,
+                )
+                .order_by(_ChatMessageRecord.id)
+                .limit(count)
+            ).all()
+            if ids:
+                session.execute(delete(_ChatMessageRecord).where(_ChatMessageRecord.id.in_(ids)))
+                session.commit()
 
     @staticmethod
     def _chat_type_key(chat_type: ChatType | str) -> str:
@@ -47,8 +191,14 @@ class ChatHistoryStore:
             chat_id: 会话/群组 ID。
             message: 要入队的 `ChatMessage` 实例。
         """
-        bucket = self.pending[platform][self._chat_type_key(chat_type)][chat_id]
+        chat_type_key = self._chat_type_key(chat_type)
+        bucket = self.pending[platform][chat_type_key][chat_id]
         bucket.append(message)
+        self._insert_chat_message("pending", platform, chat_type_key, chat_id, message)
+
+        overflow = len(bucket) - self.pending_queue_limit
+        if overflow > 0:
+            self._delete_oldest_chat_messages("pending", platform, chat_type_key, chat_id, overflow)
         while len(bucket) > self.pending_queue_limit:
             bucket.popleft()
 
@@ -80,12 +230,15 @@ class ChatHistoryStore:
         如果 `max_count` 为 None，则弹出全部消息。
         返回值为按时间顺序（从旧到新）的消息列表。
         """
-        bucket = self.pending[platform][self._chat_type_key(chat_type)][chat_id]
+        chat_type_key = self._chat_type_key(chat_type)
+        bucket = self.pending[platform][chat_type_key][chat_id]
         if max_count is None:
             max_count = len(bucket)
         items: list[ChatMessage] = []
         while bucket and len(items) < max_count:
             items.append(bucket.popleft())
+
+        self._delete_oldest_chat_messages("pending", platform, chat_type_key, chat_id, len(items))
         return items
 
     async def append_history_message(
@@ -96,8 +249,14 @@ class ChatHistoryStore:
         message: ChatMessage,
     ) -> None:
         """将单条消息追加到已处理滚动历史中，超过上限会从旧端丢弃。"""
-        bucket = self.history[platform][self._chat_type_key(chat_type)][chat_id]
+        chat_type_key = self._chat_type_key(chat_type)
+        bucket = self.history[platform][chat_type_key][chat_id]
         bucket.append(message)
+        self._insert_chat_message("history", platform, chat_type_key, chat_id, message)
+
+        overflow = len(bucket) - self.history_list_limit
+        if overflow > 0:
+            self._delete_oldest_chat_messages("history", platform, chat_type_key, chat_id, overflow)
         while len(bucket) > self.history_list_limit:
             bucket.popleft()
 
@@ -141,8 +300,17 @@ class ChatHistoryStore:
 class RuleRepository:
     """内存中的规则存储实现，支持上载/列举已启用规则。"""
 
-    def __init__(self):
+    def __init__(self, database_url: str | None = None):
+        self._db = _get_db_manager(database_url)
         self.rules: dict[str, DetectionRule] = {}
+        self._load_from_db()
+
+    def _load_from_db(self) -> None:
+        if self._db is None:
+            return
+        with self._db.session_factory() as session:
+            rows = session.scalars(select(_RuleRecord)).all()
+        self.rules = {row.rule_id: DetectionRule.model_validate_json(row.payload_json) for row in rows}
 
     async def list_enabled(self) -> list[DetectionRule]:
         return [rule for rule in self.rules.values() if rule.enabled]
@@ -152,6 +320,15 @@ class RuleRepository:
 
     async def upsert(self, rule: DetectionRule) -> DetectionRule:
         self.rules[rule.rule_id] = rule
+        if self._db is not None:
+            with self._db.session_factory() as session:
+                row = session.get(_RuleRecord, rule.rule_id)
+                if row is None:
+                    row = _RuleRecord(rule_id=rule.rule_id, payload_json=rule.model_dump_json())
+                    session.add(row)
+                else:
+                    row.payload_json = rule.model_dump_json()
+                session.commit()
         return rule
 
     async def get(self, rule_id: str) -> DetectionRule | None:
@@ -161,17 +338,38 @@ class RuleRepository:
         if rule_id not in self.rules:
             return False
         del self.rules[rule_id]
+        if self._db is not None:
+            with self._db.session_factory() as session:
+                row = session.get(_RuleRecord, rule_id)
+                if row is not None:
+                    session.delete(row)
+                    session.commit()
         return True
 
 
 class FeedbackRepository:
     """简单的反馈存储（按规则分组）。"""
 
-    def __init__(self):
+    def __init__(self, database_url: str | None = None):
+        self._db = _get_db_manager(database_url)
         self.feedback_by_rule: dict[str, list[Feedback]] = defaultdict(list)
+        self._load_from_db()
+
+    def _load_from_db(self) -> None:
+        if self._db is None:
+            return
+        with self._db.session_factory() as session:
+            rows = session.scalars(select(_FeedbackRecord).order_by(_FeedbackRecord.id)).all()
+        for row in rows:
+            feedback = Feedback.model_validate_json(row.payload_json)
+            self.feedback_by_rule[feedback.rule_id].append(feedback)
 
     async def add(self, feedback: Feedback) -> None:
         self.feedback_by_rule[feedback.rule_id].append(feedback)
+        if self._db is not None:
+            with self._db.session_factory() as session:
+                session.add(_FeedbackRecord(rule_id=feedback.rule_id, payload_json=feedback.model_dump_json()))
+                session.commit()
 
     async def list_by_rule(self, rule_id: str) -> list[Feedback]:
         return list(self.feedback_by_rule.get(rule_id, []))
@@ -180,11 +378,26 @@ class FeedbackRepository:
 class MemoryRepository:
     """用户记忆事实的内存实现，用于存储 `UserMemoryFact`。"""
 
-    def __init__(self):
+    def __init__(self, database_url: str | None = None):
+        self._db = _get_db_manager(database_url)
         self.facts_by_user: dict[str, list[UserMemoryFact]] = defaultdict(list)
+        self._load_from_db()
+
+    def _load_from_db(self) -> None:
+        if self._db is None:
+            return
+        with self._db.session_factory() as session:
+            rows = session.scalars(select(_MemoryFactRecord).order_by(_MemoryFactRecord.id)).all()
+        for row in rows:
+            fact = UserMemoryFact.model_validate_json(row.payload_json)
+            self.facts_by_user[fact.user_id].append(fact)
 
     async def add_fact(self, fact: UserMemoryFact) -> None:
         self.facts_by_user[fact.user_id].append(fact)
+        if self._db is not None:
+            with self._db.session_factory() as session:
+                session.add(_MemoryFactRecord(user_id=fact.user_id, payload_json=fact.model_dump_json()))
+                session.commit()
 
     async def list_user_facts(self, user_id: str) -> list[UserMemoryFact]:
         return list(self.facts_by_user.get(user_id, []))
@@ -193,16 +406,45 @@ class MemoryRepository:
 class DetectionResultRepository:
     """按规则索引检测结果，并维护最近触发结果的 O(1) 查询结构。"""
 
-    def __init__(self):
+    def __init__(self, database_url: str | None = None):
+        self._db = _get_db_manager(database_url)
         self.results: list[DetectionResult] = []
         self.results_by_rule: dict[str, list[DetectionResult]] = defaultdict(list)
         self.last_triggered_by_rule: dict[str, DetectionResult] = {}
         self.last_triggered_message_ids: dict[str, set[str]] = {}
+        self._load_from_db()
+
+    def _load_from_db(self) -> None:
+        if self._db is None:
+            return
+        with self._db.session_factory() as session:
+            rows = session.scalars(select(_DetectionResultRecord).order_by(_DetectionResultRecord.id)).all()
+
+        for row in rows:
+            result = DetectionResult.model_validate_json(row.payload_json)
+            self.results.append(result)
+            self.results_by_rule[result.rule_id].append(result)
+            if result.decision.triggered and not result.trigger_suppressed:
+                self.last_triggered_by_rule[result.rule_id] = result
+                self.last_triggered_message_ids[result.rule_id] = {message.message_id for message in result.context_messages}
 
     async def add(self, result: DetectionResult) -> None:
         """新增一条检测结果，并同步更新按规则索引。"""
         self.results.append(result)
         self.results_by_rule[result.rule_id].append(result)
+
+        if self._db is not None:
+            with self._db.session_factory() as session:
+                session.add(
+                    _DetectionResultRecord(
+                        rule_id=result.rule_id,
+                        generated_at=result.generated_at,
+                        triggered=result.decision.triggered,
+                        trigger_suppressed=result.trigger_suppressed,
+                        payload_json=result.model_dump_json(),
+                    )
+                )
+                session.commit()
 
         if result.decision.triggered and not result.trigger_suppressed:
             self.last_triggered_by_rule[result.rule_id] = result

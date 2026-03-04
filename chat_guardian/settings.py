@@ -71,7 +71,7 @@ class Settings(BaseSettings):
 
     app_name: str = "ChatGuardian"
     environment: str = "dev"
-    database_url: str = "sqlite+aiosqlite:///./chat_guardian.db"
+    database_url: str = "sqlite:///./db.sqlite"
 
     # LLM 与批处理相关设置
     llm_timeout_seconds: float = 30.0

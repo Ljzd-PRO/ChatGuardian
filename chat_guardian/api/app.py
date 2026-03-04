@@ -6,6 +6,7 @@ FastAPI 应用与路由定义。
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
@@ -46,20 +47,38 @@ from chat_guardian.services import (
 )
 from chat_guardian.settings import settings
 
+
+@asynccontextmanager
+async def _app_lifespan(app: FastAPI):
+    """应用生命周期管理：启动时自动启动 adapters，关闭时自动停止。"""
+    from loguru import logger
+    container = app.state.container
+    # 启动
+    if container.adapter_manager.adapters:
+        adapter_names = [adapter.name for adapter in container.adapter_manager.adapters]
+        logger.info(f"🚀 应用启动，自动启动 adapters: {adapter_names}")
+        await container.adapter_manager.start_all()
+    yield
+    # 关闭
+    logger.info("🛑 应用关闭，停止所有 adapters")
+    await container.adapter_manager.stop_all()
+
+
 class AppContainer:
     def __init__(self):
-        """简单的应用容器，实例化所有内存仓储与服务。
+        """简单的应用容器，实例化仓储与服务。
 
         该容器用于在 `create_app` 中创建单例服务实例，便于路由直接使用。
         """
         self.chat_history_store = ChatHistoryStore(
             pending_queue_limit=settings.pending_queue_limit,
             history_list_limit=settings.history_list_limit,
+            database_url=settings.database_url,
         )
-        self.rule_repository = RuleRepository()
-        self.feedback_repository = FeedbackRepository()
-        self.memory_repository = MemoryRepository()
-        self.detection_result_repository = DetectionResultRepository()
+        self.rule_repository = RuleRepository(database_url=settings.database_url)
+        self.feedback_repository = FeedbackRepository(database_url=settings.database_url)
+        self.memory_repository = MemoryRepository(database_url=settings.database_url)
+        self.detection_result_repository = DetectionResultRepository(database_url=settings.database_url)
 
         self.llm_client = build_llm_client()
         self.context_service = ContextWindowService(self.chat_history_store)
@@ -97,9 +116,9 @@ class AppContainer:
 
 
 def create_app() -> FastAPI:
-    """创建并返回 FastAPI 应用实例。"""
-    app = FastAPI(title="ChatGuardian API", version="0.1.0")
+    """创建并返回 FastAPI 应用实例。应用启动时自动启动所有 enabled adapters。"""
     container = AppContainer()
+    app = FastAPI(title="ChatGuardian API", version="0.1.0", lifespan=_app_lifespan)
     # Expose the application container on app.state for testing and integrations.
     app.state.container = container
 
