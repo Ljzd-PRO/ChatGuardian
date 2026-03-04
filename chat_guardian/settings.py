@@ -29,6 +29,7 @@ class Settings(BaseSettings):
         llm_langchain_api_key: LangChain API 密钥。
         llm_langchain_temperature: LangChain 采样温度。
         llm_ollama_base_url: Ollama 基础地址。
+        llm_display_timezone: LLM 输入展示时间的时区（IANA 时区名，例如 Asia/Shanghai）。
         context_message_limit: 检测时回溯的历史消息条数。
         pending_queue_limit: 未处理消息队列上限。
         history_list_limit: 滚动历史消息上限。
@@ -78,6 +79,7 @@ class Settings(BaseSettings):
     llm_langchain_api_key: Optional[str] = None
     llm_langchain_temperature: float = 0.0
     llm_ollama_base_url: str = "http://localhost:11434"
+    llm_display_timezone: str = "Asia/Shanghai"
 
     # 从会话中获取历史消息条数
     context_message_limit: int = 10

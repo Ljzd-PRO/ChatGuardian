@@ -21,6 +21,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Callable, Protocol, Coroutine, Any, Union
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 from aiosmtplib import SMTP
@@ -72,6 +73,30 @@ def _build_rule_matcher(chat_id: str | None, users: list[str]):
     for user_id in users[1:]:
         user_matcher = user_matcher | MatchSender(user_id=user_id)
     return chat_matcher & user_matcher
+
+
+def _resolve_llm_display_timezone() -> ZoneInfo:
+    try:
+        return ZoneInfo(settings.llm_display_timezone)
+    except ZoneInfoNotFoundError:
+        logger.warning(f"⚠️ 无效时区配置: {settings.llm_display_timezone}，回退为 UTC")
+        return ZoneInfo("UTC")
+
+
+def _format_human_timestamp(value: datetime, tz: ZoneInfo) -> str:
+    normalized = value if value.tzinfo else value.replace(tzinfo=ZoneInfo("UTC"))
+    localized = normalized.astimezone(tz)
+    return localized.strftime("%Y-%m-%d %H:%M:%S %Z")
+
+
+def _messages_to_markdown(messages: list[ChatMessage]) -> str:
+    tz = _resolve_llm_display_timezone()
+    lines: list[str] = []
+    for message in messages:
+        display_name = message.sender_name or message.sender_id or "未知发送者"
+        human_time = _format_human_timestamp(message.timestamp, tz)
+        lines.append(f"[{human_time}] ({display_name}): {str(message)}")
+    return "\n".join(lines)
 
 
 class ChatHistoryStore(Protocol):
@@ -187,16 +212,9 @@ class LangChainLLMClient:
             return []
 
         logger.debug(f"🔍 LLM 评估开始 | 消息数={len(messages)} | 规则数={len(rules)}")
+        messages_markdown = _messages_to_markdown(messages)
         payload = {
-            "messages": [
-                {
-                    "message_id": message.message_id,
-                    "sender_id": message.sender_id,
-                    "text": str(message),
-                    "timestamp": message.timestamp.isoformat(),
-                }
-                for message in messages
-            ],
+            "聊天消息（Markdown列表）": messages_markdown,
             "rules": [
                 {
                     "rule_id": rule.rule_id,
@@ -221,12 +239,60 @@ class LangChainLLMClient:
             response = await self.model.ainvoke(
                 [
                     SystemMessage(
-                        content=(
-                            "你是聊天规则检测模型。请根据输入消息和规则进行判断，并严格输出 JSON。"
-                            "输出结构："
-                            '{"decisions":[{"rule_id":"...","triggered":true|false,'
-                            '"confidence":0~1,"reason":"...","extracted_params":{}}]}'
-                        )
+                                                content="""
+# 角色
+你是聊天规则检测模型。
+
+# 任务
+根据输入的聊天消息与规则列表，对每条规则给出是否触发的判断。
+
+# 输入格式
+- `聊天消息（Markdown列表）`：按时间顺序排列的可读消息列表，每条消息一行，格式如下：
+  - `[YYYY-MM-DD HH:MM:SS TZ] (发送者): 消息内容`
+  - 例如：
+    - `[2026-03-04 10:30:45 CST] (张三): 你好，今天天气如何？`
+    - `[2026-03-04 10:31:12 CST] (李四): 天气不错，适合出游`
+- `rules`：规则对象数组。每个规则包含以下字段：
+  - `rule_id`：规则唯一标识，字符串
+  - `name`：规则名称，字符串
+  - `description`：规则描述，字符串
+  - `topic_hints`：主题提示，字符串数组
+  - `score_threshold`：触发分数阈值，数字
+  - `parameters`：若触发，则需要根据消息内容填写的参数说明，数组，每项包含：
+    - `key`：参数名，字符串
+    - `description`：参数描述，字符串
+    - `required`：是否必填，布尔值
+
+# 判定原则
+- 仅依据提供的消息与规则内容做判断，不要臆造额外事实
+- `confidence` 必须在 0 到 1 之间
+- 若信息不足，应倾向 `triggered=false`，并在 `reason` 中说明
+
+# 输出要求（必须遵守）
+1. 只输出一个 JSON 对象，不要输出任何额外解释文本
+2. JSON 顶层必须包含 `decisions` 字段，且为数组
+3. 数组中每一项必须包含字段：
+     - `rule_id`: string
+     - `triggered`: boolean
+     - `confidence`: number (0~1)
+     - `reason`: string
+     - `extracted_params`: object
+
+# 输出示例
+```json
+{
+    "decisions": [
+        {
+            "rule_id": "rule-1",
+            "triggered": false,
+            "confidence": 0.23,
+            "reason": "证据不足，未达到触发阈值",
+            "extracted_params": {}
+        }
+    ]
+}
+```
+"""
                     ),
                     HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
                 ]
