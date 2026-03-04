@@ -8,7 +8,7 @@ import SystemConfig from './pages/SystemConfig'
 
 function App() {
   return (
-    <BrowserRouter basename="/app">
+    <BrowserRouter>
       <Routes>
         <Route path="/" element={<AppLayout />}>
           <Route index element={<Dashboard />} />
