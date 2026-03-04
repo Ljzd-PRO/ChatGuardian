@@ -214,29 +214,29 @@ class LangChainLLMClient:
         logger.debug(f"🔍 LLM 评估开始 | 消息数={len(messages)} | 规则数={len(rules)}")
         messages_payload = _messages_to_markdown(messages)
         rules_payload = [
-                {
-                    "rule_id": rule.rule_id,
-                    "name": rule.name,
-                    "description": rule.description,
-                    "topic_hints": rule.topic_hints,
-                    "score_threshold": rule.score_threshold,
-                    "parameters": [
-                        {
-                            "key": parameter.key,
-                            "description": parameter.description,
-                            "required": parameter.required,
-                        }
-                        for parameter in rule.parameters
-                    ],
-                }
-                for rule in rules
-            ],
+            {
+                "rule_id": rule.rule_id,
+                "name": rule.name,
+                "description": rule.description,
+                "topic_hints": rule.topic_hints,
+                "score_threshold": rule.score_threshold,
+                "parameters": [
+                    {
+                        "key": parameter.key,
+                        "description": parameter.description,
+                        "required": parameter.required,
+                    }
+                    for parameter in rule.parameters
+                ],
+            }
+            for rule in rules
+        ]
         payload = f"""
 ## 聊天消息
 {messages_payload}
 
 ## 规则列表
-{rules_payload}
+{json.dumps(rules_payload, ensure_ascii=False, indent=4)}
 """
 
         try:
