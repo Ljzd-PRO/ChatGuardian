@@ -299,23 +299,20 @@ class LangChainLLMClient:
 # 输出要求（必须遵守）
 1. 只输出一个 JSON 对象，不要输出任何额外解释文本
 2. JSON 必须包含以下字段：
-   - `user_name`: string（目标用户昵称，从 sender_name 获取或确认）
-   - `topics`: array，每项包含：
-     - `name`: string（话题名称，不得是 existing_topics 的近义词）
-     - `score`: number（本次参与强度，1~5 的整数）
-     - `keywords`: string[]（可选，该话题相关关键词）
-   - `interactions`: array，每项包含：
-     - `user_id`: string（互动对象的用户 ID，从消息发送者 ID 中获取）
-     - `user_name`: string（互动对象的名称）
-     - `topics`: string[]（与该对象交流时涉及的话题名称）
+     - `topics`: array，每项包含：
+         - `name`: string（话题名称，不得是 existing_topics 的近义词）
+         - `keywords`: string[]（可选，该话题相关关键词）
+     - `interactions`: array，每项包含：
+         - `user_id`: string（互动对象的用户 ID，从消息发送者 ID 中获取）
+         - `user_name`: string（互动对象的名称，如能从上下文确定）
+         - `topics`: string[]（与该对象交流时涉及的话题名称）
 
 # 输出示例
 ```json
 {
-    "user_name": "老张",
     "topics": [
-        {"name": "黑苹果", "score": 3, "keywords": ["白屏", "安装"]},
-        {"name": "汽车", "score": 2, "keywords": ["续航"]}
+        {"name": "黑苹果", "keywords": ["白屏", "安装"]},
+        {"name": "汽车", "keywords": ["续航"]}
     ],
     "interactions": [
         {"user_id": "u456", "user_name": "小李", "topics": ["黑苹果"]}
@@ -340,8 +337,9 @@ class LangChainLLMClient:
             logger.info(
                 f"✅ 参与画像提取完成 | 话题数={len(topics)} | 互动数={len(interactions)}"
             )
+            derived_user_name = event.message.sender_name or event.message.sender_id or ""
             return {
-                "user_name": str(parsed.get("user_name", "") or ""),
+                "user_name": derived_user_name,
                 "topics": topics,
                 "interactions": interactions,
             }
@@ -1104,12 +1102,10 @@ class SelfMessageMemoryService:
 
         profile = existing_profile or UserMemoryFact(
             user_id=user_id,
-            user_name=event.message.sender_name or "",
+            user_name=event.message.sender_name or user_id,
         )
-
-        # 更新昵称
-        if extract.get("user_name"):
-            profile.user_name = extract["user_name"]
+        # 始终使用最新的 sender_name 作为昵称来源（若为空则回退 user_id）
+        profile.user_name = event.message.sender_name or profile.user_name or user_id
 
         # 累积话题兴趣
         for topic_data in extract.get("topics", []):
@@ -1118,10 +1114,7 @@ class SelfMessageMemoryService:
             name = str(topic_data.get("name", "")).strip()
             if not name:
                 continue
-            try:
-                score = max(1, min(5, int(topic_data.get("score", 1))))
-            except (TypeError, ValueError):
-                score = 1
+            score = 1  # 每检测到一次该话题，固定 +1
             keywords = [str(k).strip() for k in topic_data.get("keywords", []) if str(k).strip()]
 
             if name in profile.interests:
