@@ -1,122 +1,106 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
-  Button, Card, CardBody, CardHeader, Input, Select, SelectItem, Spinner,
+  Card, CardBody, CardHeader, Chip, Spinner,
 } from '@heroui/react';
-import { Save } from 'lucide-react';
-import { fetchSettings, updateSettings } from '../api/settings';
-import type { AppSettings } from '../api/settings';
+import { fetchSettings } from '../api/settings';
+
+function Row({ label, value }: { label: string; value: string | number | boolean | null | undefined }) {
+  const display =
+    value === null || value === undefined ? '—' :
+    typeof value === 'boolean' ? (value ? 'Yes' : 'No') :
+    String(value) || '—';
+  return (
+    <div className="flex items-center justify-between py-1.5 border-b border-divider last:border-0">
+      <span className="text-sm text-default-500">{label}</span>
+      <span className="text-sm font-medium text-default-800 text-right max-w-xs truncate">{display}</span>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Card>
+      <CardHeader>
+        <span className="font-semibold">{title}</span>
+        <span className="ml-2 text-xs text-default-400">(read-only overview)</span>
+      </CardHeader>
+      <CardBody className="py-2">{children}</CardBody>
+    </Card>
+  );
+}
 
 export default function SettingsPage() {
-  const { data, isLoading } = useQuery({ queryKey: ['settings'], queryFn: fetchSettings });
-  const [form, setForm] = useState<Partial<AppSettings>>({});
-
-  useEffect(() => { if (data) setForm(data); }, [data]);
-
-  const save = useMutation({ mutationFn: () => updateSettings(form) });
-
-  function set<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
-    setForm(f => ({ ...f, [key]: value }));
-  }
+  const { data: s, isLoading } = useQuery({ queryKey: ['settings'], queryFn: fetchSettings });
 
   if (isLoading) return <div className="flex justify-center h-64"><Spinner label="Loading settings…" /></div>;
+  if (!s) return null;
 
   return (
     <div className="space-y-4 max-w-2xl">
-      {/* General */}
-      <Card>
-        <CardHeader><span className="font-semibold">General</span></CardHeader>
-        <CardBody className="space-y-3">
-          <Input label="App Name" value={form.app_name ?? ''} onValueChange={v => set('app_name', v)} />
-          <Select
-            label="Environment"
-            selectedKeys={[form.environment ?? 'dev']}
-            onSelectionChange={k => set('environment', Array.from(k)[0] as string)}
-          >
-            <SelectItem key="dev">dev</SelectItem>
-            <SelectItem key="prod">prod</SelectItem>
-          </Select>
-        </CardBody>
-      </Card>
+      <div className="flex items-center gap-2 text-default-500 text-sm p-3 bg-default-50 rounded-lg">
+        <Chip size="sm" color="primary" variant="flat">ℹ</Chip>
+        Settings are configured on their respective pages (Adapters, LLM, Notifications). This page provides a read-only overview of all active settings.
+      </div>
 
-      {/* Detection */}
-      <Card>
-        <CardHeader><span className="font-semibold">Detection</span></CardHeader>
-        <CardBody className="space-y-3">
-          <Input
-            label="Cooldown Seconds"
-            type="number"
-            value={String(form.detection_cooldown_seconds ?? 0)}
-            onValueChange={v => set('detection_cooldown_seconds', Number(v))}
-          />
-          <Input
-            label="Min New Messages"
-            type="number"
-            value={String(form.detection_min_new_messages ?? 1)}
-            onValueChange={v => set('detection_min_new_messages', Number(v))}
-          />
-          <Input
-            label="Context Message Limit"
-            type="number"
-            value={String(form.context_message_limit ?? 10)}
-            onValueChange={v => set('context_message_limit', Number(v))}
-          />
-        </CardBody>
-      </Card>
+      <Section title="General">
+        <Row label="App Name" value={s.app_name} />
+        <Row label="Environment" value={s.environment} />
+      </Section>
 
-      {/* LLM */}
-      <Card>
-        <CardHeader><span className="font-semibold">LLM</span></CardHeader>
-        <CardBody className="space-y-3">
-          <Select
-            label="Backend"
-            selectedKeys={[form.llm_langchain_backend ?? 'openai_compatible']}
-            onSelectionChange={k => set('llm_langchain_backend', Array.from(k)[0] as string)}
-          >
-            <SelectItem key="openai_compatible">OpenAI Compatible</SelectItem>
-            <SelectItem key="ollama">Ollama</SelectItem>
-          </Select>
-          <Input label="Model" value={form.llm_langchain_model ?? ''} onValueChange={v => set('llm_langchain_model', v)} />
-          <Input label="API Base" value={form.llm_langchain_api_base ?? ''} onValueChange={v => set('llm_langchain_api_base', v)} />
-          <Input label="API Key" type="password" value={form.llm_langchain_api_key ?? ''} onValueChange={v => set('llm_langchain_api_key', v)} />
-          <Input
-            label="Temperature"
-            type="number"
-            step="0.1"
-            value={String(form.llm_langchain_temperature ?? 0)}
-            onValueChange={v => set('llm_langchain_temperature', Number(v))}
-          />
-          <Input
-            label="Timeout (seconds)"
-            type="number"
-            value={String(form.llm_timeout_seconds ?? 30)}
-            onValueChange={v => set('llm_timeout_seconds', Number(v))}
-          />
-          <Input
-            label="Max Parallel Batches"
-            type="number"
-            value={String(form.llm_max_parallel_batches ?? 3)}
-            onValueChange={v => set('llm_max_parallel_batches', Number(v))}
-          />
-          <Input
-            label="Rules per Batch"
-            type="number"
-            value={String(form.llm_rules_per_batch ?? 2)}
-            onValueChange={v => set('llm_rules_per_batch', Number(v))}
-          />
-        </CardBody>
-      </Card>
+      <Section title="LLM">
+        <Row label="Backend" value={s.llm_langchain_backend} />
+        <Row label="Model" value={s.llm_langchain_model} />
+        <Row label="API Base" value={s.llm_langchain_api_base} />
+        <Row label="API Key" value={s.llm_langchain_api_key ? '••••••••' : null} />
+        <Row label="Temperature" value={s.llm_langchain_temperature} />
+        <Row label="Timeout (s)" value={s.llm_timeout_seconds} />
+        <Row label="Max Parallel Batches" value={s.llm_max_parallel_batches} />
+        <Row label="Rules per Batch" value={s.llm_rules_per_batch} />
+        <Row label="Ollama Base URL" value={s.llm_ollama_base_url} />
+        <Row label="Display Timezone" value={s.llm_display_timezone} />
+      </Section>
 
-      <Button
-        color="primary"
-        startContent={<Save size={14} />}
-        isLoading={save.isPending}
-        onPress={() => save.mutate()}
-      >
-        Save Settings
-      </Button>
-      {save.isSuccess && <p className="text-success text-sm">✓ Saved successfully.</p>}
-      {save.isError && <p className="text-danger text-sm">✗ Save failed.</p>}
+      <Section title="Detection">
+        <Row label="Context Message Limit" value={s.context_message_limit} />
+        <Row label="Cooldown (s)" value={s.detection_cooldown_seconds} />
+        <Row label="Min New Messages" value={s.detection_min_new_messages} />
+        <Row label="Wait Timeout (s)" value={s.detection_wait_timeout_seconds} />
+        <Row label="Pending Queue Limit" value={s.pending_queue_limit} />
+        <Row label="History List Limit" value={s.history_list_limit} />
+      </Section>
+
+      <Section title="Email Notifications">
+        <Row label="Enabled" value={s.email_notifier_enabled} />
+        <Row label="To Email" value={s.email_notifier_to_email} />
+        <Row label="SMTP Host" value={s.smtp_host} />
+        <Row label="SMTP Port" value={s.smtp_port} />
+        <Row label="SMTP Username" value={s.smtp_username} />
+        <Row label="SMTP Password" value={s.smtp_username ? '••••••••' : null} />
+        <Row label="SMTP Sender" value={s.smtp_sender} />
+      </Section>
+
+      <Section title="Bark Notifications">
+        <Row label="Enabled" value={s.bark_notifier_enabled} />
+        <Row label="Device Key" value={s.bark_device_key ? '••••••••' : null} />
+        <Row label="Server URL" value={s.bark_server_url} />
+        <Row label="Group" value={s.bark_group} />
+        <Row label="Level" value={s.bark_level} />
+      </Section>
+
+      <Section title="Adapters">
+        <Row label="Enabled Adapters" value={s.enabled_adapters.length > 0 ? s.enabled_adapters.join(', ') : 'none'} />
+        <Row label="OneBot Host" value={s.onebot_host} />
+        <Row label="OneBot Port" value={s.onebot_port} />
+        <Row label="OneBot Access Token" value={s.onebot_access_token ? '••••••••' : null} />
+        <Row label="Telegram Bot Token" value={s.telegram_bot_token ? '••••••••' : null} />
+        <Row label="Telegram Polling Timeout" value={s.telegram_polling_timeout} />
+        <Row label="Drop Pending Updates" value={s.telegram_drop_pending_updates} />
+      </Section>
+
+      <Section title="Rule Generation">
+        <Row label="Internal Rule Generation" value={s.enable_internal_rule_generation} />
+        <Row label="External Endpoint" value={s.external_rule_generation_endpoint} />
+      </Section>
     </div>
   );
 }

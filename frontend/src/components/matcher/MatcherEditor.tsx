@@ -82,14 +82,16 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
         <div className="flex gap-2 flex-wrap">
           <Input
             size="sm"
-            label="user_id"
+            label="User ID"
+            placeholder="e.g. 123456"
             value={value.user_id ?? ''}
             onValueChange={v => onChange({ ...value, user_id: v || undefined })}
             className="w-40"
           />
           <Input
             size="sm"
-            label="display_name"
+            label="Display Name"
+            placeholder="e.g. Alice"
             value={value.display_name ?? ''}
             onValueChange={v => onChange({ ...value, display_name: v || undefined })}
             className="w-40"
@@ -100,8 +102,9 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
       {value.type === 'chat' && (
         <Input
           size="sm"
-          label="chat_id"
+          label="Chat ID"
           isRequired
+          placeholder="e.g. group_001"
           value={value.chat_id}
           onValueChange={v => onChange({ ...value, chat_id: v })}
           className="w-48"
@@ -111,7 +114,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
       {value.type === 'chat_type' && (
         <Select
           size="sm"
-          label="chat_type"
+          label="Chat Type"
           className="w-36"
           selectedKeys={[value.chat_type]}
           onSelectionChange={(keys) => {
@@ -119,16 +122,17 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
             if (k) onChange({ ...value, chat_type: k });
           }}
         >
-          <SelectItem key="group">group</SelectItem>
-          <SelectItem key="private">private</SelectItem>
+          <SelectItem key="group">Group</SelectItem>
+          <SelectItem key="private">Private</SelectItem>
         </Select>
       )}
 
       {value.type === 'adapter' && (
         <Input
           size="sm"
-          label="adapter_name"
+          label="Adapter"
           isRequired
+          placeholder="e.g. onebot"
           value={value.adapter_name}
           onValueChange={v => onChange({ ...value, adapter_name: v })}
           className="w-48"

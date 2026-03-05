@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Card, CardBody, CardHeader, Chip, Spinner,
+  Card, CardBody, CardHeader, Chip, Spinner, Input,
   Accordion, AccordionItem, Progress,
 } from '@heroui/react';
+import { Search } from 'lucide-react';
 import { fetchRuleStats } from '../api/stats';
 import { fetchRules } from '../api/rules';
 import TriggerChart from '../components/charts/TriggerChart';
@@ -10,6 +12,7 @@ import TriggerChart from '../components/charts/TriggerChart';
 export default function TriggerStatsPage() {
   const { data: stats, isLoading: statsLoading } = useQuery({ queryKey: ['rule_stats'], queryFn: fetchRuleStats });
   const { data: rules, isLoading: rulesLoading } = useQuery({ queryKey: ['rules'], queryFn: fetchRules });
+  const [searchText, setSearchText] = useState('');
 
   const loading = statsLoading || rulesLoading;
 
@@ -27,6 +30,11 @@ export default function TriggerStatsPage() {
     .filter(r => r.stat.count > 0)
     .map(r => ({ name: r.name, count: r.stat.count }));
 
+  const q = searchText.toLowerCase();
+  const filteredRules = merged.filter(r =>
+    !q || r.name.toLowerCase().includes(q) || r.description.toLowerCase().includes(q)
+  );
+
   if (loading) return <div className="flex justify-center h-64"><Spinner label="Loading stats…" /></div>;
 
   return (
@@ -38,8 +46,24 @@ export default function TriggerStatsPage() {
         </CardBody>
       </Card>
 
+      <div className="flex items-center gap-2">
+        <Input
+          size="sm"
+          placeholder="Search rules…"
+          value={searchText}
+          onValueChange={setSearchText}
+          startContent={<Search size={14} className="text-default-400 shrink-0" />}
+          isClearable
+          onClear={() => setSearchText('')}
+          className="max-w-xs"
+        />
+        <span className="text-default-400 text-sm whitespace-nowrap">
+          {filteredRules.length} / {merged.length}
+        </span>
+      </div>
+
       <div className="space-y-3">
-        {merged.map(r => (
+        {filteredRules.map(r => (
           <Card key={r.rule_id}>
             <CardHeader className="flex items-center justify-between">
               <div>
@@ -92,6 +116,9 @@ export default function TriggerStatsPage() {
             )}
           </Card>
         ))}
+        {filteredRules.length === 0 && merged.length > 0 && (
+          <p className="text-center text-default-400 text-sm py-8">No rules match your search.</p>
+        )}
       </div>
     </div>
   );

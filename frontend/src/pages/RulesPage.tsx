@@ -4,7 +4,7 @@ import {
   Button, Card, CardBody, Chip, Input, Modal, ModalBody,
   ModalContent, ModalFooter, ModalHeader, Spinner, Switch, Slider, Textarea,
 } from '@heroui/react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { fetchRules, upsertRule, deleteRule } from '../api/rules';
 import type { DetectionRule, MatcherUnion, RuleParameterSpec } from '../api/types';
 import MatcherEditor from '../components/matcher/MatcherEditor';
@@ -27,6 +27,7 @@ export default function RulesPage() {
   const [editing, setEditing] = useState<DetectionRule | null>(null);
   const [deleting, setDeleting] = useState<DetectionRule | null>(null);
   const [topicInput, setTopicInput] = useState('');
+  const [searchText, setSearchText] = useState('');
 
   const upsert = useMutation({
     mutationFn: upsertRule,
@@ -75,19 +76,41 @@ export default function RulesPage() {
     setEditing({ ...editing, parameters: editing.parameters.filter((_, idx) => idx !== i) });
   }
 
+  const q = searchText.toLowerCase();
+  const filteredRules = (rules ?? []).filter(r =>
+    !q ||
+    r.name.toLowerCase().includes(q) ||
+    r.description.toLowerCase().includes(q) ||
+    r.topic_hints.some(t => t.toLowerCase().includes(q))
+  );
+
   if (isLoading) return <div className="flex justify-center h-64"><Spinner label="Loading rules…" /></div>;
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <p className="text-default-500 text-sm">{rules?.length ?? 0} rules</p>
+      <div className="flex flex-wrap justify-between items-center gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <Input
+            size="sm"
+            placeholder="Search rules…"
+            value={searchText}
+            onValueChange={setSearchText}
+            startContent={<Search size={14} className="text-default-400 shrink-0" />}
+            isClearable
+            onClear={() => setSearchText('')}
+            className="max-w-xs"
+          />
+          <span className="text-default-400 text-sm whitespace-nowrap">
+            {filteredRules.length} / {rules?.length ?? 0}
+          </span>
+        </div>
         <Button color="primary" startContent={<Plus size={16} />} onPress={openNew}>
           New Rule
         </Button>
       </div>
 
       <div className="space-y-3">
-        {rules?.map(rule => (
+        {filteredRules.map(rule => (
           <Card key={rule.rule_id} className="w-full">
             <CardBody className="flex flex-row items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
@@ -126,6 +149,9 @@ export default function RulesPage() {
             </CardBody>
           </Card>
         ))}
+        {filteredRules.length === 0 && rules && rules.length > 0 && (
+          <p className="text-center text-default-400 text-sm py-8">No rules match your search.</p>
+        )}
       </div>
 
       {/* Edit modal */}
@@ -155,18 +181,39 @@ export default function RulesPage() {
                   value={editing.description}
                   onValueChange={v => setEditing({ ...editing, description: v })}
                 />
+
+                {/* Score Threshold – slider + manual input */}
                 <div>
-                  <p className="text-sm font-medium text-default-700 mb-1">Score Threshold</p>
-                  <Slider
-                    minValue={0}
-                    maxValue={1}
-                    step={0.05}
-                    value={editing.score_threshold}
-                    onChange={v => setEditing({ ...editing, score_threshold: v as number })}
-                    label={`${editing.score_threshold}`}
-                    className="max-w-md"
-                  />
+                  <p className="text-sm font-medium text-default-700 mb-2">Score Threshold</p>
+                  <div className="flex items-center gap-3">
+                    <Slider
+                      minValue={0}
+                      maxValue={1}
+                      step={0.05}
+                      value={editing.score_threshold}
+                      onChange={v => setEditing({ ...editing, score_threshold: v as number })}
+                      className="flex-1"
+                      aria-label="Score threshold slider"
+                    />
+                    <Input
+                      size="sm"
+                      type="number"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={String(editing.score_threshold)}
+                      onValueChange={v => {
+                        const n = parseFloat(v);
+                        if (!isNaN(n) && n >= 0 && n <= 1) {
+                          setEditing({ ...editing, score_threshold: n });
+                        }
+                      }}
+                      className="w-20 shrink-0"
+                      aria-label="Score threshold value"
+                    />
+                  </div>
                 </div>
+
                 <Switch
                   isSelected={editing.enabled}
                   onValueChange={v => setEditing({ ...editing, enabled: v })}
@@ -210,31 +257,33 @@ export default function RulesPage() {
                     </Button>
                   </div>
                   {editing.parameters.map((p, i) => (
-                    <div key={i} className="flex items-center gap-2 flex-wrap">
+                    <div key={i} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                       <Input
                         size="sm"
                         label="Key"
                         value={p.key}
                         onValueChange={v => updateParam(i, 'key', v)}
-                        className="w-32"
+                        className="sm:w-32 w-full"
                       />
                       <Input
                         size="sm"
                         label="Description"
                         value={p.description}
                         onValueChange={v => updateParam(i, 'description', v)}
-                        className="flex-1"
+                        className="sm:flex-1 w-full"
                       />
-                      <Switch
-                        size="sm"
-                        isSelected={p.required}
-                        onValueChange={v => updateParam(i, 'required', v)}
-                      >
-                        Required
-                      </Switch>
-                      <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => removeParam(i)}>
-                        <Trash2 size={12} />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          size="sm"
+                          isSelected={p.required}
+                          onValueChange={v => updateParam(i, 'required', v)}
+                        >
+                          Required
+                        </Switch>
+                        <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => removeParam(i)}>
+                          <Trash2 size={12} />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

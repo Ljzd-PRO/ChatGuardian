@@ -445,14 +445,25 @@ def create_app() -> FastAPI:
 
     SETTINGS_ALLOWLIST = {
         "app_name", "environment",
+        # LLM
         "llm_langchain_backend", "llm_langchain_model", "llm_langchain_api_base",
         "llm_langchain_api_key", "llm_langchain_temperature", "llm_timeout_seconds",
         "llm_max_parallel_batches", "llm_rules_per_batch",
+        "llm_ollama_base_url", "llm_display_timezone",
+        # Detection
         "context_message_limit", "detection_cooldown_seconds", "detection_min_new_messages",
+        "detection_wait_timeout_seconds", "pending_queue_limit", "history_list_limit",
+        # Notifications – Email
         "email_notifier_enabled", "email_notifier_to_email",
         "smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_sender",
+        # Notifications – Bark
         "bark_notifier_enabled", "bark_device_key", "bark_server_url", "bark_group", "bark_level",
+        # Adapters
         "enabled_adapters",
+        "onebot_host", "onebot_port", "onebot_access_token",
+        "telegram_bot_token", "telegram_polling_timeout", "telegram_drop_pending_updates",
+        # Rule generation
+        "enable_internal_rule_generation", "external_rule_generation_endpoint",
     }
 
     def _settings_subset() -> dict[str, object]:
@@ -460,6 +471,7 @@ def create_app() -> FastAPI:
         return {
             "app_name": s.app_name,
             "environment": s.environment,
+            # LLM
             "llm_langchain_backend": s.llm_langchain_backend,
             "llm_langchain_model": s.llm_langchain_model,
             "llm_langchain_api_base": s.llm_langchain_api_base,
@@ -468,21 +480,39 @@ def create_app() -> FastAPI:
             "llm_timeout_seconds": s.llm_timeout_seconds,
             "llm_max_parallel_batches": s.llm_max_parallel_batches,
             "llm_rules_per_batch": s.llm_rules_per_batch,
+            "llm_ollama_base_url": s.llm_ollama_base_url,
+            "llm_display_timezone": s.llm_display_timezone,
+            # Detection
             "context_message_limit": s.context_message_limit,
             "detection_cooldown_seconds": s.detection_cooldown_seconds,
             "detection_min_new_messages": s.detection_min_new_messages,
+            "detection_wait_timeout_seconds": s.detection_wait_timeout_seconds,
+            "pending_queue_limit": s.pending_queue_limit,
+            "history_list_limit": s.history_list_limit,
+            # Notifications – Email
             "email_notifier_enabled": s.email_notifier_enabled,
             "email_notifier_to_email": s.email_notifier_to_email,
             "smtp_host": s.smtp_host,
             "smtp_port": s.smtp_port,
             "smtp_username": s.smtp_username,
             "smtp_sender": s.smtp_sender,
+            # Notifications – Bark (smtp_password intentionally omitted from GET)
             "bark_notifier_enabled": s.bark_notifier_enabled,
             "bark_device_key": s.bark_device_key,
             "bark_server_url": s.bark_server_url,
             "bark_group": s.bark_group,
             "bark_level": s.bark_level,
+            # Adapters
             "enabled_adapters": s.enabled_adapters,
+            "onebot_host": s.onebot_host,
+            "onebot_port": s.onebot_port,
+            "onebot_access_token": s.onebot_access_token,
+            "telegram_bot_token": s.telegram_bot_token,
+            "telegram_polling_timeout": s.telegram_polling_timeout,
+            "telegram_drop_pending_updates": s.telegram_drop_pending_updates,
+            # Rule generation
+            "enable_internal_rule_generation": s.enable_internal_rule_generation,
+            "external_rule_generation_endpoint": s.external_rule_generation_endpoint,
         }
 
     @app.get("/api/settings")

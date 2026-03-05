@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Button, Card, CardBody, CardHeader, Input, Spinner, Switch,
+  Button, Card, CardBody, CardHeader, Input, Select, SelectItem, Spinner, Switch,
 } from '@heroui/react';
 import { Save } from 'lucide-react';
 import { fetchNotificationsConfig, updateSettings } from '../api/settings';
 import type { AppSettings } from '../api/settings';
 
+const BARK_LEVELS = ['active', 'timeSensitive', 'passive', 'critical'];
+
 export default function NotificationsPage() {
+  const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ['notifications_config'], queryFn: fetchNotificationsConfig });
   const [form, setForm] = useState<Partial<AppSettings>>({});
 
@@ -24,11 +27,13 @@ export default function NotificationsPage() {
       bark_device_key: data.bark.device_key ?? '',
       bark_server_url: data.bark.server_url,
       bark_group: data.bark.group ?? '',
+      bark_level: data.bark.level ?? '',
     });
   }, [data]);
 
   const save = useMutation({
     mutationFn: () => updateSettings(form),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications_config'] }),
   });
 
   if (isLoading) return <div className="flex justify-center h-64"><Spinner label="Loading…" /></div>;
@@ -46,11 +51,42 @@ export default function NotificationsPage() {
           />
         </CardHeader>
         <CardBody className="space-y-3">
-          <Input label="To Email" value={form.email_notifier_to_email ?? ''} onValueChange={v => setForm(f => ({ ...f, email_notifier_to_email: v }))} />
-          <Input label="SMTP Host" value={form.smtp_host ?? ''} onValueChange={v => setForm(f => ({ ...f, smtp_host: v }))} />
-          <Input label="SMTP Port" type="number" value={String(form.smtp_port ?? 587)} onValueChange={v => setForm(f => ({ ...f, smtp_port: Number(v) }))} />
-          <Input label="SMTP Username" value={form.smtp_username ?? ''} onValueChange={v => setForm(f => ({ ...f, smtp_username: v }))} />
-          <Input label="SMTP Sender" value={form.smtp_sender ?? ''} onValueChange={v => setForm(f => ({ ...f, smtp_sender: v }))} />
+          <Input
+            label="To Email"
+            placeholder="recipient@example.com"
+            value={form.email_notifier_to_email ?? ''}
+            onValueChange={v => setForm(f => ({ ...f, email_notifier_to_email: v }))}
+          />
+          <Input
+            label="SMTP Host"
+            placeholder="smtp.example.com"
+            value={form.smtp_host ?? ''}
+            onValueChange={v => setForm(f => ({ ...f, smtp_host: v }))}
+          />
+          <Input
+            label="SMTP Port"
+            type="number"
+            value={String(form.smtp_port ?? 587)}
+            onValueChange={v => setForm(f => ({ ...f, smtp_port: Number(v) }))}
+          />
+          <Input
+            label="SMTP Username"
+            value={form.smtp_username ?? ''}
+            onValueChange={v => setForm(f => ({ ...f, smtp_username: v }))}
+          />
+          <Input
+            label="SMTP Password"
+            type="password"
+            placeholder="(unchanged if empty)"
+            value={form.smtp_password ?? ''}
+            onValueChange={v => setForm(f => ({ ...f, smtp_password: v || null }))}
+          />
+          <Input
+            label="SMTP Sender"
+            placeholder="sender@example.com"
+            value={form.smtp_sender ?? ''}
+            onValueChange={v => setForm(f => ({ ...f, smtp_sender: v }))}
+          />
         </CardBody>
       </Card>
 
@@ -65,9 +101,32 @@ export default function NotificationsPage() {
           />
         </CardHeader>
         <CardBody className="space-y-3">
-          <Input label="Device Key" value={form.bark_device_key ?? ''} onValueChange={v => setForm(f => ({ ...f, bark_device_key: v }))} />
-          <Input label="Server URL" value={form.bark_server_url ?? 'https://api.day.app'} onValueChange={v => setForm(f => ({ ...f, bark_server_url: v }))} />
-          <Input label="Group" value={form.bark_group ?? ''} onValueChange={v => setForm(f => ({ ...f, bark_group: v }))} />
+          <Input
+            label="Device Key"
+            value={form.bark_device_key ?? ''}
+            onValueChange={v => setForm(f => ({ ...f, bark_device_key: v }))}
+          />
+          <Input
+            label="Server URL"
+            value={form.bark_server_url ?? 'https://api.day.app'}
+            onValueChange={v => setForm(f => ({ ...f, bark_server_url: v }))}
+          />
+          <Input
+            label="Group"
+            value={form.bark_group ?? ''}
+            onValueChange={v => setForm(f => ({ ...f, bark_group: v }))}
+          />
+          <Select
+            label="Level"
+            placeholder="Default"
+            selectedKeys={form.bark_level ? [form.bark_level] : []}
+            onSelectionChange={k => {
+              const val = Array.from(k)[0] as string ?? '';
+              setForm(f => ({ ...f, bark_level: val || null }));
+            }}
+          >
+            {BARK_LEVELS.map(l => <SelectItem key={l}>{l}</SelectItem>)}
+          </Select>
         </CardBody>
       </Card>
 
@@ -79,8 +138,8 @@ export default function NotificationsPage() {
       >
         Save Settings
       </Button>
-      {save.isSuccess && <p className="text-success text-sm">Saved successfully.</p>}
-      {save.isError && <p className="text-danger text-sm">Save failed.</p>}
+      {save.isSuccess && <p className="text-success text-sm">✓ Saved successfully.</p>}
+      {save.isError && <p className="text-danger text-sm">✗ Save failed.</p>}
     </div>
   );
 }
