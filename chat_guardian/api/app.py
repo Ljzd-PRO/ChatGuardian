@@ -6,11 +6,15 @@ FastAPI 应用与路由定义。
 
 from __future__ import annotations
 
+import os
+from collections import deque
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import (
@@ -169,8 +173,16 @@ def create_app() -> FastAPI:
     """创建并返回 FastAPI 应用实例。应用启动时自动启动所有 enabled adapters。"""
     container = AppContainer()
     app = FastAPI(title="ChatGuardian API", version="0.1.0", lifespan=_app_lifespan)
-    # Expose the application container on app.state for testing and integrations.
     app.state.container = container
+
+    # CORS: allow all origins in development; restrict in production via settings
+    cors_origins = ["*"] if settings.environment != "prod" else []
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -357,16 +369,139 @@ def create_app() -> FastAPI:
             } for adapter in container.adapter_manager.adapters
         ]
 
+    # ── Dashboard ────────────────────────────────────────────────────────────
+
+    @app.get("/api/dashboard")
+    async def get_dashboard():
+        rules = await container.rule_repository.list_all()
+        total_rules = len(rules)
+        enabled_rules = sum(1 for r in rules if r.enabled)
+
+        today = date.today()
+        triggers_today = 0
+        for results in container.detection_result_repository.results_by_rule.values():
+            for r in results:
+                if r.decision.triggered and r.generated_at.date() == today:
+                    triggers_today += 1
+
+        total_results = sum(
+            len(v) for v in container.detection_result_repository.results_by_rule.values()
+        )
+        triggered_total = sum(
+            sum(1 for r in v if r.decision.triggered)
+            for v in container.detection_result_repository.results_by_rule.values()
+        )
+        trigger_rate = round(triggered_total / total_results, 4) if total_results else 0.0
+
+        llm_diag = container.llm_client.diagnostics()
+
+        return {
+            "total_rules": total_rules,
+            "enabled_rules": enabled_rules,
+            "triggers_today": triggers_today,
+            "trigger_rate": trigger_rate,
+            "llm_status": llm_diag,
+        }
+
+    # ── Logs ─────────────────────────────────────────────────────────────────
+
+    _log_buffer: deque[dict] = deque(maxlen=500)
+
+    try:
+        from loguru import logger as _loguru_logger
+
+        def _sink(message):
+            record = message.record
+            _log_buffer.append(
+                {
+                    "timestamp": record["time"].isoformat(),
+                    "level": record["level"].name,
+                    "message": record["message"],
+                }
+            )
+
+        _loguru_logger.add(_sink, format="{message}")
+    except Exception:
+        pass
+
+    @app.get("/api/logs")
+    async def get_logs(limit: int = 100):
+        return list(reversed(list(_log_buffer)[-limit:]))
+
+    # ── User Profiles ─────────────────────────────────────────────────────────
+
+    @app.get("/api/user_profiles")
+    async def list_user_profiles():
+        return list(container.memory_repository.profiles.values())
+
+    @app.get("/api/user_profiles/{user_id}")
+    async def get_user_profile(user_id: str):
+        profile = await container.memory_repository.get_profile(user_id)
+        if not profile:
+            raise HTTPException(status_code=404, detail=f"User not found: {user_id}")
+        return profile
+
+    # ── Settings ──────────────────────────────────────────────────────────────
+
+    SETTINGS_ALLOWLIST = {
+        "app_name", "environment",
+        "llm_langchain_backend", "llm_langchain_model", "llm_langchain_api_base",
+        "llm_langchain_api_key", "llm_langchain_temperature", "llm_timeout_seconds",
+        "llm_max_parallel_batches", "llm_rules_per_batch",
+        "context_message_limit", "detection_cooldown_seconds", "detection_min_new_messages",
+        "email_notifier_enabled", "email_notifier_to_email",
+        "smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_sender",
+        "bark_notifier_enabled", "bark_device_key", "bark_server_url", "bark_group", "bark_level",
+        "enabled_adapters",
+    }
+
+    def _settings_subset() -> dict[str, object]:
+        s = settings
+        return {
+            "app_name": s.app_name,
+            "environment": s.environment,
+            "llm_langchain_backend": s.llm_langchain_backend,
+            "llm_langchain_model": s.llm_langchain_model,
+            "llm_langchain_api_base": s.llm_langchain_api_base,
+            "llm_langchain_api_key": s.llm_langchain_api_key,
+            "llm_langchain_temperature": s.llm_langchain_temperature,
+            "llm_timeout_seconds": s.llm_timeout_seconds,
+            "llm_max_parallel_batches": s.llm_max_parallel_batches,
+            "llm_rules_per_batch": s.llm_rules_per_batch,
+            "context_message_limit": s.context_message_limit,
+            "detection_cooldown_seconds": s.detection_cooldown_seconds,
+            "detection_min_new_messages": s.detection_min_new_messages,
+            "email_notifier_enabled": s.email_notifier_enabled,
+            "email_notifier_to_email": s.email_notifier_to_email,
+            "smtp_host": s.smtp_host,
+            "smtp_port": s.smtp_port,
+            "smtp_username": s.smtp_username,
+            "smtp_sender": s.smtp_sender,
+            "bark_notifier_enabled": s.bark_notifier_enabled,
+            "bark_device_key": s.bark_device_key,
+            "bark_server_url": s.bark_server_url,
+            "bark_group": s.bark_group,
+            "bark_level": s.bark_level,
+            "enabled_adapters": s.enabled_adapters,
+        }
+
     @app.get("/api/settings")
     async def get_settings_api() -> dict:
         """返回当前所有可配置项（不含 database_url）。"""
-        return settings.model_dump(exclude={"database_url"})
+        return _settings_subset()
 
     @app.post("/api/settings")
-    async def update_settings_api(updates: dict) -> dict:
+    async def update_settings_api(payload: dict) -> dict:
         """批量更新配置项，保存到数据库并立即生效。database_url 不可通过此接口修改。"""
-        updates.pop("database_url", None)
+        updates = {k: v for k, v in payload.items() if k in SETTINGS_ALLOWLIST}
+        disallowed = set(payload.keys()) - set(SETTINGS_ALLOWLIST)
+        if disallowed:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown or disallowed setting(s): {', '.join(sorted(disallowed))}",
+            )
 
+        # Build full settings object for validation while keeping database_url from env
         current = settings.model_dump()
         current.update(updates)
         current["database_url"] = settings.database_url
@@ -377,11 +512,70 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
         validated_dict = validated.model_dump(exclude={"database_url"})
-        container.settings_repository.save(validated_dict)
+        # Persist only the allowlisted keys that were provided
+        to_save = {k: validated_dict[k] for k in updates.keys()}
+        container.settings_repository.save(to_save)
 
-        for key, value in validated_dict.items():
+        for key, value in to_save.items():
             setattr(settings, key, value)
 
-        return validated_dict
+        return {"status": "saved", "settings": _settings_subset()}
+
+    # ── Notifications config ──────────────────────────────────────────────────
+
+    @app.get("/api/notifications/config")
+    async def get_notifications_config():
+        s = settings
+        return {
+            "email": {
+                "enabled": s.email_notifier_enabled,
+                "smtp_host": s.smtp_host,
+                "smtp_port": s.smtp_port,
+                "smtp_username": s.smtp_username,
+                "smtp_sender": s.smtp_sender,
+                "to_email": s.email_notifier_to_email,
+            },
+            "bark": {
+                "enabled": s.bark_notifier_enabled,
+                "device_key": s.bark_device_key,
+                "server_url": s.bark_server_url,
+                "group": s.bark_group,
+                "level": s.bark_level,
+            },
+        }
+
+    # ── LLM config ────────────────────────────────────────────────────────────
+
+    @app.get("/api/llm/config")
+    async def get_llm_config():
+        s = settings
+        return {
+            "backend": s.llm_langchain_backend,
+            "model": s.llm_langchain_model,
+            "api_base": s.llm_langchain_api_base,
+            "temperature": s.llm_langchain_temperature,
+            "timeout_seconds": s.llm_timeout_seconds,
+            "max_parallel_batches": s.llm_max_parallel_batches,
+            "rules_per_batch": s.llm_rules_per_batch,
+            "ollama_base_url": s.llm_ollama_base_url,
+        }
+
+    # ── Static frontend ───────────────────────────────────────────────────────
+
+    _frontend_dist = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
+    )
+    if os.path.exists(_frontend_dist):
+        _assets_dir = os.path.join(_frontend_dist, "assets")
+        if os.path.exists(_assets_dir):
+            app.mount("/app/assets", StaticFiles(directory=_assets_dir), name="assets")
+
+        @app.get("/app/{full_path:path}")
+        async def serve_frontend(full_path: str):
+            return FileResponse(os.path.join(_frontend_dist, "index.html"))
+
+        @app.get("/app")
+        async def serve_frontend_root():
+            return FileResponse(os.path.join(_frontend_dist, "index.html"))
 
     return app

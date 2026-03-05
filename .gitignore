@@ -210,3 +210,8 @@ __marimo__/
 .vscode/
 
 db.sqlite
+
+# Frontend build artifacts and dependencies
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
