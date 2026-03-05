@@ -149,7 +149,7 @@ function LLMHealthCard() {
   return (
     <Card>
       <CardHeader className="flex items-center justify-between">
-        <span className="font-semibold">Health &amp; Scheduler</span>
+        <span className="font-semibold">Health & Scheduler</span>
         <Button
           size="sm"
           color="primary"

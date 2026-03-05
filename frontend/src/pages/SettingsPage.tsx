@@ -75,7 +75,7 @@ export default function SettingsPage() {
         <Row label="SMTP Host" value={s.smtp_host} />
         <Row label="SMTP Port" value={s.smtp_port} />
         <Row label="SMTP Username" value={s.smtp_username} />
-        <Row label="SMTP Password" value={s.smtp_username ? '••••••••' : null} />
+        <Row label="SMTP Password" value="(write-only)" />
         <Row label="SMTP Sender" value={s.smtp_sender} />
       </Section>
 
