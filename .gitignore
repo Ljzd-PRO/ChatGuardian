@@ -215,3 +215,4 @@ db.sqlite
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+tmp_screenshots/
