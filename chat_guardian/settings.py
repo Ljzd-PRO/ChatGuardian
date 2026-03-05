@@ -1,21 +1,34 @@
 """
 应用设置模块。
 
-此模块定义 `Settings` 配置类，使用环境变量（前缀 `CHAT_GUARDIAN_`）进行初始化。
+此模块定义 `Settings` 配置类。`database_url` 通过环境变量（前缀 `CHAT_GUARDIAN_`）读取，
+其余配置项通过 SQLAlchemy SQLite 数据库保存与读取，并可通过前端 API 修改。
 """
 from typing import Optional
 
+from pydantic import BaseModel, ConfigDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseSettings):
+class _EnvConfig(BaseSettings):
+    """仅从环境变量读取 database_url。"""
+
+    model_config = SettingsConfigDict(env_prefix="CHAT_GUARDIAN_", env_file=".env", extra="ignore")
+
+    database_url: str = "sqlite:///./db.sqlite"
+
+
+class Settings(BaseModel):
     """
     全局配置类。
 
+    除 database_url 外，所有配置项均通过数据库存储和读取，并可通过前端 API 修改。
+    database_url 仅通过环境变量（CHAT_GUARDIAN_DATABASE_URL）配置。
+
     Attributes:
+        database_url: SQLAlchemy/数据库连接字符串（仅通过环境变量配置）。
         app_name: 应用名称。
         environment: 当前环境（如 dev、prod）。
-        database_url: SQLAlchemy/数据库连接字符串。
         llm_timeout_seconds: LLM 单次调用超时时间（秒）。
         llm_max_parallel_batches: LLM 最大并行批次数。
         llm_rules_per_batch: 每批处理的规则数。
@@ -69,11 +82,12 @@ class Settings(BaseSettings):
         virtual_adapter_script_path: 虚拟 adapter 脚本路径。
     """
 
-    model_config = SettingsConfigDict(env_prefix="CHAT_GUARDIAN_", env_file=".env", extra="ignore")
+    model_config = ConfigDict(extra="ignore", validate_assignment=True)
 
+    # database_url 仅通过环境变量配置，不存储在数据库中
+    database_url: str = "sqlite:///./db.sqlite"
     app_name: str = "ChatGuardian"
     environment: str = "dev"
-    database_url: str = "sqlite:///./db.sqlite"
 
     # LLM 与批处理相关设置
     llm_timeout_seconds: float = 30.0
@@ -149,4 +163,4 @@ class Settings(BaseSettings):
     virtual_adapter_script_path: Optional[str] = None
 
 
-settings = Settings()
+settings = Settings(database_url=_EnvConfig().database_url)

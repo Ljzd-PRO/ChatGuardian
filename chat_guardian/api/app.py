@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from collections import deque
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,6 +35,7 @@ from chat_guardian.repositories import (
     FeedbackRepository,
     MemoryRepository,
     RuleRepository,
+    SettingsRepository,
 )
 from chat_guardian.rule_authoring import (
     ExternalPromptRuleGenerationBackend,
@@ -49,7 +50,7 @@ from chat_guardian.services import (
     SelfMessageMemoryService,
     SuggestionService,
 )
-from chat_guardian.settings import settings
+from chat_guardian.settings import settings, Settings
 
 
 @asynccontextmanager
@@ -111,6 +112,17 @@ class AppContainer:
 
         该容器用于在 `create_app` 中创建单例服务实例，便于路由直接使用。
         """
+        # 首先从数据库加载配置，确保后续服务使用最新配置
+        self.settings_repository = SettingsRepository(database_url=settings.database_url)
+        db_settings = self.settings_repository.load_all()
+        for key, value in db_settings.items():
+            if key != "database_url" and hasattr(settings, key):
+                try:
+                    setattr(settings, key, value)
+                except Exception as exc:
+                    from loguru import logger
+                    logger.warning(f"⚠️ 配置项 '{key}' 加载失败，已使用默认值: {exc}")
+
         self.chat_history_store = ChatHistoryStore(
             pending_queue_limit=settings.pending_queue_limit,
             history_list_limit=settings.history_list_limit,
@@ -431,8 +443,19 @@ def create_app() -> FastAPI:
 
     # ── Settings ──────────────────────────────────────────────────────────────
 
-    @app.get("/api/settings")
-    async def get_settings():
+    SETTINGS_ALLOWLIST = {
+        "app_name", "environment",
+        "llm_langchain_backend", "llm_langchain_model", "llm_langchain_api_base",
+        "llm_langchain_api_key", "llm_langchain_temperature", "llm_timeout_seconds",
+        "llm_max_parallel_batches", "llm_rules_per_batch",
+        "context_message_limit", "detection_cooldown_seconds", "detection_min_new_messages",
+        "email_notifier_enabled", "email_notifier_to_email",
+        "smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_sender",
+        "bark_notifier_enabled", "bark_device_key", "bark_server_url", "bark_group", "bark_level",
+        "enabled_adapters",
+    }
+
+    def _settings_subset() -> dict[str, object]:
         s = settings
         return {
             "app_name": s.app_name,
@@ -458,48 +481,45 @@ def create_app() -> FastAPI:
             "bark_device_key": s.bark_device_key,
             "bark_server_url": s.bark_server_url,
             "bark_group": s.bark_group,
+            "bark_level": s.bark_level,
             "enabled_adapters": s.enabled_adapters,
         }
 
-    # Allowlist of settings keys that can be modified via the API
-    _SETTINGS_ALLOWLIST = {
-        "app_name", "environment",
-        "llm_langchain_backend", "llm_langchain_model", "llm_langchain_api_base",
-        "llm_langchain_api_key", "llm_langchain_temperature", "llm_timeout_seconds",
-        "llm_max_parallel_batches", "llm_rules_per_batch",
-        "context_message_limit", "detection_cooldown_seconds", "detection_min_new_messages",
-        "email_notifier_enabled", "email_notifier_to_email",
-        "smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_sender",
-        "bark_notifier_enabled", "bark_device_key", "bark_server_url", "bark_group", "bark_level",
-        "enabled_adapters",
-    }
+    @app.get("/api/settings")
+    async def get_settings_api() -> dict:
+        """返回当前所有可配置项（不含 database_url）。"""
+        return _settings_subset()
 
     @app.post("/api/settings")
-    async def update_settings(payload: dict):
-        """Persist allowed settings keys to the .env file."""
-        env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
-        env_path = os.path.abspath(env_path)
+    async def update_settings_api(payload: dict) -> dict:
+        """批量更新配置项，保存到数据库并立即生效。database_url 不可通过此接口修改。"""
+        updates = {k: v for k, v in payload.items() if k in SETTINGS_ALLOWLIST}
+        disallowed = set(payload.keys()) - set(SETTINGS_ALLOWLIST)
+        if disallowed:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown or disallowed setting(s): {', '.join(sorted(disallowed))}",
+            )
 
-        existing: dict[str, str] = {}
-        if os.path.exists(env_path):
-            with open(env_path) as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        k, _, v = line.partition("=")
-                        existing[k.strip()] = v.strip()
+        # Build full settings object for validation while keeping database_url from env
+        current = settings.model_dump()
+        current.update(updates)
+        current["database_url"] = settings.database_url
 
-        for key, value in payload.items():
-            if key not in _SETTINGS_ALLOWLIST:
-                raise HTTPException(status_code=400, detail=f"Unknown or disallowed setting: {key}")
-            env_key = f"CHAT_GUARDIAN_{key.upper()}"
-            existing[env_key] = str(value)
+        try:
+            validated = Settings.model_validate(current)
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-        with open(env_path, "w") as f:
-            for k, v in existing.items():
-                f.write(f"{k}={v}\n")
+        validated_dict = validated.model_dump(exclude={"database_url"})
+        # Persist only the allowlisted keys that were provided
+        to_save = {k: validated_dict[k] for k in updates.keys()}
+        container.settings_repository.save(to_save)
 
-        return {"status": "saved"}
+        for key, value in to_save.items():
+            setattr(settings, key, value)
+
+        return {"status": "saved", "settings": _settings_subset()}
 
     # ── Notifications config ──────────────────────────────────────────────────
 

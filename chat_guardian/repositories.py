@@ -7,6 +7,7 @@ Repository 实现：内存缓存 + SQLAlchemy 持久化。
 
 from __future__ import annotations
 
+import json
 from collections import defaultdict, deque
 from datetime import datetime
 from typing import Any
@@ -64,6 +65,13 @@ class _DetectionResultRecord(_Base):
     triggered: Mapped[bool] = mapped_column(Boolean, index=True)
     trigger_suppressed: Mapped[bool] = mapped_column(Boolean, index=True)
     payload_json: Mapped[str] = mapped_column(Text)
+
+
+class _SettingRecord(_Base):
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    value: Mapped[str] = mapped_column(Text)
 
 
 class _RepositoryDatabase:
@@ -490,3 +498,39 @@ class DetectionResultRepository:
 
         last.context_messages = merged
         return last
+
+
+class SettingsRepository:
+    """应用配置存储，将配置项以 JSON 序列化形式持久化到数据库。"""
+
+    def __init__(self, database_url: str | None = None):
+        self._db = _get_db_manager(database_url)
+
+    def load_all(self) -> dict[str, Any]:
+        """从数据库加载所有配置，返回已反序列化的 key->value 字典。"""
+        if self._db is None:
+            return {}
+        with self._db.session_factory() as session:
+            rows = session.scalars(select(_SettingRecord)).all()
+        result: dict[str, Any] = {}
+        for row in rows:
+            try:
+                result[row.key] = json.loads(row.value)
+            except (json.JSONDecodeError, ValueError):
+                from loguru import logger
+                logger.warning(f"⚠️ 配置项 '{row.key}' JSON 反序列化失败，已跳过: {row.value!r}")
+        return result
+
+    def save(self, updates: dict[str, Any]) -> None:
+        """将配置项批量 upsert 到数据库。"""
+        if self._db is None:
+            return
+        with self._db.session_factory() as session:
+            for key, value in updates.items():
+                serialized = json.dumps(value)
+                row = session.get(_SettingRecord, key)
+                if row is None:
+                    session.add(_SettingRecord(key=key, value=serialized))
+                else:
+                    row.value = serialized
+            session.commit()
