@@ -120,8 +120,6 @@ class AppContainer:
         )
         db_settings = self.settings_repository.load_all()
         for key, value in db_settings.items():
-            if key in ENV_ONLY_KEYS:
-                continue
             if hasattr(settings, key):
                 try:
                     setattr(settings, key, value)
