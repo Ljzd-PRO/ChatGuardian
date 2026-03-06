@@ -96,6 +96,8 @@ const resources = {
         enableInternalRuleGen: 'Enable Internal Rule Generation',
         externalRuleEndpoint: 'External Rule Generation Endpoint',
         ruleCount: '{{count}} rules',
+        ruleCount_one: '{{count}} rule',
+        ruleCount_other: '{{count}} rules',
         searchPlaceholder: 'Search rules',
         newRule: 'New Rule',
         threshold: 'threshold: {{value}}',
