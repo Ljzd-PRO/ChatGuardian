@@ -1,7 +1,9 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/';
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const url = `${API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+  const normalizedBase = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const url = `${normalizedBase}${normalizedPath}`;
   const res = await fetch(url, {
     headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
