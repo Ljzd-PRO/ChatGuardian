@@ -635,20 +635,17 @@ export default function RulesPage() {
                         {t('rules.parameterPreview')}
                       </Chip>
                       <div className="flex flex-wrap gap-1">
-                        {rule.parameters.map((param, idx) => {
-                          const paramKey = param.key || param.description || `param-${idx}`;
-                          return (
-                            <Chip
-                              key={`${rule.rule_id}-${paramKey}`}
-                              size="sm"
-                              variant="flat"
-                              color={param.required ? 'warning' : 'default'}
-                              startContent={<Settings2 size={12} />}
-                            >
-                              {param.key || t('rules.unnamedParam')}{param.required ? ' *' : ''}
-                            </Chip>
-                          );
-                        })}
+                        {rule.parameters.map((param, idx) => (
+                          <Chip
+                            key={`${rule.rule_id}-param-${idx}`}
+                            size="sm"
+                            variant="flat"
+                            color={param.required ? 'warning' : 'default'}
+                            startContent={<Settings2 size={12} />}
+                          >
+                            {param.key || t('rules.unnamedParam')}{param.required ? ' *' : ''}
+                          </Chip>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -728,7 +725,12 @@ export default function RulesPage() {
                       onChange={v => setEditing({ ...editing, score_threshold: Array.isArray(v) ? v[0] : v })}
                       startContent={<span className="text-xs text-default-500 w-4 text-right">0</span>}
                       endContent={<span className="text-xs text-default-500 w-4">1</span>}
-                      getValue={val => (Array.isArray(val) ? val[0] : val).toFixed(2)}
+                      getValue={val => {
+                        const numeric = Array.isArray(val) ? val[0] : val;
+                        const numValue = typeof numeric === 'number' ? numeric : Number(numeric);
+                        const safe = Number.isFinite(numValue) ? numValue : 0;
+                        return safe.toFixed(2);
+                      }}
                       className="max-w-md"
                     />
                     <Input
