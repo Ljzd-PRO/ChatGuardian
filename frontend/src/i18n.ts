@@ -243,7 +243,8 @@ const resources = {
         loading: 'Loading stats…',
         overview: 'Trigger Overview',
         searchRules: 'Search rules',
-        triggers: '{{count}} triggers',
+        triggers_one: '{{count}} trigger',
+        triggers_other: '{{count}} triggers',
         confidence: 'Confidence',
       },
       users: {
