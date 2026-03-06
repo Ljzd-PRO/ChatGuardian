@@ -470,7 +470,10 @@ export default function RulesPage() {
         {matcherFilterEnabled && (
           <div className="flex flex-col gap-3 border border-default-200 rounded-xl p-3 bg-default-50">
             {matcherFilters.map((filter, idx) => (
-              <div key={idx} className="flex flex-col gap-2 border border-default-200 rounded-lg p-3 bg-white">
+              <div
+                key={`${filter.type ?? 'sender'}|${filter.user_id ?? ''}|${filter.display_name ?? ''}|${filter.chat_id ?? ''}|${filter.chat_type ?? ''}|${filter.adapter_name ?? ''}`}
+                className="flex flex-col gap-2 border border-default-200 rounded-lg p-3 bg-white"
+              >
                 <div className="flex flex-wrap items-center gap-2">
                   <Select
                     size="sm"
