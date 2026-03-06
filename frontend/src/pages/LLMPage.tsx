@@ -4,7 +4,7 @@ import {
   Button, Card, CardBody, CardHeader, Chip, Divider, Input, Select, SelectItem, Spinner,
 } from '@heroui/react';
 import {
-  Activity, Brain, Clock3, Database, Gauge, Globe2, KeyRound, Layers, Link2, Thermometer, Zap,
+  Activity, Brain, Clock3, Database, Gauge, Globe2, KeyRound, Layers, Link2, Package, Thermometer, Zap,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { fetchLLMHealth, fetchSettings, updateSettings } from '../api/settings';
@@ -151,7 +151,7 @@ export default function LLMPage() {
             <Input
               label={t('llm.rulesPerBatch')}
               type="number"
-              startContent={<Layers size={16} className="text-default-500" />}
+              startContent={<Package size={16} className="text-default-500" />}
               value={String(form.llm_rules_per_batch ?? 2)}
               onValueChange={v => setForm(f => ({ ...f, llm_rules_per_batch: Number(v) }))}
             />

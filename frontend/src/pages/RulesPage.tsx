@@ -34,8 +34,8 @@ const EMPTY_RULE: DetectionRule = {
 
 /**
  * Compact filled circle icon to replace outlined symbols on chips.
- * @param size optional icon size (default 12)
- * @param className optional CSS classes to merge
+ * @param props.size optional icon size (default 12)
+ * @param props.className optional CSS classes to merge
  * @returns JSX.Element
  */
 const FilledCircle = ({ size = 12, className }: { size?: number; className?: string }) => (
