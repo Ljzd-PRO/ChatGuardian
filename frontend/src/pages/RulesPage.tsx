@@ -36,7 +36,7 @@ const EMPTY_RULE: DetectionRule = {
  * Compact filled circle icon to replace outlined symbols on chips.
  * @param props.size optional icon size (default 12)
  * @param props.className optional CSS classes to merge
- * @returns JSX.Element
+ * @returns React.ReactElement
  */
 const FilledCircle = ({ size = 12, className }: { size?: number; className?: string }) => (
   <Circle size={size} stroke="none" fill="currentColor" className={className} />
@@ -629,7 +629,7 @@ export default function RulesPage() {
                   <p className="text-sm text-default-500 truncate">{rule.description}</p>
                   {rule.topic_hints.length > 0 && (
                     <div className="flex items-center gap-2 flex-wrap">
-                      {rule.topic_hints.map((t, idx) => (
+                      {rule.topic_hints.map((topic, idx) => (
                         <Chip
                           key={`${rule.rule_id}-topic-${idx}`}
                           size="sm"
@@ -637,7 +637,7 @@ export default function RulesPage() {
                           color="secondary"
                           startContent={<FilledCircle size={12} />}
                         >
-                          {t}
+                          {topic}
                         </Chip>
                       ))}
                     </div>
