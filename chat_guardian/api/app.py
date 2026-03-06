@@ -478,6 +478,10 @@ def create_app() -> FastAPI:
 
     SETTINGS_ALLOWLIST = set(Settings.model_fields.keys()) - ENV_ONLY_KEYS
 
+    # 注意：这里仅排除 database_url。
+    # GET /api/settings 需要向前端展示 app_name/environment 等只读信息，
+    # 而 ENV_ONLY_KEYS/SETTINGS_ALLOWLIST 主要用于限制哪些字段可以通过 POST 更新。
+    # 因此本函数刻意没有使用 ENV_ONLY_KEYS，以避免误隐藏这些只读展示字段。
     def _settings_subset() -> dict[str, object]:
         return settings.model_dump(exclude={"database_url"})
 
