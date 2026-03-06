@@ -4,7 +4,9 @@ import {
   Button, Card, CardBody, Chip, Input, Modal, ModalBody,
   ModalContent, ModalFooter, ModalHeader, Spinner, Switch, Slider, Textarea,
 } from '@heroui/react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import {
+  AlignLeft, Gauge, ListChecks, Pencil, Plus, Search, ShieldCheck, Sparkles, Tag, Trash2,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { fetchRules, upsertRule, deleteRule } from '../api/rules';
 import type { DetectionRule, MatcherUnion, RuleParameterSpec } from '../api/types';
@@ -113,58 +115,78 @@ export default function RulesPage() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardBody className="space-y-3">
+        <CardBody className="space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div>
-              <p className="font-semibold">{t('rules.detectionSettings')}</p>
-              <p className="text-sm text-default-500">{t('rules.detectionSettingsDesc')}</p>
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={18} className="text-primary" />
+              <div>
+                <p className="font-semibold">{t('rules.detectionSettings')}</p>
+                <p className="text-sm text-default-500">{t('rules.detectionSettingsDesc')}</p>
+              </div>
             </div>
             <Button color="primary" size="sm" isDisabled={!settings} isLoading={saveDetection.isPending} onPress={() => saveDetection.mutate()}>
               {t('common.save')}
             </Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Input label={t('rules.appName')} value={detForm.app_name ?? ''} onValueChange={v => setDetForm(f => ({ ...f, app_name: v }))} />
-            <Input label={t('rules.environment')} value={detForm.environment ?? ''} onValueChange={v => setDetForm(f => ({ ...f, environment: v }))} />
+            <Input
+              label={t('rules.appName')}
+              startContent={<Tag size={16} className="text-default-500" />}
+              value={detForm.app_name ?? ''}
+              onValueChange={v => setDetForm(f => ({ ...f, app_name: v }))}
+            />
+            <Input
+              label={t('rules.environment')}
+              startContent={<Sparkles size={16} className="text-default-500" />}
+              value={detForm.environment ?? ''}
+              onValueChange={v => setDetForm(f => ({ ...f, environment: v }))}
+            />
             <Input
               label={t('rules.contextMessageLimit')}
               type="number"
+              startContent={<Gauge size={16} className="text-default-500" />}
               value={String(detForm.context_message_limit ?? 10)}
               onValueChange={v => setDetForm(f => ({ ...f, context_message_limit: Number(v) }))}
             />
             <Input
               label={t('rules.detectionCooldown')}
               type="number"
+              startContent={<Gauge size={16} className="text-default-500" />}
               value={String(detForm.detection_cooldown_seconds ?? 0)}
               onValueChange={v => setDetForm(f => ({ ...f, detection_cooldown_seconds: Number(v) }))}
             />
             <Input
               label={t('rules.minNewMessages')}
               type="number"
+              startContent={<Gauge size={16} className="text-default-500" />}
               value={String(detForm.detection_min_new_messages ?? 1)}
               onValueChange={v => setDetForm(f => ({ ...f, detection_min_new_messages: Number(v) }))}
             />
             <Input
               label={t('rules.detectionWaitTimeout')}
               type="number"
+              startContent={<Gauge size={16} className="text-default-500" />}
               value={String(detForm.detection_wait_timeout_seconds ?? 30)}
               onValueChange={v => setDetForm(f => ({ ...f, detection_wait_timeout_seconds: Number(v) }))}
             />
             <Input
               label={t('rules.pendingQueueLimit')}
               type="number"
+              startContent={<ListChecks size={16} className="text-default-500" />}
               value={String(detForm.pending_queue_limit ?? 200)}
               onValueChange={v => setDetForm(f => ({ ...f, pending_queue_limit: Number(v) }))}
             />
             <Input
               label={t('rules.historyListLimit')}
               type="number"
+              startContent={<ListChecks size={16} className="text-default-500" />}
               value={String(detForm.history_list_limit ?? 1000)}
               onValueChange={v => setDetForm(f => ({ ...f, history_list_limit: Number(v) }))}
             />
             <Input
               label={t('rules.hookTimeout')}
               type="number"
+              startContent={<Gauge size={16} className="text-default-500" />}
               value={String(detForm.hook_timeout_seconds ?? 8)}
               onValueChange={v => setDetForm(f => ({ ...f, hook_timeout_seconds: Number(v) }))}
             />
@@ -176,6 +198,7 @@ export default function RulesPage() {
             </Switch>
             <Input
               label={t('rules.externalRuleEndpoint')}
+              startContent={<AlignLeft size={16} className="text-default-500" />}
               value={detForm.external_rule_generation_endpoint ?? ''}
               onValueChange={v => setDetForm(f => ({ ...f, external_rule_generation_endpoint: v }))}
               className="md:col-span-2"
@@ -186,11 +209,12 @@ export default function RulesPage() {
         </CardBody>
       </Card>
 
-      <div className="flex justify-between items-center gap-3 flex-wrap">
+      <div className="flex justify-between items-center gap-4 flex-wrap">
         <p className="text-default-500 text-sm">{t('rules.ruleCount', { count: filteredRules.length })}</p>
         <div className="flex gap-2 flex-wrap items-center">
           <Input
             size="sm"
+            startContent={<Search size={14} className="text-default-500" />}
             placeholder={t('rules.searchPlaceholder')}
             value={search}
             onValueChange={setSearch}
@@ -202,10 +226,10 @@ export default function RulesPage() {
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {filteredRules.map(rule => (
-          <Card key={rule.rule_id} className="w-full">
-            <CardBody className="flex flex-row items-start justify-between gap-4">
+          <Card key={rule.rule_id} className="w-full border border-default-200 shadow-sm">
+            <CardBody className="flex flex-row items-start justify-between gap-5 md:gap-6">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-default-900">{rule.name}</span>
@@ -262,6 +286,7 @@ export default function RulesPage() {
                   label={t('rules.ruleName')}
                   isRequired
                   description={t('rules.ruleNameDesc')}
+                  startContent={<Tag size={16} className="text-default-500" />}
                   value={editing.name}
                   onValueChange={v => setEditing({ ...editing, name: v })}
                 />
@@ -272,7 +297,10 @@ export default function RulesPage() {
                   onValueChange={v => setEditing({ ...editing, description: v })}
                 />
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-default-700 mb-1">{t('rules.scoreThreshold')}</p>
+                  <div className="flex items-center gap-2 text-sm font-medium text-default-700 mb-1">
+                    <Gauge size={16} className="text-default-500" />
+                    <span>{t('rules.scoreThreshold')}</span>
+                  </div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <Slider
                       minValue={0}
@@ -305,7 +333,10 @@ export default function RulesPage() {
 
                 {/* Topic hints */}
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-default-700">{t('rules.topicHints')}</p>
+                  <div className="flex items-center gap-2 text-sm font-medium text-default-700">
+                    <Sparkles size={16} className="text-default-500" />
+                    <span>{t('rules.topicHints')}</span>
+                  </div>
                   <div className="flex gap-2">
                     <Input
                       size="sm"
@@ -333,26 +364,33 @@ export default function RulesPage() {
                 {/* Parameters */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-default-700">{t('rules.parameters')}</p>
+                    <div className="flex items-center gap-2">
+                      <ListChecks size={14} className="text-default-500" />
+                      <p className="text-sm font-medium text-default-700">{t('rules.parameters')}</p>
+                    </div>
                     <Button size="sm" variant="flat" onPress={addParam} startContent={<Plus size={12} />}>
                       {t('common.add')}
                     </Button>
                   </div>
                   {editing.parameters.map((p, i) => (
-                    <div key={i} className="grid w-full gap-2 sm:grid-cols-[180px,1fr,auto] sm:items-center">
-                      <Input
-                        size="sm"
-                        label={t('rules.key')}
-                        value={p.key}
-                        onValueChange={v => updateParam(i, 'key', v)}
-                      />
-                      <Input
-                        size="sm"
-                        label={t('rules.description')}
-                        value={p.description}
-                        onValueChange={v => updateParam(i, 'description', v)}
-                      />
-                      <div className="flex items-center gap-2">
+                    <div key={i} className="rounded-xl border border-default-200 bg-default-50 p-3 space-y-3">
+                      <div className="grid w-full gap-2 sm:grid-cols-[190px,1fr]">
+                        <Input
+                          size="sm"
+                          label={t('rules.key')}
+                          startContent={<Tag size={14} className="text-default-500" />}
+                          value={p.key}
+                          onValueChange={v => updateParam(i, 'key', v)}
+                        />
+                        <Input
+                          size="sm"
+                          label={t('rules.description')}
+                          startContent={<AlignLeft size={14} className="text-default-500" />}
+                          value={p.description}
+                          onValueChange={v => updateParam(i, 'description', v)}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
                         <Switch
                           size="sm"
                           isSelected={p.required}
