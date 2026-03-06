@@ -11,7 +11,7 @@ from collections import deque
 from contextlib import asynccontextmanager
 from datetime import date, datetime
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -346,8 +346,10 @@ def create_app() -> FastAPI:
                             rows.append(
                                 {
                                     "adapter": adapter,
+                                    "platform": adapter,
                                     "chat_type": chat_type,
                                     "chat_id": chat_id,
+                                    "message_id": message.message_id,
                                     "sender_name": message.sender_name or message.sender_id,
                                     "content": str(message),
                                     "timestamp": message.timestamp.isoformat(),
@@ -359,6 +361,27 @@ def create_app() -> FastAPI:
             "pending": _flatten_bucket(store.pending),
             "history": _flatten_bucket(store.history),
         }
+
+    @app.delete("/api/queues/history")
+    async def delete_history_messages(payload=Body(default={"items": []})):
+        store = container.chat_history_store
+        clear_all = bool(payload.get("clear_all"))
+        if clear_all:
+            cleared = await store.clear_history()
+            return {"cleared": cleared}
+
+        items_raw = payload.get("items") or []
+        items: list[tuple[str, str, str, str]] = []
+        for item in items_raw:
+            platform = (item or {}).get("platform") or (item or {}).get("adapter")
+            chat_type = (item or {}).get("chat_type")
+            chat_id = (item or {}).get("chat_id")
+            message_id = (item or {}).get("message_id")
+            if not all([platform, chat_type, chat_id, message_id]):
+                continue
+            items.append((str(platform), str(chat_type), str(chat_id), str(message_id)))
+        deleted = await store.delete_history_messages(items)
+        return {"deleted": deleted}
 
     @app.get("/api/adapters/status")
     async def get_adapters_status():
@@ -427,6 +450,12 @@ def create_app() -> FastAPI:
     @app.get("/api/logs")
     async def get_logs(limit: int = 100):
         return list(reversed(list(_log_buffer)[-limit:]))
+
+    @app.delete("/api/logs")
+    async def clear_logs():
+        cleared = len(_log_buffer)
+        _log_buffer.clear()
+        return {"cleared": cleared}
 
     # ── User Profiles ─────────────────────────────────────────────────────────
 
