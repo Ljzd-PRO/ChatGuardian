@@ -582,9 +582,9 @@ class SettingsRepository:
         disallow_keys: 不允许读写到数据库的配置键集合（通常为只读的环境变量项）。
     """
 
-    def __init__(self, database_url: str | None = None, disallow_keys: set[str] | None = None):
+    def __init__(self, database_url: str | None = None, disallow_keys: frozenset[str] | None = None):
         self._db = _get_db_manager(database_url)
-        self._disallow_keys = disallow_keys or set()
+        self._disallow_keys = set(disallow_keys or frozenset())
 
     def load_all(self) -> dict[str, Any]:
         """从数据库加载所有配置，返回已反序列化的 key->value 字典。"""
