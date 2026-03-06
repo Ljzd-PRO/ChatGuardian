@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Accordion, AccordionItem, Button, Card, CardBody, Checkbox, Chip, Input, Modal, ModalBody,
@@ -101,6 +101,12 @@ export default function RulesPage() {
     () => matcherFilters.filter(f => f.type),
     [matcherFilters],
   );
+  const replaceMatcherFilter = useCallback((index: number, next: Partial<LeafMatcher>) => {
+    setMatcherFilters(prev => prev.map((f, i) => (i === index ? next : f)));
+  }, []);
+  const patchMatcherFilter = useCallback((index: number, patch: Partial<LeafMatcher>) => {
+    setMatcherFilters(prev => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
+  }, []);
   const matcherPreview = useMemo(() => {
     function describe(m: MatcherUnion): string {
       switch (m.type) {
@@ -475,7 +481,7 @@ export default function RulesPage() {
                       const k = Array.from(keys)[0] as MatcherType;
                       if (!k || !LEAF_MATCHER_TYPES.includes(k as LeafMatcher['type'])) return;
                       const base: Partial<LeafMatcher> = { type: k as LeafMatcher['type'] };
-                      setMatcherFilters(f => f.map((mf, i) => (i === idx ? base : mf)));
+                      replaceMatcherFilter(idx, base);
                     }}
                   >
                     {LEAF_MATCHER_TYPES.map(mt => (
@@ -503,14 +509,14 @@ export default function RulesPage() {
                         size="sm"
                         label={t('matcher.userId')}
                         value={filter.user_id ?? ''}
-                        onValueChange={v => setMatcherFilters(f => f.map((mf, i) => i === idx ? { ...mf, user_id: v } : mf))}
+                        onValueChange={v => patchMatcherFilter(idx, { user_id: v })}
                         className="w-48"
                       />
                       <Input
                         size="sm"
                         label={t('matcher.displayName')}
                         value={filter.display_name ?? ''}
-                        onValueChange={v => setMatcherFilters(f => f.map((mf, i) => i === idx ? { ...mf, display_name: v } : mf))}
+                        onValueChange={v => patchMatcherFilter(idx, { display_name: v })}
                         className="w-48"
                       />
                     </>
@@ -520,7 +526,7 @@ export default function RulesPage() {
                       size="sm"
                       label={t('matcher.chatId')}
                       value={filter.chat_id ?? ''}
-                      onValueChange={v => setMatcherFilters(f => f.map((mf, i) => i === idx ? { ...mf, chat_id: v } : mf))}
+                      onValueChange={v => patchMatcherFilter(idx, { chat_id: v })}
                       className="w-60"
                     />
                   )}
@@ -531,7 +537,7 @@ export default function RulesPage() {
                       selectedKeys={filter.chat_type ? [filter.chat_type] : []}
                       onSelectionChange={keys => {
                         const k = Array.from(keys)[0] as 'group' | 'private';
-                        if (k) setMatcherFilters(f => f.map((mf, i) => i === idx ? { ...mf, chat_type: k } : mf));
+                        if (k) patchMatcherFilter(idx, { chat_type: k });
                       }}
                       className="w-48"
                     >
@@ -541,12 +547,12 @@ export default function RulesPage() {
                   )}
                   {filter.type === 'adapter' && (
                     <Input
-                      size="sm"
-                      label={t('matcher.adapterName')}
-                      value={filter.adapter_name ?? ''}
-                      onValueChange={v => setMatcherFilters(f => f.map((mf, i) => i === idx ? { ...mf, adapter_name: v } : mf))}
-                      className="w-60"
-                    />
+                        size="sm"
+                        label={t('matcher.adapterName')}
+                        value={filter.adapter_name ?? ''}
+                        onValueChange={v => patchMatcherFilter(idx, { adapter_name: v })}
+                        className="w-60"
+                      />
                   )}
                 </div>
               </div>
@@ -629,17 +635,20 @@ export default function RulesPage() {
                         {t('rules.parameterPreview')}
                       </Chip>
                       <div className="flex flex-wrap gap-1">
-                        {rule.parameters.map((param, idx) => (
-                          <Chip
-                            key={`${param.key || 'param'}-${idx}`}
-                            size="sm"
-                            variant="flat"
-                            color={param.required ? 'warning' : 'default'}
-                            startContent={<Settings2 size={12} />}
-                          >
-                            {param.key || t('rules.unnamedParam')}{param.required ? ' *' : ''}
-                          </Chip>
-                        ))}
+                        {rule.parameters.map((param, idx) => {
+                          const paramKey = param.key || param.description || `param-${idx}`;
+                          return (
+                            <Chip
+                              key={`${rule.rule_id}-${paramKey}`}
+                              size="sm"
+                              variant="flat"
+                              color={param.required ? 'warning' : 'default'}
+                              startContent={<Settings2 size={12} />}
+                            >
+                              {param.key || t('rules.unnamedParam')}{param.required ? ' *' : ''}
+                            </Chip>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -716,10 +725,10 @@ export default function RulesPage() {
                       maxValue={1}
                       step={0.1}
                       value={editing.score_threshold}
-                      onChange={v => setEditing({ ...editing, score_threshold: v as number })}
+                      onChange={v => setEditing({ ...editing, score_threshold: Array.isArray(v) ? v[0] : v })}
                       startContent={<span className="text-xs text-default-500 w-4 text-right">0</span>}
                       endContent={<span className="text-xs text-default-500 w-4">1</span>}
-                      getValue={val => (Array.isArray(val) ? val[0].toFixed(2) : (val as number).toFixed(2))}
+                      getValue={val => (Array.isArray(val) ? val[0] : val).toFixed(2)}
                       className="max-w-md"
                     />
                     <Input
