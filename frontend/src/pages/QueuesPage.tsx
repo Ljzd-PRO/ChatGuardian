@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Card, CardBody, Chip, Select, SelectItem, Spinner,
+  Card, CardBody, Chip, Input, Select, SelectItem, Spinner,
   Tab, Tabs, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react';
 import { fetchQueues } from '../api/queues';
@@ -12,14 +12,25 @@ const COLUMNS = ['Adapter', 'Type', 'Chat', 'Sender', 'Content', 'Time'];
 function QueueTable({ messages }: { messages: QueueMessage[] }) {
   const [adapterFilter, setAdapterFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [searchField, setSearchField] = useState<'content' | 'sender_name' | 'chat_id' | 'adapter'>('content');
+  const [query, setQuery] = useState('');
 
   const adapters = [...new Set(messages.map(m => m.adapter))];
   const types    = [...new Set(messages.map(m => m.chat_type))];
 
-  const filtered = messages.filter(m =>
-    (!adapterFilter || m.adapter === adapterFilter) &&
-    (typeFilter === 'all' || m.chat_type === typeFilter)
-  );
+  const filtered = messages.filter(m => {
+    const fieldValue =
+      searchField === 'content' ? m.content
+      : searchField === 'sender_name' ? m.sender_name
+      : searchField === 'chat_id' ? m.chat_id
+      : m.adapter;
+
+    return (
+      (!adapterFilter || m.adapter === adapterFilter) &&
+      (typeFilter === 'all' || m.chat_type === typeFilter) &&
+      (!query || String(fieldValue ?? '').toLowerCase().includes(query.toLowerCase()))
+    );
+  });
 
   return (
     <div className="space-y-3">
@@ -43,6 +54,24 @@ function QueueTable({ messages }: { messages: QueueMessage[] }) {
             ...types.map(t => <SelectItem key={t}>{t}</SelectItem>),
           ]}
         </Select>
+        <Select
+          size="sm"
+          className="w-44"
+          selectedKeys={[searchField]}
+          onSelectionChange={k => setSearchField(Array.from(k)[0] as typeof searchField)}
+        >
+          <SelectItem key="content">Content</SelectItem>
+          <SelectItem key="sender_name">Sender</SelectItem>
+          <SelectItem key="chat_id">Chat ID</SelectItem>
+          <SelectItem key="adapter">Adapter</SelectItem>
+        </Select>
+        <Input
+          size="sm"
+          className="w-60"
+          placeholder="Search"
+          value={query}
+          onValueChange={setQuery}
+        />
       </div>
       <Table aria-label="Messages" removeWrapper>
         <TableHeader>

@@ -443,47 +443,10 @@ def create_app() -> FastAPI:
 
     # ── Settings ──────────────────────────────────────────────────────────────
 
-    SETTINGS_ALLOWLIST = {
-        "app_name", "environment",
-        "llm_langchain_backend", "llm_langchain_model", "llm_langchain_api_base",
-        "llm_langchain_api_key", "llm_langchain_temperature", "llm_timeout_seconds",
-        "llm_max_parallel_batches", "llm_rules_per_batch",
-        "context_message_limit", "detection_cooldown_seconds", "detection_min_new_messages",
-        "email_notifier_enabled", "email_notifier_to_email",
-        "smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_sender",
-        "bark_notifier_enabled", "bark_device_key", "bark_server_url", "bark_group", "bark_level",
-        "enabled_adapters",
-    }
+    SETTINGS_ALLOWLIST = set(Settings.model_fields.keys()) - {"database_url"}
 
     def _settings_subset() -> dict[str, object]:
-        s = settings
-        return {
-            "app_name": s.app_name,
-            "environment": s.environment,
-            "llm_langchain_backend": s.llm_langchain_backend,
-            "llm_langchain_model": s.llm_langchain_model,
-            "llm_langchain_api_base": s.llm_langchain_api_base,
-            "llm_langchain_api_key": s.llm_langchain_api_key,
-            "llm_langchain_temperature": s.llm_langchain_temperature,
-            "llm_timeout_seconds": s.llm_timeout_seconds,
-            "llm_max_parallel_batches": s.llm_max_parallel_batches,
-            "llm_rules_per_batch": s.llm_rules_per_batch,
-            "context_message_limit": s.context_message_limit,
-            "detection_cooldown_seconds": s.detection_cooldown_seconds,
-            "detection_min_new_messages": s.detection_min_new_messages,
-            "email_notifier_enabled": s.email_notifier_enabled,
-            "email_notifier_to_email": s.email_notifier_to_email,
-            "smtp_host": s.smtp_host,
-            "smtp_port": s.smtp_port,
-            "smtp_username": s.smtp_username,
-            "smtp_sender": s.smtp_sender,
-            "bark_notifier_enabled": s.bark_notifier_enabled,
-            "bark_device_key": s.bark_device_key,
-            "bark_server_url": s.bark_server_url,
-            "bark_group": s.bark_group,
-            "bark_level": s.bark_level,
-            "enabled_adapters": s.enabled_adapters,
-        }
+        return settings.model_dump(exclude={"database_url"})
 
     @app.get("/api/settings")
     async def get_settings_api() -> dict:
@@ -532,12 +495,14 @@ def create_app() -> FastAPI:
                 "smtp_host": s.smtp_host,
                 "smtp_port": s.smtp_port,
                 "smtp_username": s.smtp_username,
+                "smtp_password": s.smtp_password,
                 "smtp_sender": s.smtp_sender,
                 "to_email": s.email_notifier_to_email,
             },
             "bark": {
                 "enabled": s.bark_notifier_enabled,
                 "device_key": s.bark_device_key,
+                "device_keys": s.bark_device_keys,
                 "server_url": s.bark_server_url,
                 "group": s.bark_group,
                 "level": s.bark_level,
