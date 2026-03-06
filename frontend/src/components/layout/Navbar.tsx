@@ -1,6 +1,8 @@
-import { Button, Switch } from '@heroui/react';
+import { Button, Select, SelectItem, Switch } from '@heroui/react';
 import { Menu, Moon, Sun } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
+import { supportedLanguages } from '../../i18n';
 
 interface TopNavbarProps {
   onMenuClick: () => void;
@@ -8,7 +10,10 @@ interface TopNavbarProps {
 }
 
 export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
+  const { t, i18n } = useTranslation();
   const { isDark, toggle } = useTheme();
+  const resolved = i18n.resolvedLanguage ?? i18n.language;
+  const currentLang = supportedLanguages.some(l => l.code === resolved) ? resolved : 'en';
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-background/80 backdrop-blur border-b border-divider">
@@ -24,9 +29,23 @@ export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
           size="sm"
           isSelected={isDark}
           onValueChange={toggle}
-          aria-label="Toggle dark mode"
+          aria-label={t('common.toggleDark')}
         />
         <Moon size={14} className="text-default-500" />
+        <Select
+          size="sm"
+          aria-label={t('common.language')}
+          selectedKeys={[currentLang]}
+          className="w-[140px]"
+          onSelectionChange={keys => {
+            const lng = Array.from(keys)[0] as string | undefined;
+            if (lng) i18n.changeLanguage(lng);
+          }}
+        >
+          {supportedLanguages.map(lang => (
+            <SelectItem key={lang.code}>{lang.label}</SelectItem>
+          ))}
+        </Select>
       </div>
     </header>
   );

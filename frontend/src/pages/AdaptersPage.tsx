@@ -4,11 +4,13 @@ import {
   Button, Card, CardBody, CardHeader, Chip, Divider, Input, Select, SelectItem, Spinner, Switch,
 } from '@heroui/react';
 import { Play, Square } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { fetchAdapters, startAdapters, stopAdapters } from '../api/adapters';
 import { fetchSettings, updateSettings } from '../api/settings';
 import type { AppSettings } from '../api/settings';
 
 export default function AdaptersPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data: adapters, isLoading } = useQuery({
     queryKey: ['adapters'],
@@ -47,13 +49,13 @@ export default function AdaptersPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings'] }),
   });
 
-  if (isLoading) return <div className="flex justify-center h-64"><Spinner label="Loading adapters…" /></div>;
+  if (isLoading) return <div className="flex justify-center h-64"><Spinner label={t('adapters.loading')} /></div>;
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader className="flex items-center justify-between">
-          <span className="font-semibold">Adapter Controls</span>
+          <span className="font-semibold">{t('adapters.controls')}</span>
           <div className="flex gap-2">
             <Button
               color="success"
@@ -62,7 +64,7 @@ export default function AdaptersPage() {
               isLoading={start.isPending}
               onPress={() => start.mutate()}
             >
-              Start All
+              {t('adapters.startAll')}
             </Button>
             <Button
               color="danger"
@@ -71,14 +73,14 @@ export default function AdaptersPage() {
               isLoading={stop.isPending}
               onPress={() => stop.mutate()}
             >
-              Stop All
+              {t('adapters.stopAll')}
             </Button>
           </div>
         </CardHeader>
         <Divider />
         <CardBody className="space-y-3">
           {adapters?.length === 0 && (
-            <p className="text-default-400 text-sm">No adapters configured.</p>
+            <p className="text-default-400 text-sm">{t('adapters.noAdapters')}</p>
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {adapters?.map(a => (
@@ -86,10 +88,10 @@ export default function AdaptersPage() {
                 <CardBody className="flex flex-row items-center justify-between">
                   <div>
                     <p className="font-medium text-default-900">{a.name}</p>
-                    <p className="text-xs text-default-400">Adapter</p>
+                    <p className="text-xs text-default-400">{t('adapters.adapterLabel')}</p>
                   </div>
                   <Chip color={a.running ? 'success' : 'default'} variant="flat" size="sm">
-                    {a.running ? 'Running' : 'Stopped'}
+                    {a.running ? t('common.running') : t('common.stopped')}
                   </Chip>
                 </CardBody>
               </Card>
@@ -100,14 +102,14 @@ export default function AdaptersPage() {
 
       <Card>
         <CardHeader className="flex items-center justify-between">
-          <span className="font-semibold">Adapter Settings</span>
-          <Button color="primary" isDisabled={!settings} isLoading={save.isPending} onPress={() => save.mutate()}>Save</Button>
+          <span className="font-semibold">{t('adapters.adapterSettings')}</span>
+          <Button color="primary" isDisabled={!settings} isLoading={save.isPending} onPress={() => save.mutate()}>{t('common.save')}</Button>
         </CardHeader>
         <Divider />
         <CardBody className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Select
-              label="Enabled Adapters"
+              label={t('adapters.enabledAdapters')}
               selectionMode="multiple"
               selectedKeys={new Set(form.enabled_adapters ?? [])}
               onSelectionChange={keys => setForm(f => ({ ...f, enabled_adapters: Array.from(keys) as string[] }))}
@@ -130,7 +132,7 @@ export default function AdaptersPage() {
             />
             <Input label="Telegram Polling Timeout" type="number" value={String(form.telegram_polling_timeout ?? 10)} onValueChange={v => setForm(f => ({ ...f, telegram_polling_timeout: Number(v) }))} />
             <Switch isSelected={form.telegram_drop_pending_updates ?? false} onValueChange={v => setForm(f => ({ ...f, telegram_drop_pending_updates: v }))}>
-              Telegram Drop Pending Updates
+              {t('adapters.telegramDropPending')}
             </Switch>
             <Input
               label="WeChat Endpoint"
@@ -145,46 +147,46 @@ export default function AdaptersPage() {
           </div>
 
           <Divider />
-          <p className="text-sm font-medium text-default-700">Virtual Adapter</p>
+          <p className="text-sm font-medium text-default-700">{t('adapters.virtualAdapter')}</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Input
-              label="Chat Count"
+              label={t('adapters.chatCount')}
               type="number"
               value={String(form.virtual_adapter_chat_count ?? 3)}
               onValueChange={v => setForm(f => ({ ...f, virtual_adapter_chat_count: Number(v) }))}
             />
             <Input
-              label="Members per Chat"
+              label={t('adapters.membersPerChat')}
               type="number"
               value={String(form.virtual_adapter_members_per_chat ?? 5)}
               onValueChange={v => setForm(f => ({ ...f, virtual_adapter_members_per_chat: Number(v) }))}
             />
             <Input
-              label="Messages per Chat"
+              label={t('adapters.messagesPerChat')}
               type="number"
               value={String(form.virtual_adapter_messages_per_chat ?? 10)}
               onValueChange={v => setForm(f => ({ ...f, virtual_adapter_messages_per_chat: Number(v) }))}
             />
             <Input
-              label="Interval Min (s)"
+              label={t('adapters.intervalMin')}
               type="number"
               value={String(form.virtual_adapter_interval_min_seconds ?? 0.1)}
               onValueChange={v => setForm(f => ({ ...f, virtual_adapter_interval_min_seconds: Number(v) }))}
             />
             <Input
-              label="Interval Max (s)"
+              label={t('adapters.intervalMax')}
               type="number"
               value={String(form.virtual_adapter_interval_max_seconds ?? 0.6)}
               onValueChange={v => setForm(f => ({ ...f, virtual_adapter_interval_max_seconds: Number(v) }))}
             />
             <Input
-              label="Script Path"
+              label={t('adapters.scriptPath')}
               value={form.virtual_adapter_script_path ?? ''}
               onValueChange={v => setForm(f => ({ ...f, virtual_adapter_script_path: v.trim() === '' ? null : v }))}
             />
           </div>
-          {save.isSuccess && <p className="text-success text-sm">Saved successfully.</p>}
-          {save.isError && <p className="text-danger text-sm">Save failed.</p>}
+          {save.isSuccess && <p className="text-success text-sm">{t('common.saveSuccess')}</p>}
+          {save.isError && <p className="text-danger text-sm">{t('common.saveFailed')}</p>}
         </CardBody>
       </Card>
     </div>

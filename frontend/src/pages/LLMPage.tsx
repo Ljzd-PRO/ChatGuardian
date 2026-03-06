@@ -4,10 +4,12 @@ import {
   Button, Card, CardBody, CardHeader, Chip, Divider, Input, Select, SelectItem, Spinner,
 } from '@heroui/react';
 import { Zap } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { fetchLLMHealth, fetchSettings, updateSettings } from '../api/settings';
 import type { AppSettings } from '../api/settings';
 
 export default function LLMPage() {
+  const { t } = useTranslation();
   const { data: settings, isLoading } = useQuery({ queryKey: ['settings'], queryFn: fetchSettings });
   const [pinging, setPinging] = useState(false);
   const [form, setForm] = useState<Partial<AppSettings>>({});
@@ -50,13 +52,13 @@ export default function LLMPage() {
     }
   }
 
-  if (isLoading) return <div className="flex justify-center h-64"><Spinner label="Loading LLM config…" /></div>;
+  if (isLoading) return <div className="flex justify-center h-64"><Spinner label={t('llm.loading')} /></div>;
 
   return (
     <div className="space-y-4 max-w-3xl">
       <Card>
         <CardHeader className="flex items-center justify-between">
-          <span className="font-semibold">LLM Configuration</span>
+          <span className="font-semibold">{t('llm.title')}</span>
           <div className="flex items-center gap-2">
             <Button
               size="sm"
@@ -66,7 +68,7 @@ export default function LLMPage() {
               isLoading={pinging}
               onPress={doPing}
             >
-              Ping
+              {t('llm.ping')}
             </Button>
             <Button
               size="sm"
@@ -74,7 +76,7 @@ export default function LLMPage() {
               isLoading={save.isPending}
               onPress={() => save.mutate()}
             >
-              Save
+              {t('common.save')}
             </Button>
           </div>
         </CardHeader>
@@ -83,91 +85,91 @@ export default function LLMPage() {
           {pingResult && (
             <div className={`p-3 rounded-lg text-sm ${pingResult.ok ? 'bg-success-50 text-success-700' : 'bg-danger-50 text-danger-700'}`}>
               {pingResult.ok
-                ? `✓ Connected — ${pingResult.latency_ms}ms`
-                : `✗ Failed — ${pingResult.error}`}
+                ? t('llm.connected', { latency: pingResult.latency_ms })
+                : t('llm.failed', { error: pingResult.error })}
             </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Select
-              label="Backend"
+              label={t('llm.backend')}
               selectedKeys={[form.llm_langchain_backend ?? 'openai_compatible']}
               onSelectionChange={k => setForm(f => ({ ...f, llm_langchain_backend: Array.from(k)[0] as string }))}
             >
-              <SelectItem key="openai_compatible">OpenAI Compatible</SelectItem>
-              <SelectItem key="ollama">Ollama</SelectItem>
+              <SelectItem key="openai_compatible">{t('llm.openai')}</SelectItem>
+              <SelectItem key="ollama">{t('llm.ollama')}</SelectItem>
             </Select>
-            <Input label="Model" value={form.llm_langchain_model ?? ''} onValueChange={v => setForm(f => ({ ...f, llm_langchain_model: v }))} />
+            <Input label={t('llm.model')} value={form.llm_langchain_model ?? ''} onValueChange={v => setForm(f => ({ ...f, llm_langchain_model: v }))} />
             <Input
-              label="API Base"
+              label={t('llm.apiBase')}
               value={form.llm_langchain_api_base ?? ''}
               onValueChange={v => setForm(f => ({ ...f, llm_langchain_api_base: v.trim() === '' ? null : v }))}
             />
             <Input
-              label="API Key"
+              label={t('llm.apiKey')}
               type="password"
               value={form.llm_langchain_api_key ?? ''}
               onValueChange={v => setForm(f => ({ ...f, llm_langchain_api_key: v.trim() === '' ? null : v }))}
             />
             <Input
-              label="Temperature"
+              label={t('llm.temperature')}
               type="number"
               step="0.05"
               value={String(form.llm_langchain_temperature ?? 0)}
               onValueChange={v => setForm(f => ({ ...f, llm_langchain_temperature: Number(v) }))}
             />
-            <Input label="Display Timezone" value={form.llm_display_timezone ?? ''} onValueChange={v => setForm(f => ({ ...f, llm_display_timezone: v }))} />
+            <Input label={t('llm.displayTimezone')} value={form.llm_display_timezone ?? ''} onValueChange={v => setForm(f => ({ ...f, llm_display_timezone: v }))} />
             <Input
-              label="Timeout (seconds)"
+              label={t('llm.timeout')}
               type="number"
               value={String(form.llm_timeout_seconds ?? 30)}
               onValueChange={v => setForm(f => ({ ...f, llm_timeout_seconds: Number(v) }))}
             />
             <Input
-              label="Max Parallel Batches"
+              label={t('llm.maxParallelBatches')}
               type="number"
               value={String(form.llm_max_parallel_batches ?? 3)}
               onValueChange={v => setForm(f => ({ ...f, llm_max_parallel_batches: Number(v) }))}
             />
             <Input
-              label="Rules per Batch"
+              label={t('llm.rulesPerBatch')}
               type="number"
               value={String(form.llm_rules_per_batch ?? 2)}
               onValueChange={v => setForm(f => ({ ...f, llm_rules_per_batch: Number(v) }))}
             />
             <Input
-              label="Batch Timeout (seconds)"
+              label={t('llm.batchTimeout')}
               type="number"
               value={String(form.llm_batch_timeout_seconds ?? 30)}
               onValueChange={v => setForm(f => ({ ...f, llm_batch_timeout_seconds: Number(v) }))}
             />
             <Input
-              label="Batch Max Retries"
+              label={t('llm.batchMaxRetries')}
               type="number"
               value={String(form.llm_batch_max_retries ?? 1)}
               onValueChange={v => setForm(f => ({ ...f, llm_batch_max_retries: Number(v) }))}
             />
             <Input
-              label="Batch Rate Limit (per second)"
+              label={t('llm.batchRateLimit')}
               type="number"
               value={String(form.llm_batch_rate_limit_per_second ?? 0)}
               onValueChange={v => setForm(f => ({ ...f, llm_batch_rate_limit_per_second: Number(v) }))}
             />
             <Input
-              label="Idempotency Cache Size"
+              label={t('llm.idempotencyCacheSize')}
               type="number"
               value={String(form.llm_batch_idempotency_cache_size ?? 1024)}
               onValueChange={v => setForm(f => ({ ...f, llm_batch_idempotency_cache_size: Number(v) }))}
             />
             <Input
-              label="Ollama Base URL"
+              label={t('llm.ollamaBaseUrl')}
               value={form.llm_ollama_base_url ?? ''}
               onValueChange={v => setForm(f => ({ ...f, llm_ollama_base_url: v }))}
             />
           </div>
 
-          {save.isSuccess && <p className="text-success text-sm">Saved successfully.</p>}
-          {save.isError && <p className="text-danger text-sm">Save failed.</p>}
+          {save.isSuccess && <p className="text-success text-sm">{t('common.saveSuccess')}</p>}
+          {save.isError && <p className="text-danger text-sm">{t('common.saveFailed')}</p>}
         </CardBody>
       </Card>
 
@@ -177,6 +179,7 @@ export default function LLMPage() {
 }
 
 function LLMHealthCard() {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['llm_health'],
     queryFn: () => fetchLLMHealth(),
@@ -188,7 +191,7 @@ function LLMHealthCard() {
 
   return (
     <Card>
-      <CardHeader><span className="font-semibold">Batch Scheduler</span></CardHeader>
+      <CardHeader><span className="font-semibold">{t('llm.batchScheduler')}</span></CardHeader>
       <CardBody className="space-y-2">
         {sched
           ? Object.entries(sched).map(([k, v]) => (
@@ -197,9 +200,9 @@ function LLMHealthCard() {
                 <span className="text-sm font-medium text-default-800">{String(v)}</span>
               </div>
             ))
-          : <p className="text-sm text-default-400">No scheduler data</p>}
+          : <p className="text-sm text-default-400">{t('llm.noScheduler')}</p>}
         <div className="flex items-center justify-between py-1">
-          <span className="text-sm text-default-500">Status</span>
+          <span className="text-sm text-default-500">{t('llm.status')}</span>
           <Chip size="sm" color={data?.status === 'ok' ? 'success' : 'warning'} variant="flat">
             {String(data?.status ?? 'unknown')}
           </Chip>

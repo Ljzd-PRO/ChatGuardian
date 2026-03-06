@@ -4,12 +4,14 @@ import {
   Card, CardBody, CardHeader, Input, Spinner, Chip, Progress,
 } from '@heroui/react';
 import { Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { fetchUserProfiles } from '../api/users';
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip,
 } from 'recharts';
 
 export default function UserProfilesPage() {
+  const { t } = useTranslation();
   const { data: profiles, isLoading } = useQuery({
     queryKey: ['user_profiles'],
     queryFn: fetchUserProfiles,
@@ -21,19 +23,19 @@ export default function UserProfilesPage() {
     p.user_id.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (isLoading) return <div className="flex justify-center h-64"><Spinner label="Loading profiles…" /></div>;
+  if (isLoading) return <div className="flex justify-center h-64"><Spinner label={t('users.loading')} /></div>;
 
   return (
     <div className="space-y-4">
       <Input
-        placeholder="Search users…"
+        placeholder={t('users.searchPlaceholder')}
         value={search}
         onValueChange={setSearch}
         startContent={<Search size={16} />}
         className="max-w-sm"
       />
       {filtered.length === 0 && (
-        <p className="text-default-400 text-sm">No user profiles yet.</p>
+        <p className="text-default-400 text-sm">{t('users.noProfiles')}</p>
       )}
       <div className="grid md:grid-cols-2 gap-4">
         {filtered.map(p => {
@@ -53,7 +55,7 @@ export default function UserProfilesPage() {
               <CardBody className="space-y-3">
                 {interests.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-default-600 mb-1">Interests</p>
+                    <p className="text-xs font-medium text-default-600 mb-1">{t('users.interests')}</p>
                     <ResponsiveContainer width="100%" height={160}>
                       <RadarChart data={interests}>
                         <PolarGrid />
@@ -67,7 +69,7 @@ export default function UserProfilesPage() {
 
                 {p.active_groups.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-default-600 mb-1">Active Groups</p>
+                    <p className="text-xs font-medium text-default-600 mb-1">{t('users.activeGroups')}</p>
                     <div className="flex flex-wrap gap-1">
                       {p.active_groups.map(g => (
                         <Chip key={g.chat_id} size="sm" variant="flat">
@@ -80,12 +82,12 @@ export default function UserProfilesPage() {
 
                 {Object.keys(p.frequent_contacts).length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-default-600 mb-1">Frequent Contacts</p>
+                    <p className="text-xs font-medium text-default-600 mb-1">{t('users.frequentContacts')}</p>
                     <div className="space-y-1">
                       {Object.values(p.frequent_contacts).slice(0, 3).map(c => (
                         <div key={c.user_id} className="flex items-center justify-between text-xs">
                           <span className="text-default-700">{c.display_name || c.user_id}</span>
-                          <Progress size="sm" value={c.interaction_count} maxValue={100} className="w-20" aria-label="Interaction" />
+                          <Progress size="sm" value={c.interaction_count} maxValue={100} className="w-20" aria-label={t('users.interaction')} />
                         </div>
                       ))}
                     </div>
