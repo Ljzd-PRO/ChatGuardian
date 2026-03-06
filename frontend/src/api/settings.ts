@@ -89,7 +89,7 @@ export interface LLMConfig {
 
 export const fetchSettings          = () => apiFetch<AppSettings>('/api/settings');
 export const updateSettings = (s: Partial<AppSettings>) => {
-  // app_name 与 environment 由环境变量只读注入，这里不向后端提交
+  // app_name and environment are injected via env (read-only); do not send to backend
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { app_name, environment, ...rest } = s;
   return apiFetch<{ status: string }>('/api/settings', { method: 'POST', body: JSON.stringify(rest) });

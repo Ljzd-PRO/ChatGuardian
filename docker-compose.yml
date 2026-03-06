@@ -9,7 +9,7 @@ services:
     env_file:
       - .env
     environment:
-      # 可通过环境变量覆盖基础信息，默认从 .env 读取
+      # Override base configuration via environment variables (defaults loaded from .env)
       - CHAT_GUARDIAN_APP_NAME=${CHAT_GUARDIAN_APP_NAME:-ChatGuardian}
       - CHAT_GUARDIAN_ENVIRONMENT=${CHAT_GUARDIAN_ENVIRONMENT:-prod}
     volumes:
