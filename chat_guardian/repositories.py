@@ -309,6 +309,80 @@ class ChatHistoryStore:
                 pass
         return bucket[-limit:]
 
+    async def delete_history_messages(
+            self,
+            items: list[tuple[str, str, str, str]],
+    ) -> int:
+        """
+        按 message_id 删除历史消息。
+
+        Args:
+            items: (platform, chat_type, chat_id, message_id) 元组列表。
+
+        Returns:
+            实际删除的消息条数。
+        """
+        deleted = 0
+        to_delete: dict[tuple[str, str, str], set[str]] = defaultdict(set)
+
+        for platform, chat_type, chat_id, message_id in items:
+            chat_type_key = self._chat_type_key(chat_type)
+            bucket = self.history.get(platform, {}).get(chat_type_key, {}).get(chat_id)
+            if not bucket:
+                continue
+
+            for message in list(bucket):
+                if message.message_id == message_id:
+                    try:
+                        bucket.remove(message)
+                    except ValueError:
+                        continue
+                    deleted += 1
+                    to_delete[(platform, chat_type_key, chat_id)].add(message_id)
+                    break
+
+        if self._db is not None and to_delete:
+            with self._db.session_factory() as session:
+                ids: list[int] = []
+                for (platform, chat_type_key, chat_id), message_ids in to_delete.items():
+                    rows = session.scalars(
+                        select(_ChatMessageRecord)
+                        .where(
+                            _ChatMessageRecord.bucket == "history",
+                            _ChatMessageRecord.platform == platform,
+                            _ChatMessageRecord.chat_type == chat_type_key,
+                            _ChatMessageRecord.chat_id == chat_id,
+                        )
+                    ).all()
+                    for row in rows:
+                        try:
+                            message = ChatMessage.model_validate_json(row.message_json)
+                        except Exception:
+                            continue
+                        if message.message_id in message_ids:
+                            ids.append(row.id)
+                if ids:
+                    session.execute(delete(_ChatMessageRecord).where(_ChatMessageRecord.id.in_(ids)))
+                    session.commit()
+
+        return deleted
+
+    async def clear_history(self) -> int:
+        """清空所有历史消息，返回被清理的条数。"""
+        cleared = 0
+        for by_type in self.history.values():
+            for by_chat in by_type.values():
+                for bucket in by_chat.values():
+                    cleared += len(bucket)
+        self.history = defaultdict(lambda: defaultdict(lambda: defaultdict(deque)))
+
+        if self._db is not None:
+            with self._db.session_factory() as session:
+                session.execute(delete(_ChatMessageRecord).where(_ChatMessageRecord.bucket == "history"))
+                session.commit()
+
+        return cleared
+
 
 class RuleRepository:
     """内存中的规则存储实现，支持上载/列举已启用规则。"""

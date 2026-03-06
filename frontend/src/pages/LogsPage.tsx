@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, CardBody, Chip, Select, SelectItem, Spinner } from '@heroui/react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { fetchLogs } from '../api/logs';
+import { clearLogs, fetchLogs } from '../api/logs';
 import type { LogEntry } from '../api/logs';
 
 const LEVEL_COLORS: Record<string, 'default' | 'primary' | 'warning' | 'danger' | 'success'> = {
@@ -17,11 +17,17 @@ const LEVEL_COLORS: Record<string, 'default' | 'primary' | 'warning' | 'danger' 
 
 export default function LogsPage() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [levelFilter, setLevelFilter] = useState('ALL');
   const { data: logs, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['logs'],
     queryFn: () => fetchLogs(200),
     refetchInterval: 10_000,
+  });
+
+  const clear = useMutation({
+    mutationFn: clearLogs,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['logs'] }),
   });
 
   const levels = ['ALL', 'DEBUG', 'INFO', 'SUCCESS', 'WARNING', 'ERROR', 'CRITICAL'];
@@ -49,6 +55,16 @@ export default function LogsPage() {
           onPress={() => refetch()}
         >
           {t('logs.refresh')}
+        </Button>
+        <Button
+          size="sm"
+          color="danger"
+          variant="flat"
+          startContent={<Trash2 size={16} />}
+          isLoading={clear.isPending}
+          onPress={() => clear.mutate()}
+        >
+          {t('logs.clear')}
         </Button>
         <span className="text-xs text-default-400">{t('common.entries', { count: filtered.length })}</span>
       </div>
