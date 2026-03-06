@@ -3,7 +3,8 @@ WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --legacy-peer-deps
 COPY frontend .
-ENV VITE_API_BASE_URL=/api
+# Use root-relative base so the built SPA calls backend at /api without double-prefixing.
+ENV VITE_API_BASE_URL=/
 RUN npm run build
 
 FROM python:3.11-slim AS runtime

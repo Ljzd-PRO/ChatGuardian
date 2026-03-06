@@ -575,7 +575,12 @@ class DetectionResultRepository:
 
 
 class SettingsRepository:
-    """应用配置存储，将配置项以 JSON 序列化形式持久化到数据库。"""
+    """应用配置存储，将配置项以 JSON 序列化形式持久化到数据库。
+
+    Args:
+        database_url: 连接字符串。
+        disallow_keys: 不允许读写到数据库的配置键集合（通常为只读的环境变量项）。
+    """
 
     def __init__(self, database_url: str | None = None, disallow_keys: set[str] | None = None):
         self._db = _get_db_manager(database_url)

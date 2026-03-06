@@ -11,7 +11,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class _EnvConfig(BaseSettings):
-    """仅从环境变量读取 database_url 及只读的基础元信息。"""
+    """仅从环境变量读取 database_url 及只读的基础元信息（不会写回数据库）。"""
 
     model_config = SettingsConfigDict(env_prefix="CHAT_GUARDIAN_", env_file=".env", extra="ignore")
 
