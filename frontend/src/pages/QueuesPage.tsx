@@ -321,7 +321,7 @@ export default function QueuesPage() {
               onDeleteOne={key => remove.mutate([key])}
               onDeleteMany={keys => remove.mutate(keys)}
               onClearAll={() => clearHistory.mutate()}
-              bulkDisabled={remove.isPending}
+              bulkDisabled={remove.isPending || clearHistory.isPending}
               loading={isFetching || remove.isPending}
               clearing={clearHistory.isPending}
             />
