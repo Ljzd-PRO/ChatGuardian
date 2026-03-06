@@ -1,18 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Button, Card, CardBody, Chip, Input, Modal, ModalBody,
-  ModalContent, ModalFooter, ModalHeader, Spinner, Switch, Slider, Textarea,
+  Accordion, AccordionItem, Button, Card, CardBody, Checkbox, Chip, Input, Modal, ModalBody,
+  ModalContent, ModalFooter, ModalHeader, Select, SelectItem, Spinner, Switch, Slider, Textarea, Tooltip,
 } from '@heroui/react';
 import {
-  AlignLeft, Gauge, ListChecks, Pencil, Plus, Search, ShieldCheck, Sparkles, Tag, Trash2,
+  AlignLeft, CheckSquare, Filter, FilterX, Gauge, ListChecks, ListFilter, Pencil, Plus, Search,
+  ShieldCheck, Sparkles, Tag, Trash2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { fetchRules, upsertRule, deleteRule } from '../api/rules';
-import type { DetectionRule, MatcherUnion, RuleParameterSpec } from '../api/types';
+import type {
+  DetectionRule, MatcherType, MatcherUnion, RuleParameterSpec,
+  MatchAdapter, MatchChatInfo, MatchChatType, MatchMention, MatchSender,
+} from '../api/types';
 import MatcherEditor from '../components/matcher/MatcherEditor';
 import { fetchSettings, updateSettings } from '../api/settings';
 import type { AppSettings } from '../api/settings';
+
+type LeafMatcher = MatchSender | MatchMention | MatchChatInfo | MatchChatType | MatchAdapter;
+const LEAF_MATCHER_TYPES: LeafMatcher['type'][] = ['sender', 'mention', 'chat', 'chat_type', 'adapter'];
 
 const EMPTY_RULE: DetectionRule = {
   rule_id: '',
@@ -33,9 +40,17 @@ export default function RulesPage() {
 
   const [editing, setEditing] = useState<DetectionRule | null>(null);
   const [deleting, setDeleting] = useState<DetectionRule | null>(null);
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [topicInput, setTopicInput] = useState('');
   const [search, setSearch] = useState('');
   const [detForm, setDetForm] = useState<Partial<AppSettings>>({});
+  const [selectedRules, setSelectedRules] = useState<Record<string, boolean>>({});
+  const [matcherFilter, setMatcherFilter] = useState<Partial<LeafMatcher>>({ type: 'sender' });
+  const [matcherFilterEnabled, setMatcherFilterEnabled] = useState(false);
+  const [swipeStart, setSwipeStart] = useState<number | null>(null);
+  const [swipedRule, setSwipedRule] = useState<string | null>(null);
+  const swipeTimer = useRef<number | null>(null);
 
   useEffect(() => {
     if (!settings) return;
@@ -54,6 +69,10 @@ export default function RulesPage() {
     });
   }, [settings]);
 
+  useEffect(() => () => {
+    if (swipeTimer.current) window.clearTimeout(swipeTimer.current);
+  }, []);
+
   const upsert = useMutation({
     mutationFn: upsertRule,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['rules'] }); setEditing(null); },
@@ -67,6 +86,125 @@ export default function RulesPage() {
     mutationFn: () => updateSettings(detForm),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings'] }),
   });
+
+  useEffect(() => {
+    if (!rules) return;
+    setSelectedRules(prev => {
+      const next: Record<string, boolean> = {};
+      rules.forEach(r => { if (prev[r.rule_id]) next[r.rule_id] = true; });
+      return next;
+    });
+  }, [rules]);
+
+  const selectedIds = useMemo(() => Object.keys(selectedRules).filter(id => selectedRules[id]), [selectedRules]);
+  const matcherPreview = useMemo(() => {
+    function describe(m: MatcherUnion): string {
+      switch (m.type) {
+        case 'all': return t('matcher.preview.all');
+        case 'and': return `${t('matcher.types.and')}(${m.matchers.map(describe).join(' ∧ ')})`;
+        case 'or': return `${t('matcher.types.or')}(${m.matchers.map(describe).join(' ∨ ')})`;
+        case 'not': return `${t('matcher.types.not')}(${describe(m.matcher)})`;
+        case 'sender': return `${t('matcher.types.sender')}:${m.display_name || m.user_id || t('common.none')}`;
+        case 'mention': return `${t('matcher.types.mention')}:${m.display_name || m.user_id || t('common.none')}`;
+        case 'chat': return `${t('matcher.types.chat')}:${m.chat_id || t('common.none')}`;
+        case 'chat_type': return `${t('matcher.types.chat_type')}:${m.chat_type}`;
+        case 'adapter': return `${t('matcher.types.adapter')}:${m.adapter_name || t('common.none')}`;
+        default: return '';
+      }
+    }
+    return (rule: DetectionRule) => describe(rule.matcher);
+  }, [t]);
+
+  function matcherContains(root: MatcherUnion, target: Partial<LeafMatcher>): boolean {
+    if (!target.type) return false;
+    switch (root.type) {
+      case 'and': return root.matchers.some(m => matcherContains(m, target));
+      case 'or': return root.matchers.some(m => matcherContains(m, target));
+      case 'not': return matcherContains(root.matcher, target);
+      default:
+        if (root.type !== target.type) return false;
+        if (root.type === 'sender' || root.type === 'mention') {
+          const t = target as Partial<MatchSender>;
+          const user = t.user_id?.trim();
+          const display = t.display_name?.trim();
+          const matchesUser = user ? root.user_id === user : true;
+          const matchesDisplay = display ? root.display_name === display : true;
+          return matchesUser && matchesDisplay;
+        }
+        if (root.type === 'chat') {
+          const t = target as Partial<MatchChatInfo>;
+          const chatId = t.chat_id?.trim();
+          return chatId ? root.chat_id === chatId : true;
+        }
+        if (root.type === 'chat_type') {
+          const t = target as Partial<MatchChatType>;
+          return t.chat_type ? root.chat_type === t.chat_type : true;
+        }
+        if (root.type === 'adapter') {
+          const t = target as Partial<MatchAdapter>;
+          const adapterName = t.adapter_name?.trim();
+          return adapterName ? root.adapter_name === adapterName : true;
+        }
+        return false;
+    }
+  }
+
+  function ruleMatchesSearch(rule: DetectionRule) {
+    const keywordTarget = `${rule.name} ${rule.description} ${rule.topic_hints.join(' ')}`.toLowerCase();
+    const keywordOk = keywordTarget.includes(search.toLowerCase());
+    if (!matcherFilterEnabled || !matcherFilter.type) return keywordOk;
+    return keywordOk && matcherContains(rule.matcher, matcherFilter);
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedRules(prev => ({ ...prev, [id]: !prev[id] }));
+  }
+
+  function selectAllFiltered(ids: string[]) {
+    setSelectedRules(prev => {
+      const next = { ...prev };
+      ids.forEach(id => { next[id] = true; });
+      return next;
+    });
+  }
+
+  function handleBulkEnable(enable: boolean, ids: string[]) {
+    ids.forEach(id => {
+      const rule = rules?.find(r => r.rule_id === id);
+      if (rule) upsert.mutate({ ...rule, enabled: enable });
+    });
+  }
+
+  function handleBulkDelete(ids: string[]) {
+    if (ids.length === 0) return;
+    setBulkDeleteLoading(true);
+    Promise.all(ids.map(id => del.mutateAsync(id)))
+      .finally(() => {
+        setBulkDeleteLoading(false);
+        setBulkConfirmOpen(false);
+        setSelectedRules({});
+      });
+  }
+
+  function handleTouchStart(x: number, id: string) {
+    setSwipeStart(x);
+    setSwipedRule(id);
+    if (swipeTimer.current) window.clearTimeout(swipeTimer.current);
+    swipeTimer.current = window.setTimeout(() => setSwipedRule(null), 3500);
+  }
+
+  function handleTouchMove(x: number) {
+    if (swipeStart === null) return;
+    const diff = swipeStart - x;
+    if (diff > 60) {
+      setSwipeStart(null);
+      if (swipedRule) setDeleting(rules?.find(r => r.rule_id === swipedRule) ?? null);
+    }
+  }
+
+  function handleTouchEnd() {
+    setSwipeStart(null);
+  }
 
   function openNew() {
     setEditing({ ...EMPTY_RULE, rule_id: crypto.randomUUID() });
@@ -107,160 +245,372 @@ export default function RulesPage() {
 
   if (isLoading) return <div className="flex justify-center h-64"><Spinner label={t('rules.loading')} /></div>;
 
-  const filteredRules = (rules ?? []).filter(r => {
-    const target = `${r.name} ${r.description} ${r.topic_hints.join(' ')}`.toLowerCase();
-    return target.includes(search.toLowerCase());
-  });
+  const filteredRules = (rules ?? []).filter(ruleMatchesSearch);
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardBody className="space-y-4">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
+      <Accordion
+        selectionMode="multiple"
+        defaultExpandedKeys={new Set()}
+        itemClasses={{ title: 'w-full' }}
+        className="bg-transparent"
+      >
+        <AccordionItem
+          key="detection"
+          aria-label={t('rules.detectionSettings')}
+          title={(
             <div className="flex items-center gap-2">
               <ShieldCheck size={18} className="text-primary" />
-              <div>
+              <div className="text-left">
                 <p className="font-semibold">{t('rules.detectionSettings')}</p>
                 <p className="text-sm text-default-500">{t('rules.detectionSettingsDesc')}</p>
               </div>
             </div>
-            <Button color="primary" size="sm" isDisabled={!settings} isLoading={saveDetection.isPending} onPress={() => saveDetection.mutate()}>
-              {t('common.save')}
+          )}
+          subtitle={t('rules.detectionSettingsHint')}
+        >
+          <Card>
+            <CardBody className="space-y-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <CheckSquare size={16} className="text-default-500" />
+                  <span className="text-sm text-default-500">{t('rules.detectionSettingsHelper')}</span>
+                </div>
+                <Button color="primary" size="sm" isDisabled={!settings} isLoading={saveDetection.isPending} onPress={() => saveDetection.mutate()}>
+                  {t('common.save')}
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Input
+                  label={t('rules.appName')}
+                  startContent={<Tag size={16} className="text-default-500" />}
+                  value={detForm.app_name ?? ''}
+                  onValueChange={v => setDetForm(f => ({ ...f, app_name: v }))}
+                />
+                <Input
+                  label={t('rules.environment')}
+                  startContent={<Sparkles size={16} className="text-default-500" />}
+                  value={detForm.environment ?? ''}
+                  onValueChange={v => setDetForm(f => ({ ...f, environment: v }))}
+                />
+                <Input
+                  label={t('rules.contextMessageLimit')}
+                  type="number"
+                  startContent={<Gauge size={16} className="text-default-500" />}
+                  value={String(detForm.context_message_limit ?? 10)}
+                  onValueChange={v => setDetForm(f => ({ ...f, context_message_limit: Number(v) }))}
+                />
+                <Input
+                  label={t('rules.detectionCooldown')}
+                  type="number"
+                  startContent={<Gauge size={16} className="text-default-500" />}
+                  value={String(detForm.detection_cooldown_seconds ?? 0)}
+                  onValueChange={v => setDetForm(f => ({ ...f, detection_cooldown_seconds: Number(v) }))}
+                />
+                <Input
+                  label={t('rules.minNewMessages')}
+                  type="number"
+                  startContent={<Gauge size={16} className="text-default-500" />}
+                  value={String(detForm.detection_min_new_messages ?? 1)}
+                  onValueChange={v => setDetForm(f => ({ ...f, detection_min_new_messages: Number(v) }))}
+                />
+                <Input
+                  label={t('rules.detectionWaitTimeout')}
+                  type="number"
+                  startContent={<Gauge size={16} className="text-default-500" />}
+                  value={String(detForm.detection_wait_timeout_seconds ?? 30)}
+                  onValueChange={v => setDetForm(f => ({ ...f, detection_wait_timeout_seconds: Number(v) }))}
+                />
+                <Input
+                  label={t('rules.pendingQueueLimit')}
+                  type="number"
+                  startContent={<ListChecks size={16} className="text-default-500" />}
+                  value={String(detForm.pending_queue_limit ?? 200)}
+                  onValueChange={v => setDetForm(f => ({ ...f, pending_queue_limit: Number(v) }))}
+                />
+                <Input
+                  label={t('rules.historyListLimit')}
+                  type="number"
+                  startContent={<ListChecks size={16} className="text-default-500" />}
+                  value={String(detForm.history_list_limit ?? 1000)}
+                  onValueChange={v => setDetForm(f => ({ ...f, history_list_limit: Number(v) }))}
+                />
+                <Input
+                  label={t('rules.hookTimeout')}
+                  type="number"
+                  startContent={<Gauge size={16} className="text-default-500" />}
+                  value={String(detForm.hook_timeout_seconds ?? 8)}
+                  onValueChange={v => setDetForm(f => ({ ...f, hook_timeout_seconds: Number(v) }))}
+                />
+                <Switch
+                  isSelected={detForm.enable_internal_rule_generation ?? false}
+                  onValueChange={v => setDetForm(f => ({ ...f, enable_internal_rule_generation: v }))}
+                >
+                  {t('rules.enableInternalRuleGen')}
+                </Switch>
+                <Input
+                  label={t('rules.externalRuleEndpoint')}
+                  startContent={<AlignLeft size={16} className="text-default-500" />}
+                  value={detForm.external_rule_generation_endpoint ?? ''}
+                  onValueChange={v => setDetForm(f => ({ ...f, external_rule_generation_endpoint: v }))}
+                  className="md:col-span-2"
+                />
+              </div>
+              {saveDetection.isSuccess && <p className="text-success text-sm">{t('common.saved')}</p>}
+              {saveDetection.isError && <p className="text-danger text-sm">{t('common.saveFailed')}</p>}
+            </CardBody>
+          </Card>
+        </AccordionItem>
+      </Accordion>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <p className="text-default-500 text-sm">{t('rules.ruleCount', { count: filteredRules.length })}</p>
+          <div className="flex gap-2 flex-wrap items-center">
+            <Chip size="sm" variant="flat" color="primary" startContent={<Filter size={14} />}>
+              {t('rules.filtersActive', { count: matcherFilterEnabled ? 1 : 0 })}
+            </Chip>
+            <Button
+              size="sm"
+              variant="flat"
+              startContent={<FilterX size={14} />}
+              onPress={() => { setMatcherFilterEnabled(false); setMatcherFilter({ type: matcherFilter.type ?? 'sender' }); }}
+            >
+              {t('rules.clearFilters')}
+            </Button>
+            <Button
+              size="sm"
+              variant="flat"
+              startContent={<CheckSquare size={14} />}
+              onPress={() => selectAllFiltered(filteredRules.map(r => r.rule_id))}
+              isDisabled={filteredRules.length === 0}
+            >
+              {t('rules.selectFiltered')}
+            </Button>
+            <Button
+              size="sm"
+              variant="light"
+              startContent={<FilterX size={14} />}
+              onPress={() => setSelectedRules({})}
+              isDisabled={selectedIds.length === 0}
+            >
+              {t('rules.clearSelection')}
             </Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Input
-              label={t('rules.appName')}
-              startContent={<Tag size={16} className="text-default-500" />}
-              value={detForm.app_name ?? ''}
-              onValueChange={v => setDetForm(f => ({ ...f, app_name: v }))}
-            />
-            <Input
-              label={t('rules.environment')}
-              startContent={<Sparkles size={16} className="text-default-500" />}
-              value={detForm.environment ?? ''}
-              onValueChange={v => setDetForm(f => ({ ...f, environment: v }))}
-            />
-            <Input
-              label={t('rules.contextMessageLimit')}
-              type="number"
-              startContent={<Gauge size={16} className="text-default-500" />}
-              value={String(detForm.context_message_limit ?? 10)}
-              onValueChange={v => setDetForm(f => ({ ...f, context_message_limit: Number(v) }))}
-            />
-            <Input
-              label={t('rules.detectionCooldown')}
-              type="number"
-              startContent={<Gauge size={16} className="text-default-500" />}
-              value={String(detForm.detection_cooldown_seconds ?? 0)}
-              onValueChange={v => setDetForm(f => ({ ...f, detection_cooldown_seconds: Number(v) }))}
-            />
-            <Input
-              label={t('rules.minNewMessages')}
-              type="number"
-              startContent={<Gauge size={16} className="text-default-500" />}
-              value={String(detForm.detection_min_new_messages ?? 1)}
-              onValueChange={v => setDetForm(f => ({ ...f, detection_min_new_messages: Number(v) }))}
-            />
-            <Input
-              label={t('rules.detectionWaitTimeout')}
-              type="number"
-              startContent={<Gauge size={16} className="text-default-500" />}
-              value={String(detForm.detection_wait_timeout_seconds ?? 30)}
-              onValueChange={v => setDetForm(f => ({ ...f, detection_wait_timeout_seconds: Number(v) }))}
-            />
-            <Input
-              label={t('rules.pendingQueueLimit')}
-              type="number"
-              startContent={<ListChecks size={16} className="text-default-500" />}
-              value={String(detForm.pending_queue_limit ?? 200)}
-              onValueChange={v => setDetForm(f => ({ ...f, pending_queue_limit: Number(v) }))}
-            />
-            <Input
-              label={t('rules.historyListLimit')}
-              type="number"
-              startContent={<ListChecks size={16} className="text-default-500" />}
-              value={String(detForm.history_list_limit ?? 1000)}
-              onValueChange={v => setDetForm(f => ({ ...f, history_list_limit: Number(v) }))}
-            />
-            <Input
-              label={t('rules.hookTimeout')}
-              type="number"
-              startContent={<Gauge size={16} className="text-default-500" />}
-              value={String(detForm.hook_timeout_seconds ?? 8)}
-              onValueChange={v => setDetForm(f => ({ ...f, hook_timeout_seconds: Number(v) }))}
-            />
-            <Switch
-              isSelected={detForm.enable_internal_rule_generation ?? false}
-              onValueChange={v => setDetForm(f => ({ ...f, enable_internal_rule_generation: v }))}
-            >
-              {t('rules.enableInternalRuleGen')}
-            </Switch>
-            <Input
-              label={t('rules.externalRuleEndpoint')}
-              startContent={<AlignLeft size={16} className="text-default-500" />}
-              value={detForm.external_rule_generation_endpoint ?? ''}
-              onValueChange={v => setDetForm(f => ({ ...f, external_rule_generation_endpoint: v }))}
-              className="md:col-span-2"
-            />
-          </div>
-          {saveDetection.isSuccess && <p className="text-success text-sm">{t('common.saved')}</p>}
-          {saveDetection.isError && <p className="text-danger text-sm">{t('common.saveFailed')}</p>}
-        </CardBody>
-      </Card>
-
-      <div className="flex justify-between items-center gap-4 flex-wrap">
-        <p className="text-default-500 text-sm">{t('rules.ruleCount', { count: filteredRules.length })}</p>
-        <div className="flex gap-2 flex-wrap items-center">
-          <Input
-            size="sm"
-            startContent={<Search size={14} className="text-default-500" />}
-            placeholder={t('rules.searchPlaceholder')}
-            value={search}
-            onValueChange={setSearch}
-            aria-label={t('rules.searchPlaceholder')}
-          />
-          <Button color="primary" startContent={<Plus size={16} />} onPress={openNew}>
-            {t('rules.newRule')}
-          </Button>
         </div>
+        <div className="flex flex-row flex-wrap gap-2 items-center">
+          <div className="flex flex-1 gap-2 items-center min-w-[280px]">
+            <Input
+              size="sm"
+              startContent={<Search size={14} className="text-default-500" />}
+              placeholder={t('rules.searchPlaceholder')}
+              value={search}
+              onValueChange={setSearch}
+              aria-label={t('rules.searchPlaceholder')}
+              className="w-full min-w-[220px]"
+            />
+            <Button color="primary" startContent={<Plus size={16} />} onPress={openNew} className="whitespace-nowrap">
+              {t('rules.newRule')}
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="flat"
+              startContent={<ListFilter size={14} />}
+              onPress={() => setMatcherFilterEnabled(v => !v)}
+              color={matcherFilterEnabled ? 'primary' : 'default'}
+            >
+              {t('rules.matcherFilter')}
+            </Button>
+            <Button
+              size="sm"
+              variant="flat"
+              startContent={<ShieldCheck size={14} />}
+              isDisabled={selectedIds.length === 0}
+              onPress={() => handleBulkEnable(true, selectedIds)}
+            >
+              {t('rules.bulkEnable')}
+            </Button>
+            <Button
+              size="sm"
+              variant="flat"
+              startContent={<ShieldCheck size={14} />}
+              isDisabled={selectedIds.length === 0}
+              onPress={() => handleBulkEnable(false, selectedIds)}
+            >
+              {t('rules.bulkDisable')}
+            </Button>
+            <Button
+              size="sm"
+              variant="flat"
+              color="danger"
+              startContent={<Trash2 size={14} />}
+              isDisabled={selectedIds.length === 0}
+              onPress={() => setBulkConfirmOpen(true)}
+            >
+              {t('rules.bulkDelete')}
+            </Button>
+          </div>
+        </div>
+        {matcherFilterEnabled && (
+          <div className="flex flex-col gap-2 border border-default-200 rounded-xl p-3 bg-default-50">
+            <div className="flex flex-wrap gap-2 items-center">
+              <Select
+                size="sm"
+                label={t('rules.matcherType')}
+                className="w-44"
+                selectedKeys={[matcherFilter.type ?? 'sender']}
+                onSelectionChange={keys => {
+                  const k = Array.from(keys)[0] as MatcherType;
+                  if (!k || !LEAF_MATCHER_TYPES.includes(k as LeafMatcher['type'])) return;
+                  const base: Partial<LeafMatcher> = { type: k as LeafMatcher['type'] };
+                  setMatcherFilter(base);
+                }}
+              >
+                {LEAF_MATCHER_TYPES.map(mt => (
+                  <SelectItem key={mt}>{t(`matcher.types.${mt}`)}</SelectItem>
+                ))}
+              </Select>
+              <Chip size="sm" variant="dot">{t('rules.matcherSearchDesc')}</Chip>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(matcherFilter.type === 'sender' || matcherFilter.type === 'mention') && (
+                <>
+                  <Input
+                    size="sm"
+                    label={t('matcher.userId')}
+                    value={matcherFilter.user_id ?? ''}
+                    onValueChange={v => setMatcherFilter(f => ({ ...f, user_id: v }))}
+                    className="w-48"
+                  />
+                  <Input
+                    size="sm"
+                    label={t('matcher.displayName')}
+                    value={matcherFilter.display_name ?? ''}
+                    onValueChange={v => setMatcherFilter(f => ({ ...f, display_name: v }))}
+                    className="w-48"
+                  />
+                </>
+              )}
+              {matcherFilter.type === 'chat' && (
+                <Input
+                  size="sm"
+                  label={t('matcher.chatId')}
+                  value={matcherFilter.chat_id ?? ''}
+                  onValueChange={v => setMatcherFilter(f => ({ ...f, chat_id: v }))}
+                  className="w-60"
+                />
+              )}
+              {matcherFilter.type === 'chat_type' && (
+                <Select
+                  size="sm"
+                  label={t('matcher.chatType')}
+                  selectedKeys={matcherFilter.chat_type ? [matcherFilter.chat_type] : []}
+                  onSelectionChange={keys => {
+                    const k = Array.from(keys)[0] as 'group' | 'private';
+                    if (k) setMatcherFilter(f => ({ ...f, chat_type: k }));
+                  }}
+                  className="w-48"
+                >
+                  <SelectItem key="group">{t('matcher.group')}</SelectItem>
+                  <SelectItem key="private">{t('matcher.private')}</SelectItem>
+                </Select>
+              )}
+              {matcherFilter.type === 'adapter' && (
+                <Input
+                  size="sm"
+                  label={t('matcher.adapterName')}
+                  value={matcherFilter.adapter_name ?? ''}
+                  onValueChange={v => setMatcherFilter(f => ({ ...f, adapter_name: v }))}
+                  className="w-60"
+                />
+              )}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                size="sm"
+                variant="flat"
+                color="secondary"
+                onPress={() => {
+                  setMatcherFilter({ type: matcherFilter.type ?? 'sender' });
+                }}
+              >
+                {t('rules.resetMatcherFilter')}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-4">
         {filteredRules.map(rule => (
           <Card key={rule.rule_id} className="w-full border border-default-200 shadow-sm">
-            <CardBody className="flex flex-row items-start justify-between gap-5 md:gap-6">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium text-default-900">{rule.name}</span>
-                  <Chip size="sm" color={rule.enabled ? 'success' : 'default'} variant="flat">
-                    {rule.enabled ? t('common.enabled') : t('common.disabled')}
-                  </Chip>
-                  <Chip size="sm" variant="flat" color="primary">
-                    {t('rules.threshold', { value: rule.score_threshold })}
-                  </Chip>
-                </div>
-                <p className="text-sm text-default-500 mt-1 truncate">{rule.description}</p>
-                {rule.topic_hints.length > 0 && (
-                  <div className="flex gap-1 flex-wrap mt-1">
-                    {rule.topic_hints.map(t => (
-                      <Chip key={t} size="sm" variant="dot">{t}</Chip>
-                    ))}
+            <CardBody
+              className="flex flex-col gap-3 md:flex-row md:items-start justify-between md:gap-6"
+              onTouchStart={e => handleTouchStart(e.touches[0].clientX, rule.rule_id)}
+              onTouchMove={e => handleTouchMove(e.touches[0].clientX)}
+              onTouchEnd={handleTouchEnd}
+            >
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <Checkbox
+                  isSelected={!!selectedRules[rule.rule_id]}
+                  onValueChange={() => toggleSelect(rule.rule_id)}
+                  aria-label={t('rules.selectRule')}
+                  className="mt-1"
+                />
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-default-900">{rule.name}</span>
+                    <Chip size="sm" color={rule.enabled ? 'success' : 'default'} variant="flat">
+                      {rule.enabled ? t('common.enabled') : t('common.disabled')}
+                    </Chip>
+                    <Chip size="sm" variant="flat" color="primary">
+                      {t('rules.threshold', { value: rule.score_threshold })}
+                    </Chip>
                   </div>
-                )}
+                  <p className="text-sm text-default-500 truncate">{rule.description}</p>
+                  {rule.topic_hints.length > 0 && (
+                    <div className="flex gap-1 flex-wrap">
+                      {rule.topic_hints.map(t => (
+                        <Chip key={t} size="sm" variant="dot">{t}</Chip>
+                      ))}
+                    </div>
+                  )}
+                  {rule.parameters.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {rule.parameters.map(param => (
+                        <Chip key={param.key} size="sm" variant="flat" color={param.required ? 'warning' : 'default'}>
+                          {param.key || t('rules.unnamedParam')}{param.required ? ' *' : ''}
+                        </Chip>
+                      ))}
+                    </div>
+                  )}
+                  <Tooltip content={matcherPreview(rule)}>
+                    <p className="text-xs text-default-500 truncate">
+                      {t('rules.matcherPreviewLabel')}: {matcherPreview(rule)}
+                    </p>
+                  </Tooltip>
+                </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Switch
-                  size="sm"
+                  size="md"
                   isSelected={rule.enabled}
                   onValueChange={v => upsert.mutate({ ...rule, enabled: v })}
                   aria-label={t('rules.enableRule')}
                 />
-                <Button isIconOnly size="sm" variant="flat" onPress={() => openEdit(rule)}>
-                  <Pencil size={14} />
+                <Button isIconOnly size="md" variant="flat" onPress={() => openEdit(rule)}>
+                  <Pencil size={16} />
                 </Button>
-                <Button isIconOnly size="sm" variant="flat" color="danger" onPress={() => setDeleting(rule)}>
-                  <Trash2 size={14} />
+                <Button
+                  isIconOnly
+                  size="md"
+                  variant="flat"
+                  color="danger"
+                  onPress={() => setDeleting(rule)}
+                >
+                  <Trash2 size={16} />
                 </Button>
               </div>
             </CardBody>
@@ -449,6 +799,33 @@ export default function RulesPage() {
               </ModalFooter>
             </>
           )}
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={bulkConfirmOpen} onClose={() => setBulkConfirmOpen(false)} size="md">
+        <ModalContent>
+          <>
+            <ModalHeader>{t('rules.bulkDelete')}</ModalHeader>
+            <ModalBody>
+              <p>{t('rules.bulkDeleteConfirm', { count: selectedIds.length })}</p>
+              <div className="flex flex-wrap gap-1">
+                {selectedIds.map(id => {
+                  const name = rules?.find(r => r.rule_id === id)?.name ?? id;
+                  return <Chip key={id} size="sm" variant="flat" color="danger">{name}</Chip>;
+                })}
+              </div>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="flat" onPress={() => setBulkConfirmOpen(false)}>{t('common.cancel')}</Button>
+              <Button
+                color="danger"
+                isLoading={bulkDeleteLoading}
+                onPress={() => handleBulkDelete(selectedIds)}
+              >
+                {t('common.delete')}
+              </Button>
+            </ModalFooter>
+          </>
         </ModalContent>
       </Modal>
     </div>
