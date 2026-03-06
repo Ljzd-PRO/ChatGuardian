@@ -41,6 +41,7 @@ const EMPTY_RULE: DetectionRule = {
 const FilledCircle = ({ size = 12, className }: { size?: number; className?: string }) => (
   <Circle size={size} stroke="none" fill="currentColor" className={className} />
 );
+FilledCircle.displayName = 'FilledCircle';
 
 export default function RulesPage() {
   const { t } = useTranslation();
