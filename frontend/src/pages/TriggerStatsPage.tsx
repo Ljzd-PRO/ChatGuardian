@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
 import {
-  Card, CardBody, CardHeader, Chip, Spinner,
-  Accordion, AccordionItem, Progress,
+  Accordion, AccordionItem, Card, CardBody, CardHeader, Chip, Input, Progress, Spinner,
 } from '@heroui/react';
 import { fetchRuleStats } from '../api/stats';
 import { fetchRules } from '../api/rules';
@@ -10,20 +10,26 @@ import TriggerChart from '../components/charts/TriggerChart';
 export default function TriggerStatsPage() {
   const { data: stats, isLoading: statsLoading } = useQuery({ queryKey: ['rule_stats'], queryFn: fetchRuleStats });
   const { data: rules, isLoading: rulesLoading } = useQuery({ queryKey: ['rules'], queryFn: fetchRules });
+  const [query, setQuery] = useState('');
 
   const loading = statsLoading || rulesLoading;
 
   const allRules = rules ?? [];
   const statsData = stats?.data ?? {};
 
-  const merged = allRules.map(r => ({
+  const merged = useMemo(() => allRules.map(r => ({
     rule_id: r.rule_id,
     name: r.name,
     description: r.description,
     stat: statsData[r.name] ?? { count: 0, description: r.description, records: [] },
-  }));
+  })), [allRules, statsData]);
 
-  const chartData = merged
+  const filtered = merged.filter(r => {
+    const target = `${r.name} ${r.description}`.toLowerCase();
+    return target.includes(query.toLowerCase());
+  });
+
+  const chartData = filtered
     .filter(r => r.stat.count > 0)
     .map(r => ({ name: r.name, count: r.stat.count }));
 
@@ -38,8 +44,18 @@ export default function TriggerStatsPage() {
         </CardBody>
       </Card>
 
+      <div className="flex justify-end">
+        <Input
+          size="sm"
+          className="w-64"
+          placeholder="Search rules"
+          value={query}
+          onValueChange={setQuery}
+        />
+      </div>
+
       <div className="space-y-3">
-        {merged.map(r => (
+        {filtered.map(r => (
           <Card key={r.rule_id}>
             <CardHeader className="flex items-center justify-between">
               <div>

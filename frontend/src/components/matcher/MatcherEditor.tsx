@@ -82,14 +82,14 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
         <div className="flex gap-2 flex-wrap">
           <Input
             size="sm"
-            label="user_id"
+            label="用户ID"
             value={value.user_id ?? ''}
             onValueChange={v => onChange({ ...value, user_id: v || undefined })}
             className="w-40"
           />
           <Input
             size="sm"
-            label="display_name"
+            label="显示名称"
             value={value.display_name ?? ''}
             onValueChange={v => onChange({ ...value, display_name: v || undefined })}
             className="w-40"
@@ -100,7 +100,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
       {value.type === 'chat' && (
         <Input
           size="sm"
-          label="chat_id"
+          label="聊天 ID"
           isRequired
           value={value.chat_id}
           onValueChange={v => onChange({ ...value, chat_id: v })}
@@ -111,7 +111,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
       {value.type === 'chat_type' && (
         <Select
           size="sm"
-          label="chat_type"
+          label="聊天类型"
           className="w-36"
           selectedKeys={[value.chat_type]}
           onSelectionChange={(keys) => {
@@ -119,15 +119,15 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
             if (k) onChange({ ...value, chat_type: k });
           }}
         >
-          <SelectItem key="group">group</SelectItem>
-          <SelectItem key="private">private</SelectItem>
+          <SelectItem key="group">群聊</SelectItem>
+          <SelectItem key="private">私聊</SelectItem>
         </Select>
       )}
 
       {value.type === 'adapter' && (
         <Input
           size="sm"
-          label="adapter_name"
+          label="适配器名称"
           isRequired
           value={value.adapter_name}
           onValueChange={v => onChange({ ...value, adapter_name: v })}

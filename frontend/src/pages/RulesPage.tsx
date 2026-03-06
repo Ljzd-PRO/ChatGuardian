@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Button, Card, CardBody, Chip, Input, Modal, ModalBody,
@@ -8,6 +8,8 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { fetchRules, upsertRule, deleteRule } from '../api/rules';
 import type { DetectionRule, MatcherUnion, RuleParameterSpec } from '../api/types';
 import MatcherEditor from '../components/matcher/MatcherEditor';
+import { fetchSettings, updateSettings } from '../api/settings';
+import type { AppSettings } from '../api/settings';
 
 const EMPTY_RULE: DetectionRule = {
   rule_id: '',
@@ -23,10 +25,30 @@ const EMPTY_RULE: DetectionRule = {
 export default function RulesPage() {
   const qc = useQueryClient();
   const { data: rules, isLoading } = useQuery({ queryKey: ['rules'], queryFn: fetchRules });
+  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: fetchSettings });
 
   const [editing, setEditing] = useState<DetectionRule | null>(null);
   const [deleting, setDeleting] = useState<DetectionRule | null>(null);
   const [topicInput, setTopicInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [detForm, setDetForm] = useState<Partial<AppSettings>>({});
+
+  useEffect(() => {
+    if (!settings) return;
+    setDetForm({
+      app_name: settings.app_name,
+      environment: settings.environment,
+      context_message_limit: settings.context_message_limit,
+      detection_cooldown_seconds: settings.detection_cooldown_seconds,
+      detection_min_new_messages: settings.detection_min_new_messages,
+      detection_wait_timeout_seconds: settings.detection_wait_timeout_seconds,
+      pending_queue_limit: settings.pending_queue_limit,
+      history_list_limit: settings.history_list_limit,
+      hook_timeout_seconds: settings.hook_timeout_seconds,
+      enable_internal_rule_generation: settings.enable_internal_rule_generation,
+      external_rule_generation_endpoint: settings.external_rule_generation_endpoint ?? '',
+    });
+  }, [settings]);
 
   const upsert = useMutation({
     mutationFn: upsertRule,
@@ -36,6 +58,10 @@ export default function RulesPage() {
   const del = useMutation({
     mutationFn: deleteRule,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['rules'] }); setDeleting(null); },
+  });
+  const saveDetection = useMutation({
+    mutationFn: () => updateSettings(detForm),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings'] }),
   });
 
   function openNew() {
@@ -77,17 +103,105 @@ export default function RulesPage() {
 
   if (isLoading) return <div className="flex justify-center h-64"><Spinner label="Loading rules…" /></div>;
 
+  const filteredRules = (rules ?? []).filter(r => {
+    const target = `${r.name} ${r.description} ${r.topic_hints.join(' ')}`.toLowerCase();
+    return target.includes(search.toLowerCase());
+  });
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <p className="text-default-500 text-sm">{rules?.length ?? 0} rules</p>
-        <Button color="primary" startContent={<Plus size={16} />} onPress={openNew}>
-          New Rule
-        </Button>
+      <Card>
+        <CardBody className="space-y-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="font-semibold">Detection & General Settings</p>
+              <p className="text-sm text-default-500">Applies to detection windows and buffering.</p>
+            </div>
+            <Button color="primary" size="sm" isDisabled={!settings} isLoading={saveDetection.isPending} onPress={() => saveDetection.mutate()}>
+              Save
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Input label="App Name" value={detForm.app_name ?? ''} onValueChange={v => setDetForm(f => ({ ...f, app_name: v }))} />
+            <Input label="Environment" value={detForm.environment ?? ''} onValueChange={v => setDetForm(f => ({ ...f, environment: v }))} />
+            <Input
+              label="Context Message Limit"
+              type="number"
+              value={String(detForm.context_message_limit ?? 10)}
+              onValueChange={v => setDetForm(f => ({ ...f, context_message_limit: Number(v) }))}
+            />
+            <Input
+              label="Detection Cooldown (s)"
+              type="number"
+              value={String(detForm.detection_cooldown_seconds ?? 0)}
+              onValueChange={v => setDetForm(f => ({ ...f, detection_cooldown_seconds: Number(v) }))}
+            />
+            <Input
+              label="Min New Messages"
+              type="number"
+              value={String(detForm.detection_min_new_messages ?? 1)}
+              onValueChange={v => setDetForm(f => ({ ...f, detection_min_new_messages: Number(v) }))}
+            />
+            <Input
+              label="Detection Wait Timeout (s)"
+              type="number"
+              value={String(detForm.detection_wait_timeout_seconds ?? 30)}
+              onValueChange={v => setDetForm(f => ({ ...f, detection_wait_timeout_seconds: Number(v) }))}
+            />
+            <Input
+              label="Pending Queue Limit"
+              type="number"
+              value={String(detForm.pending_queue_limit ?? 200)}
+              onValueChange={v => setDetForm(f => ({ ...f, pending_queue_limit: Number(v) }))}
+            />
+            <Input
+              label="History List Limit"
+              type="number"
+              value={String(detForm.history_list_limit ?? 1000)}
+              onValueChange={v => setDetForm(f => ({ ...f, history_list_limit: Number(v) }))}
+            />
+            <Input
+              label="Hook Timeout (s)"
+              type="number"
+              value={String(detForm.hook_timeout_seconds ?? 8)}
+              onValueChange={v => setDetForm(f => ({ ...f, hook_timeout_seconds: Number(v) }))}
+            />
+            <Switch
+              isSelected={detForm.enable_internal_rule_generation ?? false}
+              onValueChange={v => setDetForm(f => ({ ...f, enable_internal_rule_generation: v }))}
+            >
+              Enable Internal Rule Generation
+            </Switch>
+            <Input
+              label="External Rule Generation Endpoint"
+              value={detForm.external_rule_generation_endpoint ?? ''}
+              onValueChange={v => setDetForm(f => ({ ...f, external_rule_generation_endpoint: v }))}
+              className="md:col-span-2"
+            />
+          </div>
+          {saveDetection.isSuccess && <p className="text-success text-sm">Saved.</p>}
+          {saveDetection.isError && <p className="text-danger text-sm">Save failed.</p>}
+        </CardBody>
+      </Card>
+
+      <div className="flex justify-between items-center gap-3 flex-wrap">
+        <p className="text-default-500 text-sm">{filteredRules.length} rules</p>
+        <div className="flex gap-2 flex-wrap items-center">
+          <Input
+            size="sm"
+            placeholder="Search rules"
+            value={search}
+            onValueChange={setSearch}
+            aria-label="Search rules"
+          />
+          <Button color="primary" startContent={<Plus size={16} />} onPress={openNew}>
+            New Rule
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-3">
-        {rules?.map(rule => (
+        {filteredRules.map(rule => (
           <Card key={rule.rule_id} className="w-full">
             <CardBody className="flex flex-row items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
@@ -155,17 +269,30 @@ export default function RulesPage() {
                   value={editing.description}
                   onValueChange={v => setEditing({ ...editing, description: v })}
                 />
-                <div>
+                <div className="space-y-2">
                   <p className="text-sm font-medium text-default-700 mb-1">Score Threshold</p>
-                  <Slider
-                    minValue={0}
-                    maxValue={1}
-                    step={0.05}
-                    value={editing.score_threshold}
-                    onChange={v => setEditing({ ...editing, score_threshold: v as number })}
-                    label={`${editing.score_threshold}`}
-                    className="max-w-md"
-                  />
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Slider
+                      minValue={0}
+                      maxValue={1}
+                      step={0.05}
+                      value={editing.score_threshold}
+                      onChange={v => setEditing({ ...editing, score_threshold: v as number })}
+                      label={`${editing.score_threshold.toFixed(2)}`}
+                      className="max-w-md"
+                    />
+                    <Input
+                      size="sm"
+                      type="number"
+                      label="Manual"
+                      className="w-28"
+                      value={String(editing.score_threshold)}
+                      onValueChange={v => {
+                        const num = Math.max(0, Math.min(1, Number(v)));
+                        setEditing({ ...editing, score_threshold: isNaN(num) ? editing.score_threshold : num });
+                      }}
+                    />
+                  </div>
                 </div>
                 <Switch
                   isSelected={editing.enabled}
@@ -210,31 +337,31 @@ export default function RulesPage() {
                     </Button>
                   </div>
                   {editing.parameters.map((p, i) => (
-                    <div key={i} className="flex items-center gap-2 flex-wrap">
+                    <div key={i} className="grid w-full gap-2 sm:grid-cols-[180px,1fr,auto] sm:items-center">
                       <Input
                         size="sm"
                         label="Key"
                         value={p.key}
                         onValueChange={v => updateParam(i, 'key', v)}
-                        className="w-32"
                       />
                       <Input
                         size="sm"
                         label="Description"
                         value={p.description}
                         onValueChange={v => updateParam(i, 'description', v)}
-                        className="flex-1"
                       />
-                      <Switch
-                        size="sm"
-                        isSelected={p.required}
-                        onValueChange={v => updateParam(i, 'required', v)}
-                      >
-                        Required
-                      </Switch>
-                      <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => removeParam(i)}>
-                        <Trash2 size={12} />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          size="sm"
+                          isSelected={p.required}
+                          onValueChange={v => updateParam(i, 'required', v)}
+                        >
+                          Required
+                        </Switch>
+                        <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => removeParam(i)}>
+                          <Trash2 size={12} />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
