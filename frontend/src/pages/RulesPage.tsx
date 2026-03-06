@@ -5,6 +5,7 @@ import {
   ModalContent, ModalFooter, ModalHeader, Spinner, Switch, Slider, Textarea,
 } from '@heroui/react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { fetchRules, upsertRule, deleteRule } from '../api/rules';
 import type { DetectionRule, MatcherUnion, RuleParameterSpec } from '../api/types';
 import MatcherEditor from '../components/matcher/MatcherEditor';
@@ -23,6 +24,7 @@ const EMPTY_RULE: DetectionRule = {
 };
 
 export default function RulesPage() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data: rules, isLoading } = useQuery({ queryKey: ['rules'], queryFn: fetchRules });
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: fetchSettings });
@@ -101,7 +103,7 @@ export default function RulesPage() {
     setEditing({ ...editing, parameters: editing.parameters.filter((_, idx) => idx !== i) });
   }
 
-  if (isLoading) return <div className="flex justify-center h-64"><Spinner label="Loading rules…" /></div>;
+  if (isLoading) return <div className="flex justify-center h-64"><Spinner label={t('rules.loading')} /></div>;
 
   const filteredRules = (rules ?? []).filter(r => {
     const target = `${r.name} ${r.description} ${r.topic_hints.join(' ')}`.toLowerCase();
@@ -114,54 +116,54 @@ export default function RulesPage() {
         <CardBody className="space-y-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <p className="font-semibold">Detection & General Settings</p>
-              <p className="text-sm text-default-500">Applies to detection windows and buffering.</p>
+              <p className="font-semibold">{t('rules.detectionSettings')}</p>
+              <p className="text-sm text-default-500">{t('rules.detectionSettingsDesc')}</p>
             </div>
             <Button color="primary" size="sm" isDisabled={!settings} isLoading={saveDetection.isPending} onPress={() => saveDetection.mutate()}>
-              Save
+              {t('common.save')}
             </Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Input label="App Name" value={detForm.app_name ?? ''} onValueChange={v => setDetForm(f => ({ ...f, app_name: v }))} />
-            <Input label="Environment" value={detForm.environment ?? ''} onValueChange={v => setDetForm(f => ({ ...f, environment: v }))} />
+            <Input label={t('rules.appName')} value={detForm.app_name ?? ''} onValueChange={v => setDetForm(f => ({ ...f, app_name: v }))} />
+            <Input label={t('rules.environment')} value={detForm.environment ?? ''} onValueChange={v => setDetForm(f => ({ ...f, environment: v }))} />
             <Input
-              label="Context Message Limit"
+              label={t('rules.contextMessageLimit')}
               type="number"
               value={String(detForm.context_message_limit ?? 10)}
               onValueChange={v => setDetForm(f => ({ ...f, context_message_limit: Number(v) }))}
             />
             <Input
-              label="Detection Cooldown (s)"
+              label={t('rules.detectionCooldown')}
               type="number"
               value={String(detForm.detection_cooldown_seconds ?? 0)}
               onValueChange={v => setDetForm(f => ({ ...f, detection_cooldown_seconds: Number(v) }))}
             />
             <Input
-              label="Min New Messages"
+              label={t('rules.minNewMessages')}
               type="number"
               value={String(detForm.detection_min_new_messages ?? 1)}
               onValueChange={v => setDetForm(f => ({ ...f, detection_min_new_messages: Number(v) }))}
             />
             <Input
-              label="Detection Wait Timeout (s)"
+              label={t('rules.detectionWaitTimeout')}
               type="number"
               value={String(detForm.detection_wait_timeout_seconds ?? 30)}
               onValueChange={v => setDetForm(f => ({ ...f, detection_wait_timeout_seconds: Number(v) }))}
             />
             <Input
-              label="Pending Queue Limit"
+              label={t('rules.pendingQueueLimit')}
               type="number"
               value={String(detForm.pending_queue_limit ?? 200)}
               onValueChange={v => setDetForm(f => ({ ...f, pending_queue_limit: Number(v) }))}
             />
             <Input
-              label="History List Limit"
+              label={t('rules.historyListLimit')}
               type="number"
               value={String(detForm.history_list_limit ?? 1000)}
               onValueChange={v => setDetForm(f => ({ ...f, history_list_limit: Number(v) }))}
             />
             <Input
-              label="Hook Timeout (s)"
+              label={t('rules.hookTimeout')}
               type="number"
               value={String(detForm.hook_timeout_seconds ?? 8)}
               onValueChange={v => setDetForm(f => ({ ...f, hook_timeout_seconds: Number(v) }))}
@@ -170,32 +172,32 @@ export default function RulesPage() {
               isSelected={detForm.enable_internal_rule_generation ?? false}
               onValueChange={v => setDetForm(f => ({ ...f, enable_internal_rule_generation: v }))}
             >
-              Enable Internal Rule Generation
+              {t('rules.enableInternalRuleGen')}
             </Switch>
             <Input
-              label="External Rule Generation Endpoint"
+              label={t('rules.externalRuleEndpoint')}
               value={detForm.external_rule_generation_endpoint ?? ''}
               onValueChange={v => setDetForm(f => ({ ...f, external_rule_generation_endpoint: v }))}
               className="md:col-span-2"
             />
           </div>
-          {saveDetection.isSuccess && <p className="text-success text-sm">Saved.</p>}
-          {saveDetection.isError && <p className="text-danger text-sm">Save failed.</p>}
+          {saveDetection.isSuccess && <p className="text-success text-sm">{t('common.saved')}</p>}
+          {saveDetection.isError && <p className="text-danger text-sm">{t('common.saveFailed')}</p>}
         </CardBody>
       </Card>
 
       <div className="flex justify-between items-center gap-3 flex-wrap">
-        <p className="text-default-500 text-sm">{filteredRules.length} rules</p>
+        <p className="text-default-500 text-sm">{t('rules.ruleCount', { count: filteredRules.length })}</p>
         <div className="flex gap-2 flex-wrap items-center">
           <Input
             size="sm"
-            placeholder="Search rules"
+            placeholder={t('rules.searchPlaceholder')}
             value={search}
             onValueChange={setSearch}
-            aria-label="Search rules"
+            aria-label={t('rules.searchPlaceholder')}
           />
           <Button color="primary" startContent={<Plus size={16} />} onPress={openNew}>
-            New Rule
+            {t('rules.newRule')}
           </Button>
         </div>
       </div>
@@ -208,10 +210,10 @@ export default function RulesPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-default-900">{rule.name}</span>
                   <Chip size="sm" color={rule.enabled ? 'success' : 'default'} variant="flat">
-                    {rule.enabled ? 'Enabled' : 'Disabled'}
+                    {rule.enabled ? t('common.enabled') : t('common.disabled')}
                   </Chip>
                   <Chip size="sm" variant="flat" color="primary">
-                    threshold: {rule.score_threshold}
+                    {t('rules.threshold', { value: rule.score_threshold })}
                   </Chip>
                 </div>
                 <p className="text-sm text-default-500 mt-1 truncate">{rule.description}</p>
@@ -228,7 +230,7 @@ export default function RulesPage() {
                   size="sm"
                   isSelected={rule.enabled}
                   onValueChange={v => upsert.mutate({ ...rule, enabled: v })}
-                  aria-label="Enable rule"
+                  aria-label={t('rules.enableRule')}
                 />
                 <Button isIconOnly size="sm" variant="flat" onPress={() => openEdit(rule)}>
                   <Pencil size={14} />
@@ -253,24 +255,24 @@ export default function RulesPage() {
           {editing && (
             <>
               <ModalHeader>
-                {editing.name ? `Edit: ${editing.name}` : 'New Rule'}
+                {editing.name ? t('rules.editPrefix', { name: editing.name }) : t('rules.newRule')}
               </ModalHeader>
               <ModalBody className="space-y-4">
                 <Input
-                  label="Rule Name"
+                  label={t('rules.ruleName')}
                   isRequired
-                  description="A short, descriptive name"
+                  description={t('rules.ruleNameDesc')}
                   value={editing.name}
                   onValueChange={v => setEditing({ ...editing, name: v })}
                 />
                 <Textarea
-                  label="Description"
-                  description="What does this rule detect?"
+                  label={t('rules.description')}
+                  description={t('rules.descriptionDesc')}
                   value={editing.description}
                   onValueChange={v => setEditing({ ...editing, description: v })}
                 />
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-default-700 mb-1">Score Threshold</p>
+                  <p className="text-sm font-medium text-default-700 mb-1">{t('rules.scoreThreshold')}</p>
                   <div className="flex items-center gap-3 flex-wrap">
                     <Slider
                       minValue={0}
@@ -284,7 +286,7 @@ export default function RulesPage() {
                     <Input
                       size="sm"
                       type="number"
-                      label="Manual"
+                      label={t('rules.manual')}
                       className="w-28"
                       value={String(editing.score_threshold)}
                       onValueChange={v => {
@@ -298,21 +300,21 @@ export default function RulesPage() {
                   isSelected={editing.enabled}
                   onValueChange={v => setEditing({ ...editing, enabled: v })}
                 >
-                  Enabled
+                  {t('common.enabled')}
                 </Switch>
 
                 {/* Topic hints */}
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-default-700">Topic Hints</p>
+                  <p className="text-sm font-medium text-default-700">{t('rules.topicHints')}</p>
                   <div className="flex gap-2">
                     <Input
                       size="sm"
-                      placeholder="Add topic hint"
+                      placeholder={t('rules.topicHintPlaceholder')}
                       value={topicInput}
                       onValueChange={setTopicInput}
                       onKeyDown={e => e.key === 'Enter' && addTopic()}
                     />
-                    <Button size="sm" onPress={addTopic}>Add</Button>
+                    <Button size="sm" onPress={addTopic}>{t('common.add')}</Button>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {editing.topic_hints.map(t => (
@@ -331,22 +333,22 @@ export default function RulesPage() {
                 {/* Parameters */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-default-700">Parameters</p>
+                    <p className="text-sm font-medium text-default-700">{t('rules.parameters')}</p>
                     <Button size="sm" variant="flat" onPress={addParam} startContent={<Plus size={12} />}>
-                      Add
+                      {t('common.add')}
                     </Button>
                   </div>
                   {editing.parameters.map((p, i) => (
                     <div key={i} className="grid w-full gap-2 sm:grid-cols-[180px,1fr,auto] sm:items-center">
                       <Input
                         size="sm"
-                        label="Key"
+                        label={t('rules.key')}
                         value={p.key}
                         onValueChange={v => updateParam(i, 'key', v)}
                       />
                       <Input
                         size="sm"
-                        label="Description"
+                        label={t('rules.description')}
                         value={p.description}
                         onValueChange={v => updateParam(i, 'description', v)}
                       />
@@ -356,7 +358,7 @@ export default function RulesPage() {
                           isSelected={p.required}
                           onValueChange={v => updateParam(i, 'required', v)}
                         >
-                          Required
+                          {t('rules.required')}
                         </Switch>
                         <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => removeParam(i)}>
                           <Trash2 size={12} />
@@ -373,14 +375,14 @@ export default function RulesPage() {
                 />
               </ModalBody>
               <ModalFooter>
-                <Button variant="flat" onPress={() => setEditing(null)}>Cancel</Button>
+                <Button variant="flat" onPress={() => setEditing(null)}>{t('common.cancel')}</Button>
                 <Button
                   color="primary"
                   isLoading={upsert.isPending}
                   onPress={() => upsert.mutate(editing)}
                   isDisabled={!editing.name.trim()}
                 >
-                  Save
+                  {t('common.save')}
                 </Button>
               </ModalFooter>
             </>
@@ -393,18 +395,18 @@ export default function RulesPage() {
         <ModalContent>
           {deleting && (
             <>
-              <ModalHeader>Delete Rule</ModalHeader>
+              <ModalHeader>{t('rules.deleteRule')}</ModalHeader>
               <ModalBody>
-                <p>Delete <strong>{deleting.name}</strong>? This cannot be undone.</p>
+                <p>{t('rules.deleteRuleConfirm', { name: deleting.name })}</p>
               </ModalBody>
               <ModalFooter>
-                <Button variant="flat" onPress={() => setDeleting(null)}>Cancel</Button>
+                <Button variant="flat" onPress={() => setDeleting(null)}>{t('common.cancel')}</Button>
                 <Button
                   color="danger"
                   isLoading={del.isPending}
                   onPress={() => del.mutate(deleting.rule_id)}
                 >
-                  Delete
+                  {t('common.delete')}
                 </Button>
               </ModalFooter>
             </>

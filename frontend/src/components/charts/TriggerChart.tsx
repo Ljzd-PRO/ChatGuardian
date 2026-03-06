@@ -1,6 +1,7 @@
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
+import { useTranslation } from 'react-i18next';
 
 interface TriggerChartProps {
   data: { name: string; count: number }[];
@@ -9,10 +10,11 @@ interface TriggerChartProps {
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
 
 export default function TriggerChart({ data }: TriggerChartProps) {
+  const { t } = useTranslation();
   if (!data.length) {
     return (
       <div className="flex items-center justify-center h-40 text-default-400 text-sm">
-        No trigger data yet
+        {t('triggerChart.noData')}
       </div>
     );
   }

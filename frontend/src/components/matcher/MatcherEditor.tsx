@@ -1,6 +1,7 @@
 import type { MatcherUnion, MatcherType } from '../../api/types';
 import { Button, Input, Select, SelectItem, Chip } from '@heroui/react';
 import { Plus, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const TYPE_COLORS: Record<string, 'primary' | 'secondary' | 'danger' | 'default' | 'warning' | 'success'> = {
   and: 'primary',
@@ -40,6 +41,7 @@ interface MatcherNodeProps {
 }
 
 export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNodeProps) {
+  const { t } = useTranslation();
   const color = TYPE_COLORS[value.type] ?? 'default';
   const indent = depth * 12;
 
@@ -64,10 +66,10 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
             const k = Array.from(keys)[0] as MatcherType;
             if (k) changeType(k);
           }}
-          aria-label="Matcher type"
+          aria-label={t('matcher.matcherType')}
         >
-          {ALL_TYPES.map(t => (
-            <SelectItem key={t}>{t}</SelectItem>
+          {ALL_TYPES.map(type => (
+            <SelectItem key={type}>{type}</SelectItem>
           ))}
         </Select>
         {onRemove && (
@@ -82,14 +84,14 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
         <div className="flex gap-2 flex-wrap">
           <Input
             size="sm"
-            label="用户ID"
+            label={t('matcher.userId')}
             value={value.user_id ?? ''}
             onValueChange={v => onChange({ ...value, user_id: v || undefined })}
             className="w-40"
           />
           <Input
             size="sm"
-            label="显示名称"
+            label={t('matcher.displayName')}
             value={value.display_name ?? ''}
             onValueChange={v => onChange({ ...value, display_name: v || undefined })}
             className="w-40"
@@ -100,7 +102,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
       {value.type === 'chat' && (
         <Input
           size="sm"
-          label="聊天 ID"
+          label={t('matcher.chatId')}
           isRequired
           value={value.chat_id}
           onValueChange={v => onChange({ ...value, chat_id: v })}
@@ -111,7 +113,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
       {value.type === 'chat_type' && (
         <Select
           size="sm"
-          label="聊天类型"
+          label={t('matcher.chatType')}
           className="w-36"
           selectedKeys={[value.chat_type]}
           onSelectionChange={(keys) => {
@@ -119,15 +121,15 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
             if (k) onChange({ ...value, chat_type: k });
           }}
         >
-          <SelectItem key="group">群聊</SelectItem>
-          <SelectItem key="private">私聊</SelectItem>
+          <SelectItem key="group">{t('matcher.group')}</SelectItem>
+          <SelectItem key="private">{t('matcher.private')}</SelectItem>
         </Select>
       )}
 
       {value.type === 'adapter' && (
         <Input
           size="sm"
-          label="适配器名称"
+          label={t('matcher.adapterName')}
           isRequired
           value={value.adapter_name}
           onValueChange={v => onChange({ ...value, adapter_name: v })}
@@ -160,7 +162,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
             startContent={<Plus size={14} />}
             onPress={() => onChange({ ...value, matchers: [...value.matchers, { type: 'all' }] })}
           >
-            Add condition
+            {t('matcher.addCondition')}
           </Button>
         </div>
       )}
@@ -183,12 +185,13 @@ interface MatcherEditorProps {
 }
 
 export default function MatcherEditor({ value, onChange }: MatcherEditorProps) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-default-700">Matcher</p>
+      <p className="text-sm font-medium text-default-700">{t('matcher.matcher')}</p>
       <MatcherNode value={value} onChange={onChange} />
       <details className="text-xs">
-        <summary className="cursor-pointer text-default-400">View JSON</summary>
+        <summary className="cursor-pointer text-default-400">{t('matcher.viewJson')}</summary>
         <pre className="mt-1 p-2 bg-default-100 rounded text-default-600 overflow-auto text-xs">
           {JSON.stringify(value, null, 2)}
         </pre>

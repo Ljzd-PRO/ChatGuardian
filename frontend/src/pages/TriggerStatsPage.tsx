@@ -3,11 +3,13 @@ import { useMemo, useState } from 'react';
 import {
   Accordion, AccordionItem, Card, CardBody, CardHeader, Chip, Input, Progress, Spinner,
 } from '@heroui/react';
+import { useTranslation } from 'react-i18next';
 import { fetchRuleStats } from '../api/stats';
 import { fetchRules } from '../api/rules';
 import TriggerChart from '../components/charts/TriggerChart';
 
 export default function TriggerStatsPage() {
+  const { t } = useTranslation();
   const { data: stats, isLoading: statsLoading } = useQuery({ queryKey: ['rule_stats'], queryFn: fetchRuleStats });
   const { data: rules, isLoading: rulesLoading } = useQuery({ queryKey: ['rules'], queryFn: fetchRules });
   const [query, setQuery] = useState('');
@@ -33,12 +35,12 @@ export default function TriggerStatsPage() {
     .filter(r => r.stat.count > 0)
     .map(r => ({ name: r.name, count: r.stat.count }));
 
-  if (loading) return <div className="flex justify-center h-64"><Spinner label="Loading stats…" /></div>;
+  if (loading) return <div className="flex justify-center h-64"><Spinner label={t('stats.loading')} /></div>;
 
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader><span className="font-semibold">Trigger Overview</span></CardHeader>
+        <CardHeader><span className="font-semibold">{t('stats.overview')}</span></CardHeader>
         <CardBody>
           <TriggerChart data={chartData} />
         </CardBody>
@@ -48,7 +50,7 @@ export default function TriggerStatsPage() {
         <Input
           size="sm"
           className="w-64"
-          placeholder="Search rules"
+          placeholder={t('stats.searchRules')}
           value={query}
           onValueChange={setQuery}
         />
@@ -67,7 +69,7 @@ export default function TriggerStatsPage() {
                 color={r.stat.count > 0 ? 'warning' : 'default'}
                 variant="flat"
               >
-                {r.stat.count} triggers
+                {t('stats.triggers', { count: r.stat.count })}
               </Chip>
             </CardHeader>
             {r.stat.records.length > 0 && (
@@ -84,7 +86,7 @@ export default function TriggerStatsPage() {
                             value={rec.confidence * 100}
                             color="warning"
                             className="w-24"
-                            aria-label="Confidence"
+                            aria-label={t('stats.confidence')}
                           />
                           <span className="text-xs text-default-500">{(rec.confidence * 100).toFixed(0)}%</span>
                         </div>

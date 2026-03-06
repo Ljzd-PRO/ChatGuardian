@@ -1,24 +1,27 @@
 import { Outlet, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Sidebar, { useSidebar } from './Sidebar';
 import TopNavbar from './Navbar';
 
-const PAGE_TITLES: Record<string, string> = {
-  '/':              'Dashboard',
-  '/rules':         'Detection Rules',
-  '/stats':         'Trigger Statistics',
-  '/users':         'User Profiles',
-  '/adapters':      'Adapters',
-  '/llm':           'LLM Configuration',
-  '/notifications': 'Notifications',
-  '/queues':        'Message Queues',
-  '/logs':          'System Logs',
-  '/settings':      'Settings',
+const TITLE_KEYS: Record<string, string> = {
+  '/':              'layout.titles.dashboard',
+  '/rules':         'layout.titles.rules',
+  '/stats':         'layout.titles.stats',
+  '/users':         'layout.titles.users',
+  '/adapters':      'layout.titles.adapters',
+  '/llm':           'layout.titles.llm',
+  '/notifications': 'layout.titles.notifications',
+  '/queues':        'layout.titles.queues',
+  '/logs':          'layout.titles.logs',
+  '/settings':      'layout.titles.settings',
 };
 
 export default function AppLayout() {
   const { open, toggle, close } = useSidebar();
   const { pathname } = useLocation();
-  const title = PAGE_TITLES[pathname] ?? 'ChatGuardian';
+  const { t } = useTranslation();
+  const titleKey = TITLE_KEYS[pathname] ?? TITLE_KEYS['/'];
+  const title = t(titleKey);
 
   return (
     <div className="flex min-h-screen bg-default-50">

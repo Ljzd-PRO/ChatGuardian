@@ -4,12 +4,14 @@ import {
   Card, CardBody, Chip, Input, Select, SelectItem, Spinner,
   Tab, Tabs, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react';
+import { useTranslation } from 'react-i18next';
 import { fetchQueues } from '../api/queues';
 import type { QueueMessage } from '../api/queues';
 
-const COLUMNS = ['Adapter', 'Type', 'Chat', 'Sender', 'Content', 'Time'];
+const COLUMNS = ['adapter', 'type', 'chat', 'sender', 'content', 'time'];
 
 function QueueTable({ messages }: { messages: QueueMessage[] }) {
+  const { t } = useTranslation();
   const [adapterFilter, setAdapterFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [searchField, setSearchField] = useState<'content' | 'sender_name' | 'chat_id' | 'adapter'>('content');
@@ -38,7 +40,7 @@ function QueueTable({ messages }: { messages: QueueMessage[] }) {
         <Select
           size="sm"
           className="w-40"
-          placeholder="All adapters"
+          placeholder={t('queues.allAdapters')}
           onSelectionChange={k => setAdapterFilter(Array.from(k)[0] as string ?? '')}
         >
           {adapters.map(a => <SelectItem key={a}>{a}</SelectItem>)}
@@ -50,7 +52,7 @@ function QueueTable({ messages }: { messages: QueueMessage[] }) {
           onSelectionChange={k => setTypeFilter(Array.from(k)[0] as string ?? 'all')}
         >
           {[
-            <SelectItem key="all">All types</SelectItem>,
+            <SelectItem key="all">{t('queues.allTypes')}</SelectItem>,
             ...types.map(t => <SelectItem key={t}>{t}</SelectItem>),
           ]}
         </Select>
@@ -60,24 +62,24 @@ function QueueTable({ messages }: { messages: QueueMessage[] }) {
           selectedKeys={[searchField]}
           onSelectionChange={k => setSearchField(Array.from(k)[0] as typeof searchField)}
         >
-          <SelectItem key="content">Content</SelectItem>
-          <SelectItem key="sender_name">Sender</SelectItem>
-          <SelectItem key="chat_id">Chat ID</SelectItem>
-          <SelectItem key="adapter">Adapter</SelectItem>
+          <SelectItem key="content">{t('queues.content')}</SelectItem>
+          <SelectItem key="sender_name">{t('queues.sender')}</SelectItem>
+          <SelectItem key="chat_id">{t('queues.chatId')}</SelectItem>
+          <SelectItem key="adapter">{t('queues.adapter')}</SelectItem>
         </Select>
         <Input
           size="sm"
           className="w-60"
-          placeholder="Search"
+          placeholder={t('queues.search')}
           value={query}
           onValueChange={setQuery}
         />
       </div>
-      <Table aria-label="Messages" removeWrapper>
+      <Table aria-label={t('queues.messages')} removeWrapper>
         <TableHeader>
-          {COLUMNS.map(c => <TableColumn key={c}>{c}</TableColumn>)}
+          {COLUMNS.map(c => <TableColumn key={c}>{t(`queues.${c}`)}</TableColumn>)}
         </TableHeader>
-        <TableBody emptyContent="No messages">
+        <TableBody emptyContent={t('queues.noMessages')}>
           {filtered.map((m, i) => (
             <TableRow key={i}>
               <TableCell><Chip size="sm" variant="flat">{m.adapter}</Chip></TableCell>
@@ -95,24 +97,25 @@ function QueueTable({ messages }: { messages: QueueMessage[] }) {
 }
 
 export default function QueuesPage() {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['queues'],
     queryFn: fetchQueues,
     refetchInterval: 10_000,
   });
 
-  if (isLoading) return <div className="flex justify-center h-64"><Spinner label="Loading queues…" /></div>;
+  if (isLoading) return <div className="flex justify-center h-64"><Spinner label={t('queues.loading')} /></div>;
 
   return (
-    <Tabs aria-label="Queues">
-      <Tab key="pending" title={`Pending (${data?.pending.length ?? 0})`}>
+    <Tabs aria-label={t('queues.messages')}>
+      <Tab key="pending" title={t('queues.pending', { count: data?.pending.length ?? 0 })}>
         <Card className="mt-2">
           <CardBody>
             <QueueTable messages={data?.pending ?? []} />
           </CardBody>
         </Card>
       </Tab>
-      <Tab key="history" title={`History (${data?.history.length ?? 0})`}>
+      <Tab key="history" title={t('queues.history', { count: data?.history.length ?? 0 })}>
         <Card className="mt-2">
           <CardBody>
             <QueueTable messages={data?.history ?? []} />

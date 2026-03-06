@@ -5,18 +5,19 @@ import {
   Plug, Brain, Bell, ListOrdered, ScrollText, Settings, X, Menu,
 } from 'lucide-react';
 import { Button } from '@heroui/react';
+import { useTranslation } from 'react-i18next';
 
 const NAV_ITEMS = [
-  { path: '/',             label: 'Dashboard',      icon: LayoutDashboard },
-  { path: '/rules',        label: 'Rules',          icon: ShieldCheck },
-  { path: '/stats',        label: 'Trigger Stats',  icon: BarChart2 },
-  { path: '/users',        label: 'User Profiles',  icon: Users },
-  { path: '/adapters',     label: 'Adapters',       icon: Plug },
-  { path: '/llm',          label: 'LLM',            icon: Brain },
-  { path: '/notifications',label: 'Notifications',  icon: Bell },
-  { path: '/queues',       label: 'Queues',         icon: ListOrdered },
-  { path: '/logs',         label: 'Logs',           icon: ScrollText },
-  { path: '/settings',     label: 'Settings',       icon: Settings },
+  { path: '/',             labelKey: 'layout.nav.dashboard',     icon: LayoutDashboard },
+  { path: '/rules',        labelKey: 'layout.nav.rules',         icon: ShieldCheck },
+  { path: '/stats',        labelKey: 'layout.nav.stats',         icon: BarChart2 },
+  { path: '/users',        labelKey: 'layout.nav.users',         icon: Users },
+  { path: '/adapters',     labelKey: 'layout.nav.adapters',      icon: Plug },
+  { path: '/llm',          labelKey: 'layout.nav.llm',           icon: Brain },
+  { path: '/notifications',labelKey: 'layout.nav.notifications', icon: Bell },
+  { path: '/queues',       labelKey: 'layout.nav.queues',        icon: ListOrdered },
+  { path: '/logs',         labelKey: 'layout.nav.logs',          icon: ScrollText },
+  { path: '/settings',     labelKey: 'layout.nav.settings',      icon: Settings },
 ];
 
 interface SidebarProps {
@@ -26,17 +27,18 @@ interface SidebarProps {
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const { pathname } = useLocation();
+  const { t } = useTranslation();
 
   const inner = (
     <nav className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-5 border-b border-divider">
-        <span className="font-bold text-lg text-primary">ChatGuardian</span>
+        <span className="font-bold text-lg text-primary">{t('common.appName')}</span>
         <Button isIconOnly size="sm" variant="light" className="md:hidden" onPress={onClose}>
           <X size={16} />
         </Button>
       </div>
       <ul className="flex-1 overflow-y-auto py-3 space-y-1 px-2">
-        {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
+        {NAV_ITEMS.map(({ path, labelKey, icon: Icon }) => {
           const active = pathname === path;
           return (
             <li key={path}>
@@ -49,7 +51,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                     : 'text-default-600 hover:bg-default-100 hover:text-default-900'}`}
               >
                 <Icon size={16} />
-                {label}
+                {t(labelKey)}
               </Link>
             </li>
           );

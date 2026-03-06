@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Card, CardBody, Chip, Select, SelectItem, Spinner } from '@heroui/react';
 import { RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { fetchLogs } from '../api/logs';
 import type { LogEntry } from '../api/logs';
 
@@ -15,6 +16,7 @@ const LEVEL_COLORS: Record<string, 'default' | 'primary' | 'warning' | 'danger' 
 };
 
 export default function LogsPage() {
+  const { t } = useTranslation();
   const [levelFilter, setLevelFilter] = useState('ALL');
   const { data: logs, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['logs'],
@@ -36,7 +38,7 @@ export default function LogsPage() {
           className="w-36"
           selectedKeys={[levelFilter]}
           onSelectionChange={k => setLevelFilter(Array.from(k)[0] as string ?? 'ALL')}
-          aria-label="Log level filter"
+          aria-label={t('logs.filter')}
         >
           {levels.map(l => <SelectItem key={l}>{l}</SelectItem>)}
         </Select>
@@ -46,16 +48,16 @@ export default function LogsPage() {
           startContent={<RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />}
           onPress={() => refetch()}
         >
-          Refresh
+          {t('logs.refresh')}
         </Button>
-        <span className="text-xs text-default-400">{filtered.length} entries</span>
+        <span className="text-xs text-default-400">{t('common.entries', { count: filtered.length })}</span>
       </div>
 
-      {isLoading && <Spinner label="Loading logs…" />}
+      {isLoading && <Spinner label={t('logs.loading')} />}
 
       <Card>
         <CardBody className="p-2 space-y-1 max-h-[70vh] overflow-y-auto font-mono">
-          {filtered.length === 0 && <p className="text-default-400 text-sm p-2">No log entries.</p>}
+          {filtered.length === 0 && <p className="text-default-400 text-sm p-2">{t('logs.noEntries')}</p>}
           {filtered.map((log, i) => (
             <LogRow key={i} log={log} />
           ))}
