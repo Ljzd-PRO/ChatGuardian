@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Key } from '@react-types/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
@@ -13,6 +12,7 @@ import { clearHistoryMessages, deleteHistoryMessages, fetchQueues } from '../api
 import type { HistoryMessageKey, QueueMessage } from '../api/queues';
 
 const COLUMNS = ['adapter', 'type', 'chat', 'sender', 'content', 'time'] as const;
+type SelectionKey = Selection extends Set<infer K> ? K : never;
 
 const messageKey = (m: QueueMessage) => `${m.platform}|${m.chat_type}|${m.chat_id}|${m.message_id}`;
 
@@ -45,7 +45,7 @@ function QueueTable({
   const [confirmClear, setConfirmClear] = useState(false);
 
   const adapters = useMemo(() => [...new Set(messages.map(m => m.adapter))], [messages]);
-  const types    = useMemo(() => [...new Set(messages.map(m => m.chat_type))], [messages]);
+  const types = useMemo(() => [...new Set(messages.map(m => m.chat_type))], [messages]);
 
   const columns = useMemo<{ key: string; label: string }[]>(() => {
     const base = COLUMNS.map(c => ({ key: c as string, label: t(`queues.${c}`) }));
@@ -58,9 +58,9 @@ function QueueTable({
   const filtered = useMemo(() => messages.filter(m => {
     const fieldValue =
       searchField === 'content' ? m.content
-      : searchField === 'sender_name' ? m.sender_name
-      : searchField === 'chat_id' ? m.chat_id
-      : m.adapter;
+        : searchField === 'sender_name' ? m.sender_name
+          : searchField === 'chat_id' ? m.chat_id
+            : m.adapter;
 
     return (
       (!adapterFilter || m.adapter === adapterFilter) &&
@@ -75,8 +75,8 @@ function QueueTable({
     if (!enableHistoryActions) return;
     setSelectedKeys(prev => {
       if (prev === 'all') return prev;
-      const next = new Set<Key>();
-      (prev as Set<Key>).forEach(k => {
+      const next = new Set<SelectionKey>();
+      (prev as Set<SelectionKey>).forEach(k => {
         if (filteredKeys.has(String(k))) next.add(k);
       });
       return next;
@@ -85,7 +85,7 @@ function QueueTable({
 
   const resolvedSelection: Set<string> = useMemo(() => {
     if (selectedKeys === 'all') return new Set(filtered.map(messageKey));
-    return new Set(Array.from(selectedKeys as Set<Key>).map(k => String(k)));
+    return new Set(Array.from(selectedKeys as Set<SelectionKey>).map(k => String(k)));
   }, [filtered, selectedKeys]);
 
   const selectedMessages: HistoryMessageKey[] = useMemo(
