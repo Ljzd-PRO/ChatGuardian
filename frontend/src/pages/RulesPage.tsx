@@ -623,8 +623,8 @@ export default function RulesPage() {
                         {t('rules.topicPreview')}
                       </Chip>
                       <div className="flex gap-1 flex-wrap">
-                        {rule.topic_hints.map(t => (
-                          <Chip key={t} size="sm" variant="flat" startContent={<Hash size={12} />}>{t}</Chip>
+                        {rule.topic_hints.map((t, idx) => (
+                          <Chip key={`${rule.rule_id}-topic-${idx}`} size="sm" variant="flat" startContent={<Hash size={12} />}>{t}</Chip>
                         ))}
                       </div>
                     </div>
