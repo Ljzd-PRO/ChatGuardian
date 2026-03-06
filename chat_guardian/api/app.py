@@ -491,9 +491,10 @@ def create_app() -> FastAPI:
             "virtual_adapter_interval_max_seconds",
             "virtual_adapter_script_path",
         }
-        should_rebuild_adapters = bool(adapter_related_keys & set(updates.keys()))
+        update_keys = set(updates.keys())
+        adapter_updates = adapter_related_keys & update_keys
         new_adapters = None
-        if should_rebuild_adapters:
+        if adapter_updates:
             try:
                 new_adapters = build_adapters_from_settings(validated)
             except Exception as exc:
@@ -507,11 +508,18 @@ def create_app() -> FastAPI:
         for key, value in to_save.items():
             setattr(settings, key, value)
 
-        if should_rebuild_adapters and new_adapters is not None:
-            await container.adapter_manager.stop_all()
-            container.adapter_manager = AdapterManager(new_adapters)
-            for adapter in container.adapter_manager.adapters:
-                adapter.register_handler(container.handle_adapter_event)
+        if adapter_updates and new_adapters is not None:
+            try:
+                await container.adapter_manager.stop_all()
+            except Exception as exc:
+                raise HTTPException(status_code=500, detail=f"Failed to stop existing adapters: {exc}") from exc
+            try:
+                container.adapter_manager = AdapterManager(new_adapters)
+                for adapter in container.adapter_manager.adapters:
+                    adapter.register_handler(container.handle_adapter_event)
+                # Adapters are intentionally left stopped here; users start them from the control panel.
+            except Exception as exc:
+                raise HTTPException(status_code=500, detail=f"Failed to rebuild adapters: {exc}") from exc
 
         return {"status": "saved", "settings": _settings_subset()}
 

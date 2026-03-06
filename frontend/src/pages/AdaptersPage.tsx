@@ -61,7 +61,7 @@ export default function AdaptersPage() {
       <Card>
         <CardHeader className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-default-900">
-            <PlugZap size={16} />
+            <PlugZap size={16} aria-hidden="true" />
             <span className="font-semibold">{t('adapters.controls')}</span>
           </div>
           <div className="flex gap-2">
@@ -114,7 +114,7 @@ export default function AdaptersPage() {
       <Card>
         <CardHeader className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-default-900">
-            <Settings2 size={16} />
+            <Settings2 size={16} aria-hidden="true" />
             <span className="font-semibold">{t('adapters.adapterSettings')}</span>
           </div>
           <Button color="primary" isDisabled={!settings} isLoading={save.isPending} onPress={() => save.mutate()}>
@@ -125,11 +125,11 @@ export default function AdaptersPage() {
         <CardBody className="space-y-5">
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-default-700">
-              <Plug size={14} />
+              <Plug size={14} aria-hidden="true" />
               <span>{t('adapters.enabledAdapters')}</span>
             </div>
             <Select
-              aria-label={t('adapters.enabledAdapters')}
+              label={t('adapters.enabledAdapters')}
               selectionMode="multiple"
               selectedKeys={new Set(form.enabled_adapters ?? [])}
               onSelectionChange={keys => setForm(f => ({ ...f, enabled_adapters: Array.from(keys) as string[] }))}
@@ -144,26 +144,26 @@ export default function AdaptersPage() {
           <div className="grid gap-4 xl:grid-cols-2">
             <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
               <div className="flex items-center gap-2 font-semibold text-default-900">
-                <Bot size={16} />
+                <Bot size={16} aria-hidden="true" />
                 <span>OneBot</span>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Input
                   label="Host"
-                  startContent={<Server size={16} className="text-default-500" />}
+                  startContent={<Server size={16} className="text-default-500" aria-hidden="true" />}
                   value={form.onebot_host ?? ''}
                   onValueChange={v => setForm(f => ({ ...f, onebot_host: v }))}
                 />
                 <Input
                   label="Port"
                   type="number"
-                  startContent={<Hash size={16} className="text-default-500" />}
+                  startContent={<Hash size={16} className="text-default-500" aria-hidden="true" />}
                   value={String(form.onebot_port ?? 2290)}
                   onValueChange={v => setForm(f => ({ ...f, onebot_port: Number(v) }))}
                 />
                 <Input
                   label="Access Token"
-                  startContent={<KeyRound size={16} className="text-default-500" />}
+                  startContent={<KeyRound size={16} className="text-default-500" aria-hidden="true" />}
                   value={form.onebot_access_token ?? ''}
                   onValueChange={v => setForm(f => ({ ...f, onebot_access_token: v.trim() === '' ? null : v }))}
                   className="sm:col-span-2"
@@ -173,19 +173,19 @@ export default function AdaptersPage() {
 
             <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
               <div className="flex items-center gap-2 font-semibold text-default-900">
-                <Send size={16} />
+                <Send size={16} aria-hidden="true" />
                 <span>Telegram</span>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Input
                   label="Bot Token"
-                  startContent={<KeyRound size={16} className="text-default-500" />}
+                  startContent={<KeyRound size={16} className="text-default-500" aria-hidden="true" />}
                   value={form.telegram_bot_token ?? ''}
                   onValueChange={v => setForm(f => ({ ...f, telegram_bot_token: v.trim() === '' ? null : v }))}
                 />
                 <Input
                   label="Polling Timeout (s)"
-                  startContent={<Clock3 size={16} className="text-default-500" />}
+                  startContent={<Clock3 size={16} className="text-default-500" aria-hidden="true" />}
                   type="number"
                   value={String(form.telegram_polling_timeout ?? 10)}
                   onValueChange={v => setForm(f => ({ ...f, telegram_polling_timeout: Number(v) }))}
@@ -203,12 +203,12 @@ export default function AdaptersPage() {
 
             <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
               <div className="flex items-center gap-2 font-semibold text-default-900">
-                <MessageCircle size={16} />
+                <MessageCircle size={16} aria-hidden="true" />
                 <span>WeChat</span>
               </div>
               <Input
                 label="Endpoint"
-                startContent={<Cloud size={16} className="text-default-500" />}
+                startContent={<Cloud size={16} className="text-default-500" aria-hidden="true" />}
                 value={form.wechat_endpoint ?? ''}
                 onValueChange={v => setForm(f => ({ ...f, wechat_endpoint: v.trim() === '' ? null : v }))}
               />
@@ -216,12 +216,12 @@ export default function AdaptersPage() {
 
             <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
               <div className="flex items-center gap-2 font-semibold text-default-900">
-                <MessageCircle size={16} />
+                <MessageCircle size={16} aria-hidden="true" />
                 <span>Feishu</span>
               </div>
               <Input
                 label="App ID"
-                startContent={<KeyRound size={16} className="text-default-500" />}
+                startContent={<KeyRound size={16} className="text-default-500" aria-hidden="true" />}
                 value={form.feishu_app_id ?? ''}
                 onValueChange={v => setForm(f => ({ ...f, feishu_app_id: v.trim() === '' ? null : v }))}
               />
@@ -230,48 +230,48 @@ export default function AdaptersPage() {
 
           <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
             <div className="flex items-center gap-2 font-semibold text-default-900">
-              <Sparkles size={16} />
+              <Sparkles size={16} aria-hidden="true" />
               <span>{t('adapters.virtualAdapter')}</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Input
                 label={t('adapters.chatCount')}
                 type="number"
-                startContent={<Gauge size={16} className="text-default-500" />}
+                startContent={<Gauge size={16} className="text-default-500" aria-hidden="true" />}
                 value={String(form.virtual_adapter_chat_count ?? 3)}
                 onValueChange={v => setForm(f => ({ ...f, virtual_adapter_chat_count: Number(v) }))}
               />
               <Input
                 label={t('adapters.membersPerChat')}
                 type="number"
-                startContent={<Bot size={16} className="text-default-500" />}
+                startContent={<Bot size={16} className="text-default-500" aria-hidden="true" />}
                 value={String(form.virtual_adapter_members_per_chat ?? 5)}
                 onValueChange={v => setForm(f => ({ ...f, virtual_adapter_members_per_chat: Number(v) }))}
               />
               <Input
                 label={t('adapters.messagesPerChat')}
                 type="number"
-                startContent={<MessageCircle size={16} className="text-default-500" />}
+                startContent={<MessageCircle size={16} className="text-default-500" aria-hidden="true" />}
                 value={String(form.virtual_adapter_messages_per_chat ?? 10)}
                 onValueChange={v => setForm(f => ({ ...f, virtual_adapter_messages_per_chat: Number(v) }))}
               />
               <Input
                 label={t('adapters.intervalMin')}
                 type="number"
-                startContent={<Gauge size={16} className="text-default-500" />}
+                startContent={<Gauge size={16} className="text-default-500" aria-hidden="true" />}
                 value={String(form.virtual_adapter_interval_min_seconds ?? 0.1)}
                 onValueChange={v => setForm(f => ({ ...f, virtual_adapter_interval_min_seconds: Number(v) }))}
               />
               <Input
                 label={t('adapters.intervalMax')}
                 type="number"
-                startContent={<Gauge size={16} className="text-default-500" />}
+                startContent={<Gauge size={16} className="text-default-500" aria-hidden="true" />}
                 value={String(form.virtual_adapter_interval_max_seconds ?? 0.6)}
                 onValueChange={v => setForm(f => ({ ...f, virtual_adapter_interval_max_seconds: Number(v) }))}
               />
               <Input
                 label={t('adapters.scriptPath')}
-                startContent={<FileCode size={16} className="text-default-500" />}
+                startContent={<FileCode size={16} className="text-default-500" aria-hidden="true" />}
                 value={form.virtual_adapter_script_path ?? ''}
                 onValueChange={v => setForm(f => ({ ...f, virtual_adapter_script_path: v.trim() === '' ? null : v }))}
               />
