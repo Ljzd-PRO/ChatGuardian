@@ -106,6 +106,7 @@ export default function DashboardPage() {
                     color={a.running ? 'success' : 'default'}
                     startContent={<Plug size={14} />}
                     className="pr-3"
+                    aria-label={`${a.name} - ${a.running ? t('common.running') : t('common.stopped')}`}
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">{a.name}</span>

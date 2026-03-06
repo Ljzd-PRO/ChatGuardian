@@ -34,7 +34,8 @@ const EMPTY_RULE: DetectionRule = {
 
 /**
  * Compact filled circle icon to replace outlined symbols on chips.
- * Keeps iconography consistent across themes.
+ * @param size optional icon size (default 12)
+ * @param className optional CSS classes to merge
  */
 const FilledCircle = ({ size = 12, className }: { size?: number; className?: string }) => (
   <Circle size={size} stroke="none" fill="currentColor" className={className} />
