@@ -69,7 +69,21 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
           aria-label={t('matcher.matcherType')}
         >
           {ALL_TYPES.map(matcherType => (
-            <SelectItem key={matcherType}>{t(`matcher.types.${matcherType}`)}</SelectItem>
+            <SelectItem
+              key={matcherType}
+              startContent={(
+                <Chip
+                  size="sm"
+                  variant="flat"
+                  color={TYPE_COLORS[matcherType] ?? 'default'}
+                  className="min-w-[48px] justify-center"
+                >
+                  {matcherType.toUpperCase()}
+                </Chip>
+              )}
+            >
+              {t(`matcher.types.${matcherType}`)}
+            </SelectItem>
           ))}
         </Select>
         {onRemove && (

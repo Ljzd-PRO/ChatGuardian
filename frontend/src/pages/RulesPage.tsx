@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Accordion, AccordionItem, Button, Card, CardBody, Checkbox, Chip, Input, Modal, ModalBody,
   ModalContent, ModalFooter, ModalHeader, Select, SelectItem, Spinner, Switch, Slider, Textarea, Tooltip,
 } from '@heroui/react';
 import {
-  AlignLeft, CheckSquare, Filter, FilterX, Gauge, ListChecks, ListFilter, Pencil, Plus, Search,
-  ShieldCheck, Sparkles, Tag, Trash2,
+  AlignLeft, CheckSquare, Eye, Filter, FilterX, Gauge, Hash, ListChecks, ListFilter, Pencil, Plus, Power,
+  Search, Settings2, ShieldCheck, Sparkles, Tag, Trash2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { fetchRules, upsertRule, deleteRule } from '../api/rules';
@@ -46,7 +46,7 @@ export default function RulesPage() {
   const [search, setSearch] = useState('');
   const [detForm, setDetForm] = useState<Partial<AppSettings>>({});
   const [selectedRules, setSelectedRules] = useState<Record<string, boolean>>({});
-  const [matcherFilter, setMatcherFilter] = useState<Partial<LeafMatcher>>({ type: 'sender' });
+  const [matcherFilters, setMatcherFilters] = useState<Partial<LeafMatcher>[]>([{ type: 'sender' }]);
   const [matcherFilterEnabled, setMatcherFilterEnabled] = useState(false);
   const [swipeStart, setSwipeStart] = useState<number | null>(null);
   const [swipedRule, setSwipedRule] = useState<string | null>(null);
@@ -97,6 +97,16 @@ export default function RulesPage() {
   }, [rules]);
 
   const selectedIds = useMemo(() => Object.keys(selectedRules).filter(id => selectedRules[id]), [selectedRules]);
+  const activeMatcherFilters = useMemo(
+    () => matcherFilters.filter(f => f.type),
+    [matcherFilters],
+  );
+  const replaceMatcherFilter = useCallback((index: number, next: Partial<LeafMatcher>) => {
+    setMatcherFilters(prev => prev.map((f, i) => (i === index ? next : f)));
+  }, []);
+  const patchMatcherFilter = useCallback((index: number, patch: Partial<LeafMatcher>) => {
+    setMatcherFilters(prev => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
+  }, []);
   const matcherPreview = useMemo(() => {
     function describe(m: MatcherUnion): string {
       switch (m.type) {
@@ -152,8 +162,10 @@ export default function RulesPage() {
   function ruleMatchesSearch(rule: DetectionRule) {
     const keywordTarget = `${rule.name} ${rule.description} ${rule.topic_hints.join(' ')}`.toLowerCase();
     const keywordOk = keywordTarget.includes(search.toLowerCase());
-    if (!matcherFilterEnabled || !matcherFilter.type) return keywordOk;
-    return keywordOk && matcherContains(rule.matcher, matcherFilter);
+    if (!matcherFilterEnabled) return keywordOk;
+    const usableFilters = activeMatcherFilters;
+    if (usableFilters.length === 0) return keywordOk;
+    return keywordOk && usableFilters.every(f => matcherContains(rule.matcher, f));
   }
 
   function toggleSelect(id: string) {
@@ -267,15 +279,10 @@ export default function RulesPage() {
               </div>
             </div>
           )}
-          subtitle={t('rules.detectionSettingsHint')}
         >
-          <Card>
+          <Card className="shadow-md">
             <CardBody className="space-y-4">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <CheckSquare size={16} className="text-default-500" />
-                  <span className="text-sm text-default-500">{t('rules.detectionSettingsHelper')}</span>
-                </div>
+              <div className="flex items-center justify-end gap-3 flex-wrap">
                 <Button color="primary" size="sm" isDisabled={!settings} isLoading={saveDetection.isPending} onPress={() => saveDetection.mutate()}>
                   {t('common.save')}
                 </Button>
@@ -342,12 +349,17 @@ export default function RulesPage() {
                   value={String(detForm.hook_timeout_seconds ?? 8)}
                   onValueChange={v => setDetForm(f => ({ ...f, hook_timeout_seconds: Number(v) }))}
                 />
-                <Switch
-                  isSelected={detForm.enable_internal_rule_generation ?? false}
-                  onValueChange={v => setDetForm(f => ({ ...f, enable_internal_rule_generation: v }))}
-                >
-                  {t('rules.enableInternalRuleGen')}
-                </Switch>
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-default-200 bg-default-50 px-3 py-2">
+                  <div className="flex items-center gap-2 text-sm text-default-700">
+                    <CheckSquare size={16} className="text-default-500" />
+                    <span>{t('rules.enableInternalRuleGen')}</span>
+                  </div>
+                  <Switch
+                    isSelected={detForm.enable_internal_rule_generation ?? false}
+                    onValueChange={v => setDetForm(f => ({ ...f, enable_internal_rule_generation: v }))}
+                    aria-label={t('rules.enableInternalRuleGen')}
+                  />
+                </div>
                 <Input
                   label={t('rules.externalRuleEndpoint')}
                   startContent={<AlignLeft size={16} className="text-default-500" />}
@@ -363,18 +375,20 @@ export default function RulesPage() {
         </AccordionItem>
       </Accordion>
 
+      <div className="border-b border-default-200" />
+
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3 flex-wrap">
           <p className="text-default-500 text-sm">{t('rules.ruleCount', { count: filteredRules.length })}</p>
           <div className="flex gap-2 flex-wrap items-center">
             <Chip size="sm" variant="flat" color="primary" startContent={<Filter size={14} />}>
-              {t('rules.filtersActive', { count: matcherFilterEnabled ? 1 : 0 })}
+              {t('rules.filtersActive', { count: matcherFilterEnabled ? activeMatcherFilters.length : 0 })}
             </Chip>
             <Button
               size="sm"
               variant="flat"
               startContent={<FilterX size={14} />}
-              onPress={() => { setMatcherFilterEnabled(false); setMatcherFilter({ type: matcherFilter.type ?? 'sender' }); }}
+              onPress={() => { setMatcherFilterEnabled(false); setMatcherFilters([{ type: 'sender' }]); }}
             >
               {t('rules.clearFilters')}
             </Button>
@@ -454,89 +468,114 @@ export default function RulesPage() {
           </div>
         </div>
         {matcherFilterEnabled && (
-          <div className="flex flex-col gap-2 border border-default-200 rounded-xl p-3 bg-default-50">
-            <div className="flex flex-wrap gap-2 items-center">
-              <Select
-                size="sm"
-                label={t('rules.matcherType')}
-                className="w-44"
-                selectedKeys={[matcherFilter.type ?? 'sender']}
-                onSelectionChange={keys => {
-                  const k = Array.from(keys)[0] as MatcherType;
-                  if (!k || !LEAF_MATCHER_TYPES.includes(k as LeafMatcher['type'])) return;
-                  const base: Partial<LeafMatcher> = { type: k as LeafMatcher['type'] };
-                  setMatcherFilter(base);
-                }}
+          <div className="flex flex-col gap-3 border border-default-200 rounded-xl p-3 bg-default-50">
+            {matcherFilters.map((filter, idx) => (
+              <div
+                key={`${filter.type ?? 'sender'}|${filter.user_id ?? ''}|${filter.display_name ?? ''}|${filter.chat_id ?? ''}|${filter.chat_type ?? ''}|${filter.adapter_name ?? ''}`}
+                className="flex flex-col gap-2 border border-default-200 rounded-lg p-3 bg-white"
               >
-                {LEAF_MATCHER_TYPES.map(mt => (
-                  <SelectItem key={mt}>{t(`matcher.types.${mt}`)}</SelectItem>
-                ))}
-              </Select>
-              <Chip size="sm" variant="dot">{t('rules.matcherSearchDesc')}</Chip>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(matcherFilter.type === 'sender' || matcherFilter.type === 'mention') && (
-                <>
-                  <Input
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select
                     size="sm"
-                    label={t('matcher.userId')}
-                    value={matcherFilter.user_id ?? ''}
-                    onValueChange={v => setMatcherFilter(f => ({ ...f, user_id: v }))}
-                    className="w-48"
-                  />
-                  <Input
-                    size="sm"
-                    label={t('matcher.displayName')}
-                    value={matcherFilter.display_name ?? ''}
-                    onValueChange={v => setMatcherFilter(f => ({ ...f, display_name: v }))}
-                    className="w-48"
-                  />
-                </>
-              )}
-              {matcherFilter.type === 'chat' && (
-                <Input
-                  size="sm"
-                  label={t('matcher.chatId')}
-                  value={matcherFilter.chat_id ?? ''}
-                  onValueChange={v => setMatcherFilter(f => ({ ...f, chat_id: v }))}
-                  className="w-60"
-                />
-              )}
-              {matcherFilter.type === 'chat_type' && (
-                <Select
-                  size="sm"
-                  label={t('matcher.chatType')}
-                  selectedKeys={matcherFilter.chat_type ? [matcherFilter.chat_type] : []}
-                  onSelectionChange={keys => {
-                    const k = Array.from(keys)[0] as 'group' | 'private';
-                    if (k) setMatcherFilter(f => ({ ...f, chat_type: k }));
-                  }}
-                  className="w-48"
-                >
-                  <SelectItem key="group">{t('matcher.group')}</SelectItem>
-                  <SelectItem key="private">{t('matcher.private')}</SelectItem>
-                </Select>
-              )}
-              {matcherFilter.type === 'adapter' && (
-                <Input
-                  size="sm"
-                  label={t('matcher.adapterName')}
-                  value={matcherFilter.adapter_name ?? ''}
-                  onValueChange={v => setMatcherFilter(f => ({ ...f, adapter_name: v }))}
-                  className="w-60"
-                />
-              )}
-            </div>
-            <div className="flex gap-2 flex-wrap">
+                    label={t('rules.matcherType')}
+                    className="w-44"
+                    selectedKeys={[filter.type ?? 'sender']}
+                    onSelectionChange={keys => {
+                      const k = Array.from(keys)[0] as MatcherType;
+                      if (!k || !LEAF_MATCHER_TYPES.includes(k as LeafMatcher['type'])) return;
+                      const base: Partial<LeafMatcher> = { type: k as LeafMatcher['type'] };
+                      replaceMatcherFilter(idx, base);
+                    }}
+                  >
+                    {LEAF_MATCHER_TYPES.map(mt => (
+                      <SelectItem key={mt}>{t(`matcher.types.${mt}`)}</SelectItem>
+                    ))}
+                  </Select>
+                  <Chip size="sm" variant="dot">{t('rules.matcherSearchDesc')}</Chip>
+                  {matcherFilters.length > 1 && (
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      color="danger"
+                      onPress={() => setMatcherFilters(f => f.filter((_, i) => i !== idx))}
+                      aria-label={t('rules.clearFilters')}
+                    >
+                      <Trash2 size={14} />
+                    </Button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {(filter.type === 'sender' || filter.type === 'mention') && (
+                    <>
+                      <Input
+                        size="sm"
+                        label={t('matcher.userId')}
+                        value={filter.user_id ?? ''}
+                        onValueChange={v => patchMatcherFilter(idx, { user_id: v })}
+                        className="w-48"
+                      />
+                      <Input
+                        size="sm"
+                        label={t('matcher.displayName')}
+                        value={filter.display_name ?? ''}
+                        onValueChange={v => patchMatcherFilter(idx, { display_name: v })}
+                        className="w-48"
+                      />
+                    </>
+                  )}
+                  {filter.type === 'chat' && (
+                    <Input
+                      size="sm"
+                      label={t('matcher.chatId')}
+                      value={filter.chat_id ?? ''}
+                      onValueChange={v => patchMatcherFilter(idx, { chat_id: v })}
+                      className="w-60"
+                    />
+                  )}
+                  {filter.type === 'chat_type' && (
+                    <Select
+                      size="sm"
+                      label={t('matcher.chatType')}
+                      selectedKeys={filter.chat_type ? [filter.chat_type] : []}
+                      onSelectionChange={keys => {
+                        const k = Array.from(keys)[0] as 'group' | 'private';
+                        if (k) patchMatcherFilter(idx, { chat_type: k });
+                      }}
+                      className="w-48"
+                    >
+                      <SelectItem key="group">{t('matcher.group')}</SelectItem>
+                      <SelectItem key="private">{t('matcher.private')}</SelectItem>
+                    </Select>
+                  )}
+                  {filter.type === 'adapter' && (
+                    <Input
+                        size="sm"
+                        label={t('matcher.adapterName')}
+                        value={filter.adapter_name ?? ''}
+                        onValueChange={v => patchMatcherFilter(idx, { adapter_name: v })}
+                        className="w-60"
+                      />
+                  )}
+                </div>
+              </div>
+            ))}
+            <div className="flex gap-2 flex-wrap items-center">
               <Button
                 size="sm"
                 variant="flat"
                 color="secondary"
-                onPress={() => {
-                  setMatcherFilter({ type: matcherFilter.type ?? 'sender' });
-                }}
+                onPress={() => setMatcherFilters([{ type: matcherFilters[0]?.type ?? 'sender' }])}
               >
                 {t('rules.resetMatcherFilter')}
+              </Button>
+              <Button
+                size="sm"
+                variant="flat"
+                startContent={<Plus size={14} />}
+                onPress={() => setMatcherFilters(f => [...f, { type: 'sender' }])}
+              >
+                {t('rules.addMatcherFilter')}
               </Button>
             </div>
           </div>
@@ -559,38 +598,67 @@ export default function RulesPage() {
                   aria-label={t('rules.selectRule')}
                   className="mt-1"
                 />
-                <div className="flex-1 min-w-0 space-y-1.5">
+                <div className="flex-1 min-w-0 space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-default-900">{rule.name}</span>
-                    <Chip size="sm" color={rule.enabled ? 'success' : 'default'} variant="flat">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(rule)}
+                      className="font-semibold text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 rounded-sm"
+                    >
+                      {rule.name}
+                    </button>
+                    <Chip
+                      size="sm"
+                      color={rule.enabled ? 'success' : 'default'}
+                      variant="flat"
+                      startContent={<Power size={12} />}
+                    >
                       {rule.enabled ? t('common.enabled') : t('common.disabled')}
                     </Chip>
-                    <Chip size="sm" variant="flat" color="primary">
-                      {t('rules.threshold', { value: rule.score_threshold })}
+                    <Chip size="sm" variant="flat" color="primary" startContent={<Gauge size={12} />}>
+                      {t('rules.threshold', { value: rule.score_threshold.toFixed(2) })}
                     </Chip>
                   </div>
                   <p className="text-sm text-default-500 truncate">{rule.description}</p>
                   {rule.topic_hints.length > 0 && (
-                    <div className="flex gap-1 flex-wrap">
-                      {rule.topic_hints.map(t => (
-                        <Chip key={t} size="sm" variant="dot">{t}</Chip>
-                      ))}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Chip size="sm" variant="flat" startContent={<Sparkles size={12} />}>
+                        {t('rules.topicPreview')}
+                      </Chip>
+                      <div className="flex gap-1 flex-wrap">
+                        {rule.topic_hints.map((t, idx) => (
+                          <Chip key={`${rule.rule_id}-topic-${idx}`} size="sm" variant="flat" startContent={<Hash size={12} />}>{t}</Chip>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {rule.parameters.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {rule.parameters.map(param => (
-                        <Chip key={param.key} size="sm" variant="flat" color={param.required ? 'warning' : 'default'}>
-                          {param.key || t('rules.unnamedParam')}{param.required ? ' *' : ''}
-                        </Chip>
-                      ))}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Chip size="sm" variant="flat" startContent={<Settings2 size={12} />}>
+                        {t('rules.parameterPreview')}
+                      </Chip>
+                      <div className="flex flex-wrap gap-1">
+                        {rule.parameters.map((param, idx) => (
+                          <Chip
+                            key={`${rule.rule_id}-param-${idx}`}
+                            size="sm"
+                            variant="flat"
+                            color={param.required ? 'warning' : 'default'}
+                            startContent={<Settings2 size={12} />}
+                          >
+                            {param.key || t('rules.unnamedParam')}{param.required ? ' *' : ''}
+                          </Chip>
+                        ))}
+                      </div>
                     </div>
                   )}
-                  <Tooltip content={matcherPreview(rule)}>
-                    <p className="text-xs text-default-500 truncate">
-                      {t('rules.matcherPreviewLabel')}: {matcherPreview(rule)}
-                    </p>
-                  </Tooltip>
+                  <div className="flex items-center gap-2">
+                    <Tooltip content={matcherPreview(rule)}>
+                      <Button isIconOnly size="sm" variant="light" aria-label={t('rules.matcherPreviewLabel')}>
+                        <Eye size={16} />
+                      </Button>
+                    </Tooltip>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -655,17 +723,25 @@ export default function RulesPage() {
                     <Slider
                       minValue={0}
                       maxValue={1}
-                      step={0.05}
+                      step={0.1}
                       value={editing.score_threshold}
-                      onChange={v => setEditing({ ...editing, score_threshold: v as number })}
-                      label={`${editing.score_threshold.toFixed(2)}`}
+                      onChange={v => setEditing({ ...editing, score_threshold: Array.isArray(v) ? v[0] : v })}
+                      startContent={<span className="text-xs text-default-500 w-4 text-right">0</span>}
+                      endContent={<span className="text-xs text-default-500 w-4">1</span>}
+                      getValue={val => {
+                        const numeric = Array.isArray(val) ? val[0] : val;
+                        const numValue = typeof numeric === 'number' ? numeric : Number(numeric);
+                        const safe = Number.isFinite(numValue) ? numValue : 0;
+                        return safe.toFixed(2);
+                      }}
                       className="max-w-md"
                     />
                     <Input
                       size="sm"
                       type="number"
-                      label={t('rules.manual')}
+                      label={t('rules.scoreThreshold')}
                       className="w-28"
+                      step={0.1}
                       value={String(editing.score_threshold)}
                       onValueChange={v => {
                         const num = Math.max(0, Math.min(1, Number(v)));
