@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardBody, CardHeader, Chip, Spinner } from '@heroui/react';
-import { ShieldCheck, Zap, TrendingUp, Activity } from 'lucide-react';
+import {
+  Activity, Plug, ShieldCheck, TrendingUp, Zap,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import StatsCard from '../components/charts/StatsCard';
 import TriggerChart from '../components/charts/TriggerChart';
@@ -93,19 +95,28 @@ export default function DashboardPage() {
           <CardHeader className="pb-0">
             <span className="font-semibold text-default-800">{t('dashboard.adapters')}</span>
           </CardHeader>
-          <CardBody className="space-y-2">
-            {adapters?.length ? adapters.map(a => (
-              <div key={a.name} className="flex items-center justify-between py-1">
-                <span className="text-sm text-default-700">{a.name}</span>
-                <Chip
-                  size="sm"
-                  color={a.running ? 'success' : 'default'}
-                  variant="flat"
-                >
-                  {a.running ? t('common.running') : t('common.stopped')}
-                </Chip>
+          <CardBody>
+            {adapters?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {adapters.map(a => (
+                  <Chip
+                    key={a.name}
+                    size="md"
+                    variant="flat"
+                    color={a.running ? 'success' : 'default'}
+                    startContent={<Plug size={14} />}
+                    className="pr-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{a.name}</span>
+                      <span className="text-xs text-default-600">
+                        {a.running ? t('common.running') : t('common.stopped')}
+                      </span>
+                    </div>
+                  </Chip>
+                ))}
               </div>
-            )) : (
+            ) : (
               <p className="text-sm text-default-400">{t('dashboard.noAdapters')}</p>
             )}
           </CardBody>

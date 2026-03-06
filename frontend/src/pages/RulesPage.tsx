@@ -5,8 +5,8 @@ import {
   ModalContent, ModalFooter, ModalHeader, Select, SelectItem, Spinner, Switch, Slider, Textarea, Tooltip,
 } from '@heroui/react';
 import {
-  AlignLeft, CheckSquare, Eye, Filter, FilterX, Gauge, Hash, ListChecks, ListFilter, Pencil, Plus, Power,
-  Search, Settings2, ShieldCheck, Sparkles, Tag, Trash2,
+  AlignLeft, CheckSquare, Circle, CircleDot, Eye, Filter, FilterX, Gauge, ListChecks, ListFilter, Pencil, Plus,
+  Search, ShieldCheck, Sparkles, Tag, Trash2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { fetchRules, upsertRule, deleteRule } from '../api/rules';
@@ -31,6 +31,10 @@ const EMPTY_RULE: DetectionRule = {
   enabled: true,
   parameters: [],
 };
+
+const FilledCircle = ({ size = 12, className }: { size?: number; className?: string }) => (
+  <Circle size={size} stroke="none" fill="currentColor" className={className} />
+);
 
 export default function RulesPage() {
   const { t } = useTranslation();
@@ -280,7 +284,7 @@ export default function RulesPage() {
             </div>
           )}
         >
-          <Card className="shadow-md">
+          <Card className="shadow-md border border-default-200">
             <CardBody className="space-y-4">
               <div className="flex items-center justify-end gap-3 flex-wrap">
                 <Button color="primary" size="sm" isDisabled={!settings} isLoading={saveDetection.isPending} onPress={() => saveDetection.mutate()}>
@@ -470,7 +474,7 @@ export default function RulesPage() {
         {matcherFilterEnabled && (
           <div className="flex flex-col gap-3 border border-default-200 rounded-xl p-3 bg-default-50">
             {matcherFilters.map((filter, idx) => (
-              <div key={idx} className="flex flex-col gap-2 border border-default-200 rounded-lg p-3 bg-white">
+              <div key={idx} className="flex flex-col gap-2 border border-default-200 rounded-lg p-3 bg-content1">
                 <div className="flex flex-wrap items-center gap-2">
                   <Select
                     size="sm"
@@ -608,51 +612,49 @@ export default function RulesPage() {
                       size="sm"
                       color={rule.enabled ? 'success' : 'default'}
                       variant="flat"
-                      startContent={<Power size={12} />}
+                      startContent={<FilledCircle size={12} />}
                     >
                       {rule.enabled ? t('common.enabled') : t('common.disabled')}
                     </Chip>
-                    <Chip size="sm" variant="flat" color="primary" startContent={<Gauge size={12} />}>
+                    <Chip size="sm" variant="flat" color="primary" startContent={<CircleDot size={12} stroke="none" fill="currentColor" />}>
                       {t('rules.threshold', { value: rule.score_threshold.toFixed(2) })}
                     </Chip>
                   </div>
                   <p className="text-sm text-default-500 truncate">{rule.description}</p>
                   {rule.topic_hints.length > 0 && (
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Chip size="sm" variant="flat" startContent={<Sparkles size={12} />}>
-                        {t('rules.topicPreview')}
-                      </Chip>
-                      <div className="flex gap-1 flex-wrap">
-                        {rule.topic_hints.map((t, idx) => (
-                          <Chip key={`${rule.rule_id}-topic-${idx}`} size="sm" variant="flat" startContent={<Hash size={12} />}>{t}</Chip>
-                        ))}
-                      </div>
+                      {rule.topic_hints.map((t, idx) => (
+                        <Chip
+                          key={`${rule.rule_id}-topic-${idx}`}
+                          size="sm"
+                          variant="flat"
+                          color="secondary"
+                          startContent={<FilledCircle size={11} />}
+                        >
+                          {t}
+                        </Chip>
+                      ))}
                     </div>
                   )}
                   {rule.parameters.length > 0 && (
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Chip size="sm" variant="flat" startContent={<Settings2 size={12} />}>
-                        {t('rules.parameterPreview')}
-                      </Chip>
-                      <div className="flex flex-wrap gap-1">
-                        {rule.parameters.map((param, idx) => (
-                          <Chip
-                            key={`${rule.rule_id}-param-${idx}`}
-                            size="sm"
-                            variant="flat"
-                            color={param.required ? 'warning' : 'default'}
-                            startContent={<Settings2 size={12} />}
-                          >
-                            {param.key || t('rules.unnamedParam')}{param.required ? ' *' : ''}
-                          </Chip>
-                        ))}
-                      </div>
+                      {rule.parameters.map((param, idx) => (
+                        <Chip
+                          key={`${rule.rule_id}-param-${idx}`}
+                          size="sm"
+                          variant="flat"
+                          color={param.required ? 'warning' : 'primary'}
+                          startContent={<CircleDot size={11} stroke="none" fill="currentColor" />}
+                        >
+                          {param.key || t('rules.unnamedParam')}{param.required ? ' *' : ''}
+                        </Chip>
+                      ))}
                     </div>
                   )}
                   <div className="flex items-center gap-2">
                     <Tooltip content={matcherPreview(rule)}>
-                      <Button isIconOnly size="sm" variant="light" aria-label={t('rules.matcherPreviewLabel')}>
-                        <Eye size={16} />
+                      <Button size="sm" variant="light" aria-label={t('rules.matcherPreviewLabel')} startContent={<Eye size={16} />}>
+                        {t('rules.matcherPreviewLabel')}
                       </Button>
                     </Tooltip>
                   </div>

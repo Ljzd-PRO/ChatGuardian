@@ -6,7 +6,7 @@ import {
   Tab, Tabs, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
 } from '@heroui/react';
 import type { Selection } from '@heroui/react';
-import { AlertTriangle, Trash2 } from 'lucide-react';
+import { AlertTriangle, Search, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { clearHistoryMessages, deleteHistoryMessages, fetchQueues } from '../api/queues';
 import type { HistoryMessageKey, QueueMessage } from '../api/queues';
@@ -139,6 +139,7 @@ function QueueTable({
           className="w-64"
           placeholder={t('queues.search')}
           value={query}
+          startContent={<Search size={14} className="text-default-500" />}
           onValueChange={setQuery}
         />
 
