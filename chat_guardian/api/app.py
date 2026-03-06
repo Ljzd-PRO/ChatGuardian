@@ -52,7 +52,7 @@ from chat_guardian.services import (
 )
 from chat_guardian.settings import settings, Settings
 
-ENV_ONLY_KEYS = {"database_url", "app_name", "environment"}
+ENV_ONLY_KEYS = frozenset({"database_url", "app_name", "environment"})
 
 
 @asynccontextmanager
