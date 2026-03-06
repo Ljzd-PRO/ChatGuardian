@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { fetchQueues } from '../api/queues';
 import type { QueueMessage } from '../api/queues';
 
-const COLUMNS = ['adapter', 'type', 'chat', 'sender', 'content', 'time'];
+const COLUMNS = ['adapter', 'type', 'chat', 'sender', 'content', 'time'] as const; // keys must match queues.* translations
 
 function QueueTable({ messages }: { messages: QueueMessage[] }) {
   const { t } = useTranslation();

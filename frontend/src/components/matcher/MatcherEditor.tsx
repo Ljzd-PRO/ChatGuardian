@@ -68,8 +68,8 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
           }}
           aria-label={t('matcher.matcherType')}
         >
-          {ALL_TYPES.map(type => (
-            <SelectItem key={type}>{type}</SelectItem>
+          {ALL_TYPES.map(matcherType => (
+            <SelectItem key={matcherType}>{matcherType}</SelectItem>
           ))}
         </Select>
         {onRemove && (
