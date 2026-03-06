@@ -10,7 +10,7 @@ from aiocqhttp.exceptions import Error as OneBotError  # noqa: F401
 from loguru import logger
 
 from chat_guardian.adapters.base import Adapter, EventHandler
-from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, MessageContent
+from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, MessageContent, UserInfo
 
 
 @dataclass(slots=True)
@@ -169,7 +169,12 @@ class OneBotAdapter(Adapter):
                     segment_count += 1
                 elif segment_type == "at":
                     mention_id = str(data.get("qq", ""))
-                    contents.append(MessageContent(type=ContentType.MENTION, mention_user=mention_id))
+                    contents.append(
+                        MessageContent(
+                            type=ContentType.MENTION,
+                            mention_user=UserInfo(user_id=mention_id, display_name=f"@{mention_id}"),
+                        )
+                    )
                     logger.debug(f"  ├ 提及用户: {mention_id}")
                     segment_count += 1
                 elif segment_type == "reply" and depth < 1:
