@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import {
   Accordion, AccordionItem, Card, CardBody, CardHeader, Chip, Input, Progress, Spinner,
 } from '@heroui/react';
+import { BarChart2, Clock3, MessageSquare, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { fetchRuleStats } from '../api/stats';
 import { fetchRules } from '../api/rules';
@@ -40,7 +41,10 @@ export default function TriggerStatsPage() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader><span className="font-semibold">{t('stats.overview')}</span></CardHeader>
+        <CardHeader className="flex items-center gap-2">
+          <BarChart2 size={16} className="text-primary" />
+          <span className="font-semibold">{t('stats.overview')}</span>
+        </CardHeader>
         <CardBody>
           <TriggerChart data={chartData} />
         </CardBody>
@@ -49,6 +53,7 @@ export default function TriggerStatsPage() {
       <div className="flex justify-end">
         <Input
           size="sm"
+          startContent={<Search size={14} className="text-default-500" />}
           className="w-64"
           placeholder={t('stats.searchRules')}
           value={query}
@@ -56,13 +61,16 @@ export default function TriggerStatsPage() {
         />
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {filtered.map(r => (
-          <Card key={r.rule_id}>
-            <CardHeader className="flex items-center justify-between">
-              <div>
-                <span className="font-medium text-default-900">{r.name}</span>
-                <p className="text-xs text-default-500">{r.description}</p>
+          <Card key={r.rule_id} className="border border-default-200 shadow-sm">
+            <CardHeader className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <MessageSquare size={16} className="text-primary" />
+                <div>
+                  <span className="font-medium text-default-900">{r.name}</span>
+                  <p className="text-xs text-default-500">{r.description}</p>
+                </div>
               </div>
               <Chip
                 size="sm"
@@ -73,7 +81,7 @@ export default function TriggerStatsPage() {
               </Chip>
             </CardHeader>
             {r.stat.records.length > 0 && (
-              <CardBody className="pt-0">
+              <CardBody className="pt-0 space-y-2">
                 <Accordion>
                   {r.stat.records.slice(0, 5).map(rec => (
                     <AccordionItem
@@ -88,7 +96,10 @@ export default function TriggerStatsPage() {
                             className="w-24"
                             aria-label={t('stats.confidence')}
                           />
-                          <span className="text-xs text-default-500">{(rec.confidence * 100).toFixed(0)}%</span>
+                          <div className="flex items-center gap-1 text-xs text-default-500">
+                            <Clock3 size={12} />
+                            {(rec.confidence * 100).toFixed(0)}%
+                          </div>
                         </div>
                       }
                     >
@@ -96,7 +107,7 @@ export default function TriggerStatsPage() {
                         <p className="text-sm text-default-600 italic">{rec.reason}</p>
                         <div className="space-y-1 mt-2">
                           {rec.messages.map((m, i) => (
-                            <div key={i} className="text-xs p-2 bg-default-100 rounded">
+                            <div key={i} className="text-xs p-3 bg-default-100 rounded-lg border border-default-200">
                               <span className="font-medium text-default-700">{m.sender}: </span>
                               <span className="text-default-600">{m.content}</span>
                             </div>

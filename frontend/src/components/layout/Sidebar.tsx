@@ -31,13 +31,13 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
   const inner = (
     <nav className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 py-5 border-b border-divider">
+      <div className="flex items-center justify-between px-5 py-6 border-b border-divider">
         <span className="font-bold text-lg text-primary">{t('common.appName')}</span>
         <Button isIconOnly size="sm" variant="light" className="md:hidden" onPress={onClose}>
           <X size={16} />
         </Button>
       </div>
-      <ul className="flex-1 overflow-y-auto py-3 space-y-1 px-2">
+      <ul className="flex-1 overflow-y-auto py-4 space-y-2 px-3">
         {NAV_ITEMS.map(({ path, labelKey, icon: Icon }) => {
           const active = pathname === path;
           return (
@@ -45,7 +45,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               <Link
                 to={path}
                 onClick={onClose}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-colors
                   ${active
                     ? 'bg-primary text-primary-foreground font-medium'
                     : 'text-default-600 hover:bg-default-100 hover:text-default-900'}`}
@@ -63,7 +63,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-56 h-screen bg-background border-r border-divider sticky top-0 shrink-0">
+      <aside className="hidden md:flex flex-col w-64 h-screen bg-background border-r border-divider sticky top-0 shrink-0">
         {inner}
       </aside>
 
@@ -71,7 +71,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       {open && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-          <aside className="relative z-10 w-56 h-full bg-background shadow-xl">
+          <aside className="relative z-10 w-64 h-full bg-background shadow-xl">
             {inner}
           </aside>
         </div>
