@@ -1,8 +1,8 @@
 """
 应用设置模块。
 
-此模块定义 `Settings` 配置类。`database_url` 通过环境变量（前缀 `CHAT_GUARDIAN_`）读取，
-其余配置项通过 SQLAlchemy SQLite 数据库保存与读取，并可通过前端 API 修改。
+此模块定义 `Settings` 配置类。`database_url`、`app_name`、`environment` 通过环境变量（前缀
+`CHAT_GUARDIAN_`）读取，其余配置项通过 SQLAlchemy SQLite 数据库保存与读取，并可通过前端 API 修改。
 """
 from typing import Optional
 
@@ -11,11 +11,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class _EnvConfig(BaseSettings):
-    """仅从环境变量读取 database_url。"""
+    """仅从环境变量读取 database_url 及只读的基础元信息（不会写回数据库）。"""
 
     model_config = SettingsConfigDict(env_prefix="CHAT_GUARDIAN_", env_file=".env", extra="ignore")
 
     database_url: str = "sqlite:///./db.sqlite"
+    app_name: str | None = None
+    environment: str | None = None
 
 
 class Settings(BaseModel):
@@ -163,4 +165,5 @@ class Settings(BaseModel):
     virtual_adapter_script_path: Optional[str] = None
 
 
-settings = Settings(database_url=_EnvConfig().database_url)
+_env_overrides = _EnvConfig().model_dump(exclude_none=True)
+settings = Settings(**_env_overrides)

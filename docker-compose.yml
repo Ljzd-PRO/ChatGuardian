@@ -8,5 +8,14 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      # Override base configuration via environment variables (defaults loaded from .env)
+      - CHAT_GUARDIAN_APP_NAME=${CHAT_GUARDIAN_APP_NAME:-ChatGuardian}
+      - CHAT_GUARDIAN_ENVIRONMENT=${CHAT_GUARDIAN_ENVIRONMENT:-prod}
     volumes:
       - ./db.sqlite:/app/db.sqlite
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

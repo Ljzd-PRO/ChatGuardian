@@ -575,10 +575,16 @@ class DetectionResultRepository:
 
 
 class SettingsRepository:
-    """应用配置存储，将配置项以 JSON 序列化形式持久化到数据库。"""
+    """应用配置存储，将配置项以 JSON 序列化形式持久化到数据库。
 
-    def __init__(self, database_url: str | None = None):
+    Args:
+        database_url: 连接字符串。
+        disallow_keys: 不允许读写到数据库的配置键集合（通常为只读的环境变量项）。
+    """
+
+    def __init__(self, database_url: str | None = None, disallow_keys: frozenset[str] | None = None):
         self._db = _get_db_manager(database_url)
+        self._disallow_keys = set(disallow_keys or frozenset())
 
     def load_all(self) -> dict[str, Any]:
         """从数据库加载所有配置，返回已反序列化的 key->value 字典。"""
@@ -588,6 +594,8 @@ class SettingsRepository:
             rows = session.scalars(select(_SettingRecord)).all()
         result: dict[str, Any] = {}
         for row in rows:
+            if row.key in self._disallow_keys:
+                continue
             try:
                 result[row.key] = json.loads(row.value)
             except (json.JSONDecodeError, ValueError):
@@ -599,8 +607,11 @@ class SettingsRepository:
         """将配置项批量 upsert 到数据库。"""
         if self._db is None:
             return
+        filtered = {k: v for k, v in updates.items() if k not in self._disallow_keys}
+        if not filtered:
+            return
         with self._db.session_factory() as session:
-            for key, value in updates.items():
+            for key, value in filtered.items():
                 serialized = json.dumps(value)
                 row = session.get(_SettingRecord, key)
                 if row is None:
