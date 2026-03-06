@@ -660,7 +660,7 @@ export default function RulesPage() {
                   )}
                   <div className="flex items-center gap-2">
                     <Tooltip content={matcherPreview(rule)}>
-                      <Button size="sm" variant="light" aria-label={t('rules.matcherPreviewLabel')} startContent={<Eye size={16} />}>
+                      <Button size="sm" variant="light" startContent={<Eye size={16} />}>
                         {t('rules.matcherPreviewLabel')}
                       </Button>
                     </Tooltip>
