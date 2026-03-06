@@ -5,7 +5,7 @@ import {
   ModalContent, ModalFooter, ModalHeader, Select, SelectItem, Spinner, Switch, Slider, Textarea, Tooltip,
 } from '@heroui/react';
 import {
-  AlignLeft, CheckSquare, Circle, Eye, Filter, FilterX, Gauge, ListChecks, ListFilter, Pencil, Plus,
+  AlignLeft, CheckSquare, Dot, Eye, Filter, FilterX, Gauge, ListChecks, ListFilter, Pencil, Plus,
   Search, ShieldCheck, Sparkles, Tag, Trash2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -36,10 +36,10 @@ const EMPTY_RULE: DetectionRule = {
  * Compact filled circle icon to replace outlined symbols on chips.
  * @param props.size optional icon size (default 12)
  * @param props.className optional CSS classes to merge
- * @returns React.ReactElement
+ * @returns JSX.Element
  */
 const FilledCircle = ({ size = 12, className }: { size?: number; className?: string }) => (
-  <Circle size={size} stroke="none" fill="currentColor" className={className} />
+  <Dot size={size} className={className} />
 );
 FilledCircle.displayName = 'FilledCircle';
 
