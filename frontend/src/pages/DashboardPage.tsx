@@ -101,7 +101,7 @@ export default function DashboardPage() {
                 {adapters.map(a => (
                   <Chip
                     key={a.name}
-                    size="md"
+                    size="sm"
                     variant="flat"
                     color={a.running ? 'success' : 'default'}
                     startContent={<Plug size={14} />}

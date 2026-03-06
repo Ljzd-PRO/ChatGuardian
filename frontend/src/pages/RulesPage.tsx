@@ -5,7 +5,7 @@ import {
   ModalContent, ModalFooter, ModalHeader, Select, SelectItem, Spinner, Switch, Slider, Textarea, Tooltip,
 } from '@heroui/react';
 import {
-  AlignLeft, CheckSquare, Circle, CircleDot, Eye, Filter, FilterX, Gauge, ListChecks, ListFilter, Pencil, Plus,
+  AlignLeft, CheckSquare, Circle, Eye, Filter, FilterX, Gauge, ListChecks, ListFilter, Pencil, Plus,
   Search, ShieldCheck, Sparkles, Tag, Trash2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +32,10 @@ const EMPTY_RULE: DetectionRule = {
   parameters: [],
 };
 
+/**
+ * Compact filled circle icon to replace outlined symbols on chips.
+ * Keeps iconography consistent across themes.
+ */
 const FilledCircle = ({ size = 12, className }: { size?: number; className?: string }) => (
   <Circle size={size} stroke="none" fill="currentColor" className={className} />
 );
@@ -616,7 +620,7 @@ export default function RulesPage() {
                     >
                       {rule.enabled ? t('common.enabled') : t('common.disabled')}
                     </Chip>
-                    <Chip size="sm" variant="flat" color="primary" startContent={<CircleDot size={12} stroke="none" fill="currentColor" />}>
+                    <Chip size="sm" variant="flat" color="primary" startContent={<FilledCircle size={12} />}>
                       {t('rules.threshold', { value: rule.score_threshold.toFixed(2) })}
                     </Chip>
                   </div>
@@ -644,7 +648,7 @@ export default function RulesPage() {
                           size="sm"
                           variant="flat"
                           color={param.required ? 'warning' : 'primary'}
-                          startContent={<CircleDot size={11} stroke="none" fill="currentColor" />}
+                          startContent={<FilledCircle size={11} />}
                         >
                           {param.key || t('rules.unnamedParam')}{param.required ? ' *' : ''}
                         </Chip>
