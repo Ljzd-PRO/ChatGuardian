@@ -20,7 +20,7 @@ export default function AppLayout() {
   const { open, toggle, close } = useSidebar();
   const { pathname } = useLocation();
   const { t } = useTranslation();
-  const titleKey = TITLE_KEYS[pathname] ?? TITLE_KEYS['/'];
+  const titleKey = TITLE_KEYS[pathname] ?? 'common.appName';
   const title = t(titleKey);
 
   return (
