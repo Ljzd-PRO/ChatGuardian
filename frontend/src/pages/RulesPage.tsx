@@ -635,7 +635,7 @@ export default function RulesPage() {
                           size="sm"
                           variant="flat"
                           color="secondary"
-                          startContent={<FilledCircle size={11} />}
+                          startContent={<FilledCircle size={12} />}
                         >
                           {t}
                         </Chip>
