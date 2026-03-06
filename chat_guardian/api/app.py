@@ -13,7 +13,7 @@ from datetime import date, datetime
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
@@ -51,6 +51,8 @@ from chat_guardian.services import (
     SuggestionService,
 )
 from chat_guardian.settings import settings, Settings
+
+ENV_ONLY_KEYS = {"database_url", "app_name", "environment"}
 
 
 @asynccontextmanager
@@ -113,10 +115,14 @@ class AppContainer:
         该容器用于在 `create_app` 中创建单例服务实例，便于路由直接使用。
         """
         # 首先从数据库加载配置，确保后续服务使用最新配置
-        self.settings_repository = SettingsRepository(database_url=settings.database_url)
+        self.settings_repository = SettingsRepository(
+            database_url=settings.database_url, disallow_keys=ENV_ONLY_KEYS
+        )
         db_settings = self.settings_repository.load_all()
         for key, value in db_settings.items():
-            if key != "database_url" and hasattr(settings, key):
+            if key in ENV_ONLY_KEYS:
+                continue
+            if hasattr(settings, key):
                 try:
                     setattr(settings, key, value)
                 except Exception as exc:
@@ -472,7 +478,7 @@ def create_app() -> FastAPI:
 
     # ── Settings ──────────────────────────────────────────────────────────────
 
-    SETTINGS_ALLOWLIST = set(Settings.model_fields.keys()) - {"database_url"}
+    SETTINGS_ALLOWLIST = set(Settings.model_fields.keys()) - ENV_ONLY_KEYS
 
     def _settings_subset() -> dict[str, object]:
         return settings.model_dump(exclude={"database_url"})
@@ -610,5 +616,9 @@ def create_app() -> FastAPI:
         @app.get("/app")
         async def serve_frontend_root():
             return FileResponse(os.path.join(_frontend_dist, "index.html"))
+
+        @app.get("/", include_in_schema=False)
+        async def redirect_to_frontend():
+            return RedirectResponse(url="/app")
 
     return app

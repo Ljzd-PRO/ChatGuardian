@@ -292,13 +292,15 @@ export default function RulesPage() {
                   label={t('rules.appName')}
                   startContent={<Tag size={16} className="text-default-500" />}
                   value={detForm.app_name ?? ''}
-                  onValueChange={v => setDetForm(f => ({ ...f, app_name: v }))}
+                  isReadOnly
+                  description="通过环境变量设置，仅展示。"
                 />
                 <Input
                   label={t('rules.environment')}
                   startContent={<Sparkles size={16} className="text-default-500" />}
                   value={detForm.environment ?? ''}
-                  onValueChange={v => setDetForm(f => ({ ...f, environment: v }))}
+                  isReadOnly
+                  description="通过环境变量设置，仅展示。"
                 />
                 <Input
                   label={t('rules.contextMessageLimit')}

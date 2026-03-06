@@ -1114,7 +1114,10 @@ class SelfMessageMemoryService:
             name = str(topic_data.get("name", "")).strip()
             if not name:
                 continue
-            score = 1  # 每检测到一次该话题，固定 +1
+            try:
+                score = int(topic_data.get("score", 1))
+            except Exception:
+                score = 1
             keywords = [str(k).strip() for k in topic_data.get("keywords", []) if str(k).strip()]
 
             if name in profile.interests:

@@ -39,13 +39,23 @@ tests/
 
 ## 本地运行
 
-1. 安装依赖
+1. 安装依赖（后端）
 
 ```bash
 poetry install
 ```
 
-2. 准备环境变量
+2. 构建前端（单端口部署）
+
+```bash
+cd frontend
+npm ci --legacy-peer-deps
+npm run build
+```
+
+> 若需本地调试，可运行 `npm run dev`（默认代理到 `http://localhost:8000`），生产构建产物将由后端以 `/app/*` 路由提供。
+
+3. 准备环境变量
 
 ```bash
 copy .env.example .env
@@ -66,16 +76,22 @@ copy .env.example .env
 > - `CHAT_GUARDIAN_LLM_LANGCHAIN_MODEL=qwen2.5:7b`
 > - `CHAT_GUARDIAN_LLM_OLLAMA_BASE_URL=http://localhost:11434`
 
-3. 启动服务
+额外只读元信息可通过环境变量注入：
+
+- `CHAT_GUARDIAN_APP_NAME`：项目名称（只读）
+- `CHAT_GUARDIAN_ENVIRONMENT`：运行环境（dev/prod，仅影响只读逻辑如 CORS）
+
+4. 启动服务
 
 ```bash
 poetry run uvicorn chat_guardian.api.app:create_app --factory --reload --host 0.0.0.0 --port 8000
 ```
 
-4. 访问
+5. 访问
 
 - Swagger: `http://127.0.0.1:8000/docs`
-- MVP UI: `http://127.0.0.1:8000/ui`
+- Web UI（单端口构建版）: `http://127.0.0.1:8000/app/`
+- 旧版 MVP 说明页: `http://127.0.0.1:8000/ui`
 
 ## 临时 Gradio UI（联调）
 
@@ -104,6 +120,8 @@ poetry run chat-guardian-ui
 ```bash
 docker compose up --build
 ```
+
+> Docker 镜像构建时会自动打包前端产物并通过 FastAPI 提供 `/app/*` 路由，同时内置 `/health` 健康检查，便于容器编排监控。
 
 ## 核心 API
 
