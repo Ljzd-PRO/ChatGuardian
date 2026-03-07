@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, CardBody, Chip, Select, SelectItem, Spinner } from '@heroui/react';
-import { RefreshCw, Trash2 } from 'lucide-react';
+import { Icon } from '@iconify/react';
+import refreshCircleBold from '@iconify/icons-solar/refresh-circle-bold';
+import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
 import { useTranslation } from 'react-i18next';
 import { clearLogs, fetchLogs } from '../api/logs';
 import type { LogEntry } from '../api/logs';
@@ -51,7 +53,7 @@ export default function LogsPage() {
         <Button
           size="sm"
           variant="flat"
-          startContent={<RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />}
+          startContent={<Icon icon={refreshCircleBold} width={16} className={isFetching ? 'animate-spin' : ''} />}
           onPress={() => refetch()}
         >
           {t('logs.refresh')}
@@ -60,7 +62,7 @@ export default function LogsPage() {
           size="sm"
           color="danger"
           variant="flat"
-          startContent={<Trash2 size={16} />}
+          startContent={<Icon icon={trashBin2Bold} width={16} />}
           isLoading={clear.isPending}
           onPress={() => clear.mutate()}
         >

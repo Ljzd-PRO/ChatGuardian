@@ -1,13 +1,34 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Accordion, AccordionItem, Button, Card, CardBody, Checkbox, Chip, Input, Modal, ModalBody,
   ModalContent, ModalFooter, ModalHeader, Select, SelectItem, Spinner, Switch, Slider, Textarea, Tooltip,
 } from '@heroui/react';
-import {
-  AlignLeft, CheckSquare, Dot, Eye, Filter, FilterX, Gauge, ListChecks, ListFilter, Pencil, Plus,
-  Search, ShieldCheck, Sparkles, Tag, Trash2,
-} from 'lucide-react';
+import { Icon, type IconifyIcon } from '@iconify/react';
+import addCircleBold from '@iconify/icons-solar/add-circle-bold';
+import alignLeftBold from '@iconify/icons-solar/align-left-bold';
+import bellBingBold from '@iconify/icons-solar/bell-bing-bold';
+import chart2Bold from '@iconify/icons-solar/chart-2-bold';
+import checkCircleBold from '@iconify/icons-solar/check-circle-bold';
+import checkSquareBold from '@iconify/icons-solar/check-square-bold';
+import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
+import closeCircleBold from '@iconify/icons-solar/close-circle-bold';
+import eyeBold from '@iconify/icons-solar/eye-bold';
+import filterBold from '@iconify/icons-solar/filter-bold';
+import hashtagCircleBold from '@iconify/icons-solar/hashtag-circle-bold';
+import listCheckBold from '@iconify/icons-solar/list-check-bold';
+import magicStick2Bold from '@iconify/icons-solar/magic-stick-2-bold';
+import textFieldFocusBold from '@iconify/icons-solar/text-field-focus-bold';
+import pen2Bold from '@iconify/icons-solar/pen-2-bold';
+import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
+import pulse2Bold from '@iconify/icons-solar/pulse-2-bold';
+import settingsBold from '@iconify/icons-solar/settings-bold';
+import shieldCheckBold from '@iconify/icons-solar/shield-check-bold';
+import tagBold from '@iconify/icons-solar/tag-bold';
+import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
+import tuning2Bold from '@iconify/icons-solar/tuning-2-bold';
+import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
+import usersGroupRoundedBold from '@iconify/icons-solar/users-group-rounded-bold';
 import { useTranslation } from 'react-i18next';
 import { fetchRules, upsertRule, deleteRule } from '../api/rules';
 import type {
@@ -31,17 +52,6 @@ const EMPTY_RULE: DetectionRule = {
   enabled: true,
   parameters: [],
 };
-
-/**
- * Compact filled circle icon to replace outlined symbols on chips.
- * @param props.size optional icon size (default 12)
- * @param props.className optional CSS classes to merge
- * @returns JSX.Element
- */
-const FilledCircle = ({ size = 12, className }: { size?: number; className?: string }) => (
-  <Dot size={size} className={className} />
-);
-FilledCircle.displayName = 'FilledCircle';
 
 export default function RulesPage() {
   const { t } = useTranslation();
@@ -119,21 +129,117 @@ export default function RulesPage() {
     setMatcherFilters(prev => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
   }, []);
   const matcherPreview = useMemo(() => {
-    function describe(m: MatcherUnion): string {
-      switch (m.type) {
-        case 'all': return t('matcher.preview.all');
-        case 'and': return `${t('matcher.types.and')}(${m.matchers.map(describe).join(' ∧ ')})`;
-        case 'or': return `${t('matcher.types.or')}(${m.matchers.map(describe).join(' ∨ ')})`;
-        case 'not': return `${t('matcher.types.not')}(${describe(m.matcher)})`;
-        case 'sender': return `${t('matcher.types.sender')}:${m.display_name || m.user_id || t('common.none')}`;
-        case 'mention': return `${t('matcher.types.mention')}:${m.display_name || m.user_id || t('common.none')}`;
-        case 'chat': return `${t('matcher.types.chat')}:${m.chat_id || t('common.none')}`;
-        case 'chat_type': return `${t('matcher.types.chat_type')}:${m.chat_type}`;
-        case 'adapter': return `${t('matcher.types.adapter')}:${m.adapter_name || t('common.none')}`;
-        default: return '';
+    const leafChip = (
+      color: 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger',
+      icon: IconifyIcon,
+      label: string,
+    ) => (
+      <Chip
+        size="sm"
+        variant="flat"
+        color={color}
+        className="max-w-[180px]"
+        startContent={<Icon icon={icon} width={14} />}
+      >
+        <span className="truncate">{label}</span>
+      </Chip>
+    );
+
+    const renderMatcher = (m: MatcherUnion, path = 'root'): ReactNode => {
+      if (m.type === 'all') {
+        return (
+          <Chip
+            key={path}
+            size="sm"
+            variant="flat"
+            color="success"
+            startContent={<Icon icon={checkCircleBold} width={14} />}
+          >
+            {t('matcher.preview.all')}
+          </Chip>
+        );
       }
-    }
-    return (rule: DetectionRule) => describe(rule.matcher);
+      if (m.type === 'and' || m.type === 'or') {
+        const connector = (
+          <Chip
+            size="sm"
+            variant="bordered"
+            color="secondary"
+            className="uppercase tracking-wide"
+          >
+            {t(`matcher.types.${m.type}`)}
+          </Chip>
+        );
+        return (
+          <div key={path} className="flex flex-wrap items-center gap-1">
+            {m.matchers.map((child, idx) => (
+              <div key={`${path}-${idx}`} className="flex items-center gap-1">
+                {idx > 0 && connector}
+                {renderMatcher(child, `${path}-${idx}`)}
+              </div>
+            ))}
+          </div>
+        );
+      }
+      if (m.type === 'not') {
+        return (
+          <div key={path} className="flex items-center gap-1">
+            <Chip
+              size="sm"
+              variant="bordered"
+              color="danger"
+              startContent={<Icon icon={closeCircleBold} width={14} />}
+              className="uppercase tracking-wide"
+            >
+              {t('matcher.types.not')}
+            </Chip>
+            {renderMatcher(m.matcher, `${path}-not`)}
+          </div>
+        );
+      }
+      if (m.type === 'sender') {
+        return leafChip(
+          'primary',
+          userRoundedBold,
+          `${t('matcher.types.sender')}:${m.display_name || m.user_id || t('common.none')}`,
+        );
+      }
+      if (m.type === 'mention') {
+        return leafChip(
+          'secondary',
+          bellBingBold,
+          `${t('matcher.types.mention')}:${m.display_name || m.user_id || t('common.none')}`,
+        );
+      }
+      if (m.type === 'chat') {
+        return leafChip(
+          'default',
+          chatDotsBold,
+          `${t('matcher.types.chat')}:${m.chat_id || t('common.none')}`,
+        );
+      }
+      if (m.type === 'chat_type') {
+        return leafChip(
+          'warning',
+          usersGroupRoundedBold,
+          `${t('matcher.types.chat_type')}:${m.chat_type}`,
+        );
+      }
+      if (m.type === 'adapter') {
+        return leafChip(
+          'default',
+          plugCircleBold,
+          `${t('matcher.types.adapter')}:${m.adapter_name || t('common.none')}`,
+        );
+      }
+      return null;
+    };
+
+    return (rule: DetectionRule) => (
+      <div className="flex flex-wrap items-center gap-1 max-w-lg">
+        {renderMatcher(rule.matcher)}
+      </div>
+    );
   }, [t]);
 
   function matcherContains(root: MatcherUnion, target: Partial<LeafMatcher>): boolean {
@@ -282,83 +388,83 @@ export default function RulesPage() {
         <AccordionItem
           key="detection"
           aria-label={t('rules.detectionSettings')}
-          title={(
-            <div className="flex items-center gap-2">
-              <ShieldCheck size={18} className="text-primary" />
-              <div className="text-left">
-                <p className="font-semibold">{t('rules.detectionSettings')}</p>
-                <p className="text-sm text-default-500">{t('rules.detectionSettingsDesc')}</p>
+            title={(
+              <div className="flex items-center gap-2">
+                <Icon icon={shieldCheckBold} width={18} className="text-primary" />
+                <div className="text-left">
+                  <p className="font-semibold">{t('rules.detectionSettings')}</p>
+                  <p className="text-sm text-default-500">{t('rules.detectionSettingsDesc')}</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
         >
           <Card className="shadow-md">
             <CardBody className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <Input
                   label={t('rules.appName')}
-                  startContent={<Tag size={16} className="text-default-500" />}
+                  startContent={<Icon icon={tagBold} width={16} className="text-default-500" />}
                   value={detForm.app_name ?? ''}
                   isReadOnly
                 />
                 <Input
                   label={t('rules.environment')}
-                  startContent={<Sparkles size={16} className="text-default-500" />}
+                  startContent={<Icon icon={magicStick2Bold} width={16} className="text-default-500" />}
                   value={detForm.environment ?? ''}
                   isReadOnly
                 />
                 <Input
                   label={t('rules.contextMessageLimit')}
                   type="number"
-                  startContent={<Gauge size={16} className="text-default-500" />}
+                  startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" />}
                   value={String(detForm.context_message_limit ?? 10)}
                   onValueChange={v => setDetForm(f => ({ ...f, context_message_limit: Number(v) }))}
                 />
                 <Input
                   label={t('rules.detectionCooldown')}
                   type="number"
-                  startContent={<Gauge size={16} className="text-default-500" />}
+                  startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" />}
                   value={String(detForm.detection_cooldown_seconds ?? 0)}
                   onValueChange={v => setDetForm(f => ({ ...f, detection_cooldown_seconds: Number(v) }))}
                 />
                 <Input
                   label={t('rules.minNewMessages')}
                   type="number"
-                  startContent={<Gauge size={16} className="text-default-500" />}
+                  startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" />}
                   value={String(detForm.detection_min_new_messages ?? 1)}
                   onValueChange={v => setDetForm(f => ({ ...f, detection_min_new_messages: Number(v) }))}
                 />
                 <Input
                   label={t('rules.detectionWaitTimeout')}
                   type="number"
-                  startContent={<Gauge size={16} className="text-default-500" />}
+                  startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" />}
                   value={String(detForm.detection_wait_timeout_seconds ?? 30)}
                   onValueChange={v => setDetForm(f => ({ ...f, detection_wait_timeout_seconds: Number(v) }))}
                 />
                 <Input
                   label={t('rules.pendingQueueLimit')}
                   type="number"
-                  startContent={<ListChecks size={16} className="text-default-500" />}
+                  startContent={<Icon icon={listCheckBold} width={16} className="text-default-500" />}
                   value={String(detForm.pending_queue_limit ?? 200)}
                   onValueChange={v => setDetForm(f => ({ ...f, pending_queue_limit: Number(v) }))}
                 />
                 <Input
                   label={t('rules.historyListLimit')}
                   type="number"
-                  startContent={<ListChecks size={16} className="text-default-500" />}
+                  startContent={<Icon icon={listCheckBold} width={16} className="text-default-500" />}
                   value={String(detForm.history_list_limit ?? 1000)}
                   onValueChange={v => setDetForm(f => ({ ...f, history_list_limit: Number(v) }))}
                 />
                 <Input
                   label={t('rules.hookTimeout')}
                   type="number"
-                  startContent={<Gauge size={16} className="text-default-500" />}
+                  startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" />}
                   value={String(detForm.hook_timeout_seconds ?? 8)}
                   onValueChange={v => setDetForm(f => ({ ...f, hook_timeout_seconds: Number(v) }))}
                 />
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-default-200 bg-default-50 px-3 py-2">
                   <div className="flex items-center gap-2 text-sm text-default-700">
-                    <CheckSquare size={16} className="text-default-500" />
+                    <Icon icon={checkSquareBold} width={16} className="text-default-500" />
                     <span>{t('rules.enableInternalRuleGen')}</span>
                   </div>
                   <Switch
@@ -369,7 +475,7 @@ export default function RulesPage() {
                 </div>
                 <Input
                   label={t('rules.externalRuleEndpoint')}
-                  startContent={<AlignLeft size={16} className="text-default-500" />}
+                  startContent={<Icon icon={alignLeftBold} width={16} className="text-default-500" />}
                   value={detForm.external_rule_generation_endpoint ?? ''}
                   onValueChange={v => setDetForm(f => ({ ...f, external_rule_generation_endpoint: v }))}
                   className="md:col-span-2"
@@ -393,13 +499,13 @@ export default function RulesPage() {
         <div className="flex items-center gap-3 flex-wrap">
           <p className="text-default-500 text-sm">{t('rules.ruleCount', { count: filteredRules.length })}</p>
           <div className="flex gap-2 flex-wrap items-center">
-            <Chip size="sm" variant="flat" color="primary" startContent={<Filter size={14} />}>
+            <Chip size="sm" variant="flat" color="primary" startContent={<Icon icon={filterBold} width={16} />}>
               {t('rules.filtersActive', { count: matcherFilterEnabled ? activeMatcherFilters.length : 0 })}
             </Chip>
             <Button
               size="sm"
               variant="flat"
-              startContent={<FilterX size={14} />}
+              startContent={<Icon icon={closeCircleBold} width={16} />}
               onPress={() => { setMatcherFilterEnabled(false); setMatcherFilters([{ type: 'sender' }]); }}
             >
               {t('rules.clearFilters')}
@@ -407,7 +513,7 @@ export default function RulesPage() {
             <Button
               size="sm"
               variant="flat"
-              startContent={<CheckSquare size={14} />}
+              startContent={<Icon icon={checkSquareBold} width={16} />}
               onPress={() => selectAllFiltered(filteredRules.map(r => r.rule_id))}
               isDisabled={filteredRules.length === 0}
             >
@@ -416,7 +522,7 @@ export default function RulesPage() {
             <Button
               size="sm"
               variant="light"
-              startContent={<FilterX size={14} />}
+              startContent={<Icon icon={closeCircleBold} width={16} />}
               onPress={() => setSelectedRules({})}
               isDisabled={selectedIds.length === 0}
             >
@@ -428,14 +534,14 @@ export default function RulesPage() {
           <div className="flex flex-1 gap-2 items-center min-w-[280px]">
             <Input
               size="sm"
-              startContent={<Search size={14} className="text-default-500" />}
+              startContent={<Icon icon={textFieldFocusBold} width={14} className="text-default-500" />}
               placeholder={t('rules.searchPlaceholder')}
               value={search}
               onValueChange={setSearch}
               aria-label={t('rules.searchPlaceholder')}
               className="w-full min-w-[220px]"
             />
-            <Button color="primary" startContent={<Plus size={16} />} onPress={openNew} className="whitespace-nowrap">
+            <Button color="primary" startContent={<Icon icon={addCircleBold} width={18} />} onPress={openNew} className="whitespace-nowrap">
               {t('rules.newRule')}
             </Button>
           </div>
@@ -443,7 +549,7 @@ export default function RulesPage() {
             <Button
               size="sm"
               variant="flat"
-              startContent={<ListFilter size={14} />}
+              startContent={<Icon icon={settingsBold} width={16} />}
               onPress={() => setMatcherFilterEnabled(v => !v)}
               color={matcherFilterEnabled ? 'primary' : 'default'}
             >
@@ -452,7 +558,7 @@ export default function RulesPage() {
             <Button
               size="sm"
               variant="flat"
-              startContent={<ShieldCheck size={14} />}
+              startContent={<Icon icon={shieldCheckBold} width={16} />}
               isDisabled={selectedIds.length === 0}
               onPress={() => handleBulkEnable(true, selectedIds)}
             >
@@ -461,7 +567,7 @@ export default function RulesPage() {
             <Button
               size="sm"
               variant="flat"
-              startContent={<ShieldCheck size={14} />}
+              startContent={<Icon icon={shieldCheckBold} width={16} />}
               isDisabled={selectedIds.length === 0}
               onPress={() => handleBulkEnable(false, selectedIds)}
             >
@@ -471,7 +577,7 @@ export default function RulesPage() {
               size="sm"
               variant="flat"
               color="danger"
-              startContent={<Trash2 size={14} />}
+              startContent={<Icon icon={trashBin2Bold} width={16} />}
               isDisabled={selectedIds.length === 0}
               onPress={() => setBulkConfirmOpen(true)}
             >
@@ -510,7 +616,7 @@ export default function RulesPage() {
                       onPress={() => setMatcherFilters(f => f.filter((_, i) => i !== idx))}
                       aria-label={t('rules.clearFilters')}
                     >
-                      <Trash2 size={14} />
+                      <Icon icon={trashBin2Bold} width={16} />
                     </Button>
                   )}
                 </div>
@@ -581,7 +687,7 @@ export default function RulesPage() {
               <Button
                 size="sm"
                 variant="flat"
-                startContent={<Plus size={14} />}
+                startContent={<Icon icon={addCircleBold} width={16} />}
                 onPress={() => setMatcherFilters(f => [...f, { type: 'sender' }])}
               >
                 {t('rules.addMatcherFilter')}
@@ -620,11 +726,11 @@ export default function RulesPage() {
                       size="sm"
                       color={rule.enabled ? 'success' : 'default'}
                       variant="flat"
-                      startContent={<FilledCircle size={12} />}
+                      startContent={<Icon icon={pulse2Bold} width={14} />}
                     >
                       {rule.enabled ? t('common.enabled') : t('common.disabled')}
                     </Chip>
-                    <Chip size="sm" variant="flat" color="primary" startContent={<FilledCircle size={12} />}>
+                    <Chip size="sm" variant="flat" color="primary" startContent={<Icon icon={tuning2Bold} width={14} />}>
                       {t('rules.threshold', { value: rule.score_threshold.toFixed(2) })}
                     </Chip>
                   </div>
@@ -635,9 +741,9 @@ export default function RulesPage() {
                         <Chip
                           key={`${rule.rule_id}-topic-${idx}`}
                           size="sm"
-                          variant="flat"
+                          variant="solid"
                           color="secondary"
-                          startContent={<FilledCircle size={12} />}
+                          startContent={<Icon icon={hashtagCircleBold} width={14} />}
                         >
                           {topic}
                         </Chip>
@@ -650,9 +756,9 @@ export default function RulesPage() {
                         <Chip
                           key={`${rule.rule_id}-param-${idx}`}
                           size="sm"
-                          variant="flat"
-                          color={param.required ? 'warning' : 'secondary'}
-                          startContent={<FilledCircle size={12} />}
+                          variant={param.required ? 'solid' : 'bordered'}
+                          color="warning"
+                          startContent={<Icon icon={tagBold} width={14} />}
                         >
                           {param.key || t('rules.unnamedParam')}{param.required ? ' *' : ''}
                         </Chip>
@@ -661,7 +767,7 @@ export default function RulesPage() {
                   )}
                   <div className="flex items-center gap-2">
                     <Tooltip content={matcherPreview(rule)}>
-                      <Button size="sm" variant="light" startContent={<Eye size={16} />}>
+                      <Button size="sm" variant="light" startContent={<Icon icon={eyeBold} width={16} />}>
                         {t('rules.matcherPreviewLabel')}
                       </Button>
                     </Tooltip>
@@ -676,7 +782,7 @@ export default function RulesPage() {
                   aria-label={t('rules.enableRule')}
                 />
                 <Button isIconOnly size="md" variant="flat" onPress={() => openEdit(rule)}>
-                  <Pencil size={16} />
+                  <Icon icon={pen2Bold} width={18} />
                 </Button>
                 <Button
                   isIconOnly
@@ -685,7 +791,7 @@ export default function RulesPage() {
                   color="danger"
                   onPress={() => setDeleting(rule)}
                 >
-                  <Trash2 size={16} />
+                  <Icon icon={trashBin2Bold} width={18} />
                 </Button>
               </div>
             </CardBody>
@@ -712,7 +818,7 @@ export default function RulesPage() {
                   label={t('rules.ruleName')}
                   isRequired
                   description={t('rules.ruleNameDesc')}
-                  startContent={<Tag size={16} className="text-default-500" />}
+                  startContent={<Icon icon={tagBold} width={16} className="text-default-500" />}
                   value={editing.name}
                   onValueChange={v => setEditing({ ...editing, name: v })}
                 />
@@ -724,7 +830,7 @@ export default function RulesPage() {
                 />
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm font-medium text-default-700 mb-1">
-                    <Gauge size={16} className="text-default-500" />
+                    <Icon icon={chart2Bold} width={16} className="text-default-500" />
                     <span>{t('rules.scoreThreshold')}</span>
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
@@ -768,7 +874,7 @@ export default function RulesPage() {
                 {/* Topic hints */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm font-medium text-default-700">
-                    <Sparkles size={16} className="text-default-500" />
+                    <Icon icon={magicStick2Bold} width={16} className="text-default-500" />
                     <span>{t('rules.topicHints')}</span>
                   </div>
                   <div className="flex gap-2">
@@ -799,10 +905,10 @@ export default function RulesPage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <ListChecks size={14} className="text-default-500" />
+                      <Icon icon={listCheckBold} width={16} className="text-default-500" />
                       <p className="text-sm font-medium text-default-700">{t('rules.parameters')}</p>
                     </div>
-                    <Button size="sm" variant="flat" onPress={addParam} startContent={<Plus size={12} />}>
+                    <Button size="sm" variant="flat" onPress={addParam} startContent={<Icon icon={addCircleBold} width={16} />}>
                       {t('common.add')}
                     </Button>
                   </div>
@@ -812,14 +918,14 @@ export default function RulesPage() {
                         <Input
                           size="sm"
                           label={t('rules.key')}
-                          startContent={<Tag size={14} className="text-default-500" />}
+                          startContent={<Icon icon={tagBold} width={14} className="text-default-500" />}
                           value={p.key}
                           onValueChange={v => updateParam(i, 'key', v)}
                         />
                         <Input
                           size="sm"
                           label={t('rules.description')}
-                          startContent={<AlignLeft size={14} className="text-default-500" />}
+                          startContent={<Icon icon={alignLeftBold} width={14} className="text-default-500" />}
                           value={p.description}
                           onValueChange={v => updateParam(i, 'description', v)}
                         />
@@ -833,7 +939,7 @@ export default function RulesPage() {
                           {t('rules.required')}
                         </Switch>
                         <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => removeParam(i)}>
-                          <Trash2 size={12} />
+                          <Icon icon={trashBin2Bold} width={16} />
                         </Button>
                       </div>
                     </div>

@@ -2,16 +2,34 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
-  Card, CardBody, Chip, Input, Select, SelectItem, Spinner,
+  Card, CardBody, Chip, Input, Pagination, Select, SelectItem, Spinner,
   Tab, Tabs, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
 } from '@heroui/react';
 import type { Selection } from '@heroui/react';
-import { AlertTriangle, Search, Trash2 } from 'lucide-react';
+import { Icon, type IconifyIcon } from '@iconify/react';
+import dangerTriangleBold from '@iconify/icons-solar/danger-triangle-bold';
+import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
+import clockCircleBold from '@iconify/icons-solar/clock-circle-bold';
+import textFieldFocusBold from '@iconify/icons-solar/text-field-focus-bold';
+import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
+import textBoldCircle from '@iconify/icons-solar/text-bold-circle-bold';
+import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
+import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
+import usersGroupRoundedBold from '@iconify/icons-solar/users-group-rounded-bold';
+import settingsBold from '@iconify/icons-solar/settings-bold';
 import { useTranslation } from 'react-i18next';
 import { clearHistoryMessages, deleteHistoryMessages, fetchQueues } from '../api/queues';
 import type { HistoryMessageKey, QueueMessage } from '../api/queues';
 
-const COLUMNS = ['adapter', 'type', 'chat', 'sender', 'content', 'time'] as const;
+const COLUMN_CONFIG: { key: string; labelKey: string; icon: IconifyIcon }[] = [
+  { key: 'adapter', labelKey: 'queues.adapter', icon: plugCircleBold },
+  { key: 'type', labelKey: 'queues.type', icon: usersGroupRoundedBold },
+  { key: 'chat', labelKey: 'queues.chat', icon: chatDotsBold },
+  { key: 'sender', labelKey: 'queues.sender', icon: userRoundedBold },
+  { key: 'content', labelKey: 'queues.content', icon: textBoldCircle },
+  { key: 'time', labelKey: 'queues.time', icon: clockCircleBold },
+];
+const ROWS_PER_PAGE = 10;
 type SelectionKey = Selection extends Set<infer K> ? K : never;
 
 const messageKey = (m: QueueMessage) => `${m.platform}|${m.chat_type}|${m.chat_id}|${m.message_id}`;
@@ -43,14 +61,15 @@ function QueueTable({
   const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set());
   const [confirmBulk, setConfirmBulk] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [page, setPage] = useState(1);
 
   const adapters = useMemo(() => [...new Set(messages.map(m => m.adapter))], [messages]);
   const types = useMemo(() => [...new Set(messages.map(m => m.chat_type))], [messages]);
 
-  const columns = useMemo<{ key: string; label: string }[]>(() => {
-    const base = COLUMNS.map(c => ({ key: c as string, label: t(`queues.${c}`) }));
+  const columns = useMemo<{ key: string; label: string; icon?: IconifyIcon }[]>(() => {
+    const base = COLUMN_CONFIG.map(c => ({ key: c.key, label: t(c.labelKey), icon: c.icon }));
     if (enableHistoryActions) {
-      base.push({ key: 'actions', label: t('common.actions') });
+      base.push({ key: 'actions', label: t('common.actions'), icon: settingsBold });
     }
     return base;
   }, [enableHistoryActions, t]);
@@ -70,6 +89,11 @@ function QueueTable({
   }), [adapterFilter, messages, query, searchField, typeFilter]);
 
   const filteredKeys = useMemo(() => new Set(filtered.map(messageKey)), [filtered]);
+  const pages = useMemo(() => Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE)), [filtered.length]);
+  const pageItems = useMemo(
+    () => filtered.slice((page - 1) * ROWS_PER_PAGE, page * ROWS_PER_PAGE),
+    [filtered, page],
+  );
 
   useEffect(() => {
     if (!enableHistoryActions) return;
@@ -82,6 +106,14 @@ function QueueTable({
       return next;
     });
   }, [enableHistoryActions, filteredKeys]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [adapterFilter, typeFilter, searchField, query]);
+
+  useEffect(() => {
+    setPage(p => Math.min(Math.max(1, p), pages));
+  }, [pages]);
 
   const resolvedSelection: Set<string> = useMemo(() => {
     if (selectedKeys === 'all') return new Set(filtered.map(messageKey));
@@ -100,6 +132,21 @@ function QueueTable({
       })),
     [filtered, resolvedSelection],
   );
+
+  const bottomContent = useMemo(() => (
+    <div className="flex items-center justify-between px-2 py-2">
+      <span className="text-xs text-default-500">
+        {t('common.entries', { count: filtered.length })}
+      </span>
+      <Pagination
+        isCompact
+        showControls
+        page={page}
+        total={pages}
+        onChange={setPage}
+      />
+    </div>
+  ), [filtered.length, page, pages, t]);
 
   return (
     <div className="space-y-3">
@@ -139,7 +186,7 @@ function QueueTable({
           className="w-64"
           placeholder={t('queues.search')}
           value={query}
-          startContent={<Search size={14} className="text-default-500" />}
+          startContent={<Icon icon={textFieldFocusBold} width={14} className="text-default-500" />}
           onValueChange={setQuery}
         />
 
@@ -149,7 +196,7 @@ function QueueTable({
               size="sm"
               color="warning"
               variant="flat"
-              startContent={<AlertTriangle size={18} />}
+              startContent={<Icon icon={dangerTriangleBold} width={18} />}
               isDisabled={bulkDisabled || selectedMessages.length === 0}
               onPress={() => setConfirmBulk(true)}
             >
@@ -159,7 +206,7 @@ function QueueTable({
               size="sm"
               color="danger"
               variant="solid"
-              startContent={<Trash2 size={18} />}
+              startContent={<Icon icon={trashBin2Bold} width={18} />}
               isDisabled={bulkDisabled || (filtered.length === 0)}
               isLoading={clearing}
               onPress={() => setConfirmClear(true)}
@@ -176,17 +223,21 @@ function QueueTable({
         selectedKeys={enableHistoryActions ? selectedKeys : undefined}
         onSelectionChange={enableHistoryActions ? (keys => setSelectedKeys(keys)) : undefined}
         isHeaderSticky
+        bottomContent={bottomContent}
       >
         <TableHeader columns={columns}>
           {(column) => (
             <TableColumn key={column.key} className="text-sm md:text-base">
-              {column.label}
+              <div className="flex items-center gap-2">
+                {column.icon && <Icon icon={column.icon} width={16} className="text-default-500" />}
+                <span>{column.label}</span>
+              </div>
             </TableColumn>
           )}
         </TableHeader>
         <TableBody emptyContent={t('queues.noMessages')} isLoading={loading}>
           {enableHistoryActions
-            ? filtered.map(m => (
+            ? pageItems.map(m => (
               <TableRow key={messageKey(m)}>
                 <TableCell><Chip size="sm" variant="flat">{m.adapter}</Chip></TableCell>
                 <TableCell><Chip size="sm" color="primary" variant="flat">{m.chat_type}</Chip></TableCell>
@@ -200,7 +251,7 @@ function QueueTable({
                     color="danger"
                     variant="light"
                     isDisabled={bulkDisabled}
-                    startContent={<Trash2 size={16} />}
+                    startContent={<Icon icon={trashBin2Bold} width={16} />}
                     onPress={() => onDeleteOne?.({
                       adapter: m.adapter,
                       platform: m.platform,
@@ -214,7 +265,7 @@ function QueueTable({
                 </TableCell>
               </TableRow>
             ))
-            : filtered.map(m => (
+            : pageItems.map(m => (
               <TableRow key={messageKey(m)}>
                 <TableCell><Chip size="sm" variant="flat">{m.adapter}</Chip></TableCell>
                 <TableCell><Chip size="sm" color="primary" variant="flat">{m.chat_type}</Chip></TableCell>
@@ -241,7 +292,7 @@ function QueueTable({
                 <Button variant="flat" onPress={() => setConfirmBulk(false)}>{t('common.cancel')}</Button>
                 <Button
                   color="danger"
-                  startContent={<Trash2 size={18} />}
+                  startContent={<Icon icon={trashBin2Bold} width={18} />}
                   isDisabled={selectedMessages.length === 0}
                   onPress={() => {
                     setConfirmBulk(false);
@@ -266,7 +317,7 @@ function QueueTable({
                 <Button variant="flat" onPress={() => setConfirmClear(false)}>{t('common.cancel')}</Button>
                 <Button
                   color="danger"
-                  startContent={<Trash2 size={18} />}
+                  startContent={<Icon icon={trashBin2Bold} width={18} />}
                   onPress={() => {
                     setConfirmClear(false);
                     onClearAll?.();

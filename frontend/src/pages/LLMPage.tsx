@@ -3,9 +3,19 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Button, Card, CardBody, CardHeader, Chip, Divider, Input, Select, SelectItem, Spinner,
 } from '@heroui/react';
-import {
-  Activity, Brain, Clock3, Database, Gauge, Globe2, KeyRound, Layers, Link2, Package, Thermometer, Zap,
-} from 'lucide-react';
+import { Icon } from '@iconify/react';
+import boxBold from '@iconify/icons-solar/box-bold';
+import chart2Bold from '@iconify/icons-solar/chart-2-bold';
+import clockCircleBold from '@iconify/icons-solar/clock-circle-bold';
+import cpuBoltBold from '@iconify/icons-solar/cpu-bolt-bold';
+import databaseBold from '@iconify/icons-solar/database-bold';
+import earthBold from '@iconify/icons-solar/earth-bold';
+import keyBold from '@iconify/icons-solar/key-bold';
+import layersBold from '@iconify/icons-solar/layers-bold';
+import lightningBold from '@iconify/icons-solar/lightning-bold';
+import linkBold from '@iconify/icons-solar/link-bold';
+import pulse2Bold from '@iconify/icons-solar/pulse-2-bold';
+import thermometerBold from '@iconify/icons-solar/thermometer-bold';
 import { useTranslation } from 'react-i18next';
 import { fetchLLMHealth, fetchSettings, updateSettings } from '../api/settings';
 import type { AppSettings } from '../api/settings';
@@ -66,7 +76,7 @@ export default function LLMPage() {
               size="sm"
               color="primary"
               variant="flat"
-              startContent={<Zap size={14} />}
+              startContent={<Icon icon={lightningBold} width={16} />}
               isLoading={pinging}
               onPress={doPing}
             >
@@ -103,20 +113,20 @@ export default function LLMPage() {
             </Select>
             <Input
               label={t('llm.model')}
-              startContent={<Brain size={16} className="text-default-500" />}
+              startContent={<Icon icon={cpuBoltBold} width={16} className="text-default-500" />}
               value={form.llm_langchain_model ?? ''}
               onValueChange={v => setForm(f => ({ ...f, llm_langchain_model: v }))}
             />
             <Input
               label={t('llm.apiBase')}
-              startContent={<Link2 size={16} className="text-default-500" />}
+              startContent={<Icon icon={linkBold} width={16} className="text-default-500" />}
               value={form.llm_langchain_api_base ?? ''}
               onValueChange={v => setForm(f => ({ ...f, llm_langchain_api_base: v.trim() === '' ? null : v }))}
             />
             <Input
               label={t('llm.apiKey')}
               type="password"
-              startContent={<KeyRound size={16} className="text-default-500" />}
+              startContent={<Icon icon={keyBold} width={16} className="text-default-500" />}
               value={form.llm_langchain_api_key ?? ''}
               onValueChange={v => setForm(f => ({ ...f, llm_langchain_api_key: v.trim() === '' ? null : v }))}
             />
@@ -124,68 +134,68 @@ export default function LLMPage() {
               label={t('llm.temperature')}
               type="number"
               step="0.05"
-              startContent={<Thermometer size={16} className="text-default-500" />}
+              startContent={<Icon icon={thermometerBold} width={16} className="text-default-500" />}
               value={String(form.llm_langchain_temperature ?? 0)}
               onValueChange={v => setForm(f => ({ ...f, llm_langchain_temperature: Number(v) }))}
             />
             <Input
               label={t('llm.displayTimezone')}
-              startContent={<Globe2 size={16} className="text-default-500" />}
+              startContent={<Icon icon={earthBold} width={16} className="text-default-500" />}
               value={form.llm_display_timezone ?? ''}
               onValueChange={v => setForm(f => ({ ...f, llm_display_timezone: v }))}
             />
             <Input
               label={t('llm.timeout')}
               type="number"
-              startContent={<Clock3 size={16} className="text-default-500" />}
+              startContent={<Icon icon={clockCircleBold} width={16} className="text-default-500" />}
               value={String(form.llm_timeout_seconds ?? 30)}
               onValueChange={v => setForm(f => ({ ...f, llm_timeout_seconds: Number(v) }))}
             />
             <Input
               label={t('llm.maxParallelBatches')}
               type="number"
-              startContent={<Layers size={16} className="text-default-500" />}
+              startContent={<Icon icon={layersBold} width={16} className="text-default-500" />}
               value={String(form.llm_max_parallel_batches ?? 3)}
               onValueChange={v => setForm(f => ({ ...f, llm_max_parallel_batches: Number(v) }))}
             />
             <Input
               label={t('llm.rulesPerBatch')}
               type="number"
-              startContent={<Package size={16} className="text-default-500" />}
+              startContent={<Icon icon={boxBold} width={16} className="text-default-500" />}
               value={String(form.llm_rules_per_batch ?? 2)}
               onValueChange={v => setForm(f => ({ ...f, llm_rules_per_batch: Number(v) }))}
             />
             <Input
               label={t('llm.batchTimeout')}
               type="number"
-              startContent={<Clock3 size={16} className="text-default-500" />}
+              startContent={<Icon icon={clockCircleBold} width={16} className="text-default-500" />}
               value={String(form.llm_batch_timeout_seconds ?? 30)}
               onValueChange={v => setForm(f => ({ ...f, llm_batch_timeout_seconds: Number(v) }))}
             />
             <Input
               label={t('llm.batchMaxRetries')}
               type="number"
-              startContent={<Activity size={16} className="text-default-500" />}
+              startContent={<Icon icon={pulse2Bold} width={16} className="text-default-500" />}
               value={String(form.llm_batch_max_retries ?? 1)}
               onValueChange={v => setForm(f => ({ ...f, llm_batch_max_retries: Number(v) }))}
             />
             <Input
               label={t('llm.batchRateLimit')}
               type="number"
-              startContent={<Gauge size={16} className="text-default-500" />}
+              startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" />}
               value={String(form.llm_batch_rate_limit_per_second ?? 0)}
               onValueChange={v => setForm(f => ({ ...f, llm_batch_rate_limit_per_second: Number(v) }))}
             />
             <Input
               label={t('llm.idempotencyCacheSize')}
               type="number"
-              startContent={<Database size={16} className="text-default-500" />}
+              startContent={<Icon icon={databaseBold} width={16} className="text-default-500" />}
               value={String(form.llm_batch_idempotency_cache_size ?? 1024)}
               onValueChange={v => setForm(f => ({ ...f, llm_batch_idempotency_cache_size: Number(v) }))}
             />
             <Input
               label={t('llm.ollamaBaseUrl')}
-              startContent={<Link2 size={16} className="text-default-500" />}
+              startContent={<Icon icon={linkBold} width={16} className="text-default-500" />}
               value={form.llm_ollama_base_url ?? ''}
               onValueChange={v => setForm(f => ({ ...f, llm_ollama_base_url: v }))}
             />

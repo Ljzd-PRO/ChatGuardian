@@ -1,8 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardBody, CardHeader, Chip, Spinner } from '@heroui/react';
-import {
-  Activity, Plug, ShieldCheck, TrendingUp, Zap,
-} from 'lucide-react';
+import { Icon } from '@iconify/react';
+import chart2Bold from '@iconify/icons-solar/chart-2-bold';
+import lightningBold from '@iconify/icons-solar/lightning-bold';
+import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
+import pulse2Bold from '@iconify/icons-solar/pulse-2-bold';
+import shieldCheckBold from '@iconify/icons-solar/shield-check-bold';
 import { useTranslation } from 'react-i18next';
 import StatsCard from '../components/charts/StatsCard';
 import TriggerChart from '../components/charts/TriggerChart';
@@ -56,25 +59,25 @@ export default function DashboardPage() {
         <StatsCard
           title={t('dashboard.totalRules')}
           value={dash?.total_rules ?? 0}
-          icon={<ShieldCheck size={18} />}
+          icon={<Icon icon={shieldCheckBold} width={18} />}
           color="primary"
         />
         <StatsCard
           title={t('dashboard.enabledRules')}
           value={dash?.enabled_rules ?? 0}
-          icon={<Zap size={18} />}
+          icon={<Icon icon={lightningBold} width={18} />}
           color="success"
         />
         <StatsCard
           title={t('dashboard.triggersToday')}
           value={dash?.triggers_today ?? 0}
-          icon={<Activity size={18} />}
+          icon={<Icon icon={pulse2Bold} width={18} />}
           color="warning"
         />
         <StatsCard
           title={t('dashboard.triggerRate')}
           value={`${((dash?.trigger_rate ?? 0) * 100).toFixed(1)}%`}
-          icon={<TrendingUp size={18} />}
+          icon={<Icon icon={chart2Bold} width={18} />}
           color="danger"
         />
       </div>
@@ -104,7 +107,7 @@ export default function DashboardPage() {
                     size="sm"
                     variant="flat"
                     color={a.running ? 'success' : 'default'}
-                    startContent={<Plug size={14} />}
+                    startContent={<Icon icon={plugCircleBold} width={14} />}
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">{a.name}</span>
