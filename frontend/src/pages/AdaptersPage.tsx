@@ -75,7 +75,7 @@ export default function AdaptersPage() {
       <Card>
         <CardHeader className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-default-900">
-            <Icon icon={plugCircleBold} width={16} aria-hidden="true" />
+            <Icon icon={plugCircleBold} fontSize={ICON_SIZES.cardHeader} aria-hidden="true" />
             <span className="font-semibold">{t('adapters.controls')}</span>
           </div>
           <div className="flex gap-2">
@@ -110,7 +110,7 @@ export default function AdaptersPage() {
                 <CardBody className="flex flex-row items-center justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <Icon icon={plugCircleBold} width={14} className="text-primary" />
+                      <Icon icon={plugCircleBold} fontSize={ICON_SIZES.cardHeader} className="text-primary" />
                       <p className="font-medium text-default-900">{a.name}</p>
                     </div>
                     <p className="text-xs text-default-400">{t('adapters.adapterLabel')}</p>
@@ -128,7 +128,7 @@ export default function AdaptersPage() {
       <Card>
         <CardHeader className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-default-900">
-            <Icon icon={settingsBold} width={16} aria-hidden="true" />
+            <Icon icon={settingsBold} fontSize={ICON_SIZES.cardHeader} aria-hidden="true" />
             <span className="font-semibold">{t('adapters.adapterSettings')}</span>
           </div>
           <Button color="primary" isDisabled={!settings} isLoading={save.isPending} onPress={() => save.mutate()}>
@@ -139,7 +139,7 @@ export default function AdaptersPage() {
         <CardBody className="space-y-5">
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-default-700">
-              <Icon icon={plugCircleBold} width={14} aria-hidden="true" />
+              <Icon icon={plugCircleBold} fontSize={ICON_SIZES.input} aria-hidden="true" />
               <span>{t('adapters.enabledAdapters')}</span>
             </div>
             <Select
@@ -158,26 +158,26 @@ export default function AdaptersPage() {
           <div className="grid gap-4 xl:grid-cols-2">
             <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
               <div className="flex items-center gap-2 font-semibold text-default-900">
-                <Icon icon={cpuBoltBold} width={16} aria-hidden="true" />
+                <Icon icon={cpuBoltBold} fontSize={ICON_SIZES.cardHeader} aria-hidden="true" />
                 <span>OneBot</span>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Input
                   label="Host"
-                  startContent={<Icon icon={server2Bold} width={16} className="text-default-500" aria-hidden="true" />}
+                  startContent={<Icon icon={server2Bold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                   value={form.onebot_host ?? ''}
                   onValueChange={v => setForm(f => ({ ...f, onebot_host: v }))}
                 />
                 <Input
                   label="Port"
                   type="number"
-                  startContent={<Icon icon={hashtagBold} width={16} className="text-default-500" aria-hidden="true" />}
+                  startContent={<Icon icon={hashtagBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                   value={String(form.onebot_port ?? 2290)}
                   onValueChange={v => setForm(f => ({ ...f, onebot_port: Number(v) }))}
                 />
                 <Input
                   label="Access Token"
-                  startContent={<Icon icon={keyBold} width={16} className="text-default-500" aria-hidden="true" />}
+                  startContent={<Icon icon={keyBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                   value={form.onebot_access_token ?? ''}
                   onValueChange={v => setForm(f => ({ ...f, onebot_access_token: v.trim() === '' ? null : v }))}
                   className="sm:col-span-2"
@@ -187,19 +187,19 @@ export default function AdaptersPage() {
 
             <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
               <div className="flex items-center gap-2 font-semibold text-default-900">
-                <Icon icon={sendSquareBold} width={16} aria-hidden="true" />
+                <Icon icon={sendSquareBold} fontSize={ICON_SIZES.cardHeader} aria-hidden="true" />
                 <span>Telegram</span>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Input
                   label="Bot Token"
-                  startContent={<Icon icon={keyBold} width={16} className="text-default-500" aria-hidden="true" />}
+                  startContent={<Icon icon={keyBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                   value={form.telegram_bot_token ?? ''}
                   onValueChange={v => setForm(f => ({ ...f, telegram_bot_token: v.trim() === '' ? null : v }))}
                 />
                 <Input
                   label="Polling Timeout (s)"
-                  startContent={<Icon icon={clockCircleBold} width={16} className="text-default-500" aria-hidden="true" />}
+                  startContent={<Icon icon={clockCircleBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                   type="number"
                   value={String(form.telegram_polling_timeout ?? 10)}
                   onValueChange={v => setForm(f => ({ ...f, telegram_polling_timeout: Number(v) }))}
@@ -217,12 +217,12 @@ export default function AdaptersPage() {
 
             <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
               <div className="flex items-center gap-2 font-semibold text-default-900">
-                <Icon icon={chatDotsBold} width={16} aria-hidden="true" />
+                <Icon icon={chatDotsBold} fontSize={ICON_SIZES.cardHeader} aria-hidden="true" />
                 <span>WeChat</span>
               </div>
               <Input
                 label="Endpoint"
-                startContent={<Icon icon={cloudBold} width={16} className="text-default-500" aria-hidden="true" />}
+                startContent={<Icon icon={cloudBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                 value={form.wechat_endpoint ?? ''}
                 onValueChange={v => setForm(f => ({ ...f, wechat_endpoint: v.trim() === '' ? null : v }))}
               />
@@ -230,12 +230,12 @@ export default function AdaptersPage() {
 
             <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
               <div className="flex items-center gap-2 font-semibold text-default-900">
-                <Icon icon={chatDotsBold} width={16} aria-hidden="true" />
+                <Icon icon={chatDotsBold} fontSize={ICON_SIZES.cardHeader} aria-hidden="true" />
                 <span>Feishu</span>
               </div>
               <Input
                 label="App ID"
-                startContent={<Icon icon={keyBold} width={16} className="text-default-500" aria-hidden="true" />}
+                startContent={<Icon icon={keyBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                 value={form.feishu_app_id ?? ''}
                 onValueChange={v => setForm(f => ({ ...f, feishu_app_id: v.trim() === '' ? null : v }))}
               />
@@ -244,48 +244,48 @@ export default function AdaptersPage() {
 
           <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
             <div className="flex items-center gap-2 font-semibold text-default-900">
-              <Icon icon={magicStick2Bold} width={16} aria-hidden="true" />
+              <Icon icon={magicStick2Bold} fontSize={ICON_SIZES.cardHeader} aria-hidden="true" />
               <span>{t('adapters.virtualAdapter')}</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Input
                 label={t('adapters.chatCount')}
                 type="number"
-                startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" aria-hidden="true" />}
+                startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                 value={String(form.virtual_adapter_chat_count ?? 3)}
                 onValueChange={v => setForm(f => ({ ...f, virtual_adapter_chat_count: Number(v) }))}
               />
               <Input
                 label={t('adapters.membersPerChat')}
                 type="number"
-                startContent={<Icon icon={cpuBoltBold} width={16} className="text-default-500" aria-hidden="true" />}
+                startContent={<Icon icon={cpuBoltBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                 value={String(form.virtual_adapter_members_per_chat ?? 5)}
                 onValueChange={v => setForm(f => ({ ...f, virtual_adapter_members_per_chat: Number(v) }))}
               />
               <Input
                 label={t('adapters.messagesPerChat')}
                 type="number"
-                startContent={<Icon icon={chatDotsBold} width={16} className="text-default-500" aria-hidden="true" />}
+                startContent={<Icon icon={chatDotsBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                 value={String(form.virtual_adapter_messages_per_chat ?? 10)}
                 onValueChange={v => setForm(f => ({ ...f, virtual_adapter_messages_per_chat: Number(v) }))}
               />
               <Input
                 label={t('adapters.intervalMin')}
                 type="number"
-                startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" aria-hidden="true" />}
+                startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                 value={String(form.virtual_adapter_interval_min_seconds ?? 0.1)}
                 onValueChange={v => setForm(f => ({ ...f, virtual_adapter_interval_min_seconds: Number(v) }))}
               />
               <Input
                 label={t('adapters.intervalMax')}
                 type="number"
-                startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" aria-hidden="true" />}
+                startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                 value={String(form.virtual_adapter_interval_max_seconds ?? 0.6)}
                 onValueChange={v => setForm(f => ({ ...f, virtual_adapter_interval_max_seconds: Number(v) }))}
               />
               <Input
                 label={t('adapters.scriptPath')}
-                startContent={<Icon icon={code2Bold} width={16} className="text-default-500" aria-hidden="true" />}
+                startContent={<Icon icon={code2Bold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                 value={form.virtual_adapter_script_path ?? ''}
                 onValueChange={v => setForm(f => ({ ...f, virtual_adapter_script_path: v.trim() === '' ? null : v }))}
               />

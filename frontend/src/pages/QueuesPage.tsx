@@ -187,7 +187,7 @@ function QueueTable({
           className="w-64"
           placeholder={t('queues.search')}
           value={query}
-          startContent={<Icon icon={textFieldFocusBold} width={14} className="text-default-500" />}
+          startContent={<Icon icon={textFieldFocusBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
           onValueChange={setQuery}
         />
 
@@ -230,7 +230,7 @@ function QueueTable({
           {(column) => (
             <TableColumn key={column.key} className="text-sm md:text-base">
               <div className="flex items-center gap-2">
-                {column.icon && <Icon icon={column.icon} width={16} className="text-default-500" />}
+                {column.icon && <Icon icon={column.icon} fontSize={ICON_SIZES.input} className="text-default-500" />}
                 <span>{column.label}</span>
               </div>
             </TableColumn>

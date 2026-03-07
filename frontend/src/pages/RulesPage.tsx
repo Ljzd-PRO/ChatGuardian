@@ -391,7 +391,7 @@ export default function RulesPage() {
           aria-label={t('rules.detectionSettings')}
             title={(
               <div className="flex items-center gap-2">
-                <Icon icon={shieldCheckBold} width={18} className="text-primary" />
+                <Icon icon={shieldCheckBold} fontSize={ICON_SIZES.cardHeader} className="text-primary" />
                 <div className="text-left">
                   <p className="font-semibold">{t('rules.detectionSettings')}</p>
                   <p className="text-sm text-default-500">{t('rules.detectionSettingsDesc')}</p>
@@ -404,68 +404,68 @@ export default function RulesPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <Input
                   label={t('rules.appName')}
-                  startContent={<Icon icon={tagBold} width={16} className="text-default-500" />}
+                  startContent={<Icon icon={tagBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={detForm.app_name ?? ''}
                   isReadOnly
                 />
                 <Input
                   label={t('rules.environment')}
-                  startContent={<Icon icon={magicStick2Bold} width={16} className="text-default-500" />}
+                  startContent={<Icon icon={magicStick2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={detForm.environment ?? ''}
                   isReadOnly
                 />
                 <Input
                   label={t('rules.contextMessageLimit')}
                   type="number"
-                  startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" />}
+                  startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={String(detForm.context_message_limit ?? 10)}
                   onValueChange={v => setDetForm(f => ({ ...f, context_message_limit: Number(v) }))}
                 />
                 <Input
                   label={t('rules.detectionCooldown')}
                   type="number"
-                  startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" />}
+                  startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={String(detForm.detection_cooldown_seconds ?? 0)}
                   onValueChange={v => setDetForm(f => ({ ...f, detection_cooldown_seconds: Number(v) }))}
                 />
                 <Input
                   label={t('rules.minNewMessages')}
                   type="number"
-                  startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" />}
+                  startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={String(detForm.detection_min_new_messages ?? 1)}
                   onValueChange={v => setDetForm(f => ({ ...f, detection_min_new_messages: Number(v) }))}
                 />
                 <Input
                   label={t('rules.detectionWaitTimeout')}
                   type="number"
-                  startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" />}
+                  startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={String(detForm.detection_wait_timeout_seconds ?? 30)}
                   onValueChange={v => setDetForm(f => ({ ...f, detection_wait_timeout_seconds: Number(v) }))}
                 />
                 <Input
                   label={t('rules.pendingQueueLimit')}
                   type="number"
-                  startContent={<Icon icon={listCheckBold} width={16} className="text-default-500" />}
+                  startContent={<Icon icon={listCheckBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={String(detForm.pending_queue_limit ?? 200)}
                   onValueChange={v => setDetForm(f => ({ ...f, pending_queue_limit: Number(v) }))}
                 />
                 <Input
                   label={t('rules.historyListLimit')}
                   type="number"
-                  startContent={<Icon icon={listCheckBold} width={16} className="text-default-500" />}
+                  startContent={<Icon icon={listCheckBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={String(detForm.history_list_limit ?? 1000)}
                   onValueChange={v => setDetForm(f => ({ ...f, history_list_limit: Number(v) }))}
                 />
                 <Input
                   label={t('rules.hookTimeout')}
                   type="number"
-                  startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" />}
+                  startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={String(detForm.hook_timeout_seconds ?? 8)}
                   onValueChange={v => setDetForm(f => ({ ...f, hook_timeout_seconds: Number(v) }))}
                 />
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-default-200 bg-default-50 px-3 py-2">
                   <div className="flex items-center gap-2 text-sm text-default-700">
-                    <Icon icon={checkSquareBold} width={16} className="text-default-500" />
+                    <Icon icon={checkSquareBold} fontSize={ICON_SIZES.input} className="text-default-500" />
                     <span>{t('rules.enableInternalRuleGen')}</span>
                   </div>
                   <Switch
@@ -476,7 +476,7 @@ export default function RulesPage() {
                 </div>
                 <Input
                   label={t('rules.externalRuleEndpoint')}
-                  startContent={<Icon icon={alignLeftBold} width={16} className="text-default-500" />}
+                  startContent={<Icon icon={alignLeftBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={detForm.external_rule_generation_endpoint ?? ''}
                   onValueChange={v => setDetForm(f => ({ ...f, external_rule_generation_endpoint: v }))}
                   className="md:col-span-2"
@@ -838,7 +838,7 @@ export default function RulesPage() {
                   label={t('rules.ruleName')}
                   isRequired
                   description={t('rules.ruleNameDesc')}
-                  startContent={<Icon icon={tagBold} width={16} className="text-default-500" />}
+                  startContent={<Icon icon={tagBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={editing.name}
                   onValueChange={v => setEditing({ ...editing, name: v })}
                 />
@@ -850,7 +850,7 @@ export default function RulesPage() {
                 />
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm font-medium text-default-700 mb-1">
-                    <Icon icon={chart2Bold} width={16} className="text-default-500" />
+                    <Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />
                     <span>{t('rules.scoreThreshold')}</span>
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
@@ -894,7 +894,7 @@ export default function RulesPage() {
                 {/* Topic hints */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm font-medium text-default-700">
-                    <Icon icon={magicStick2Bold} width={16} className="text-default-500" />
+                    <Icon icon={magicStick2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />
                     <span>{t('rules.topicHints')}</span>
                   </div>
                   <div className="flex gap-2">
@@ -925,7 +925,7 @@ export default function RulesPage() {
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Icon icon={listCheckBold} width={16} className="text-default-500" />
+                        <Icon icon={listCheckBold} fontSize={ICON_SIZES.input} className="text-default-500" />
                         <p className="text-sm font-medium text-default-700">{t('rules.parameters')}</p>
                       </div>
                     <Button
@@ -943,14 +943,14 @@ export default function RulesPage() {
                         <Input
                           size="sm"
                           label={t('rules.key')}
-                          startContent={<Icon icon={tagBold} width={14} className="text-default-500" />}
+                          startContent={<Icon icon={tagBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                           value={p.key}
                           onValueChange={v => updateParam(i, 'key', v)}
                         />
                         <Input
                           size="sm"
                           label={t('rules.description')}
-                          startContent={<Icon icon={alignLeftBold} width={14} className="text-default-500" />}
+                          startContent={<Icon icon={alignLeftBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                           value={p.description}
                           onValueChange={v => updateParam(i, 'description', v)}
                         />
