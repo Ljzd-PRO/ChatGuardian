@@ -54,6 +54,7 @@ export default function TriggerStatsPage() {
   }, [query]);
 
   useEffect(() => {
+    // Clamp current page when filtered results shrink to avoid empty views
     setPage(p => Math.min(Math.max(1, p), pages));
   }, [pages]);
 
@@ -61,7 +62,7 @@ export default function TriggerStatsPage() {
     .filter(r => r.stat.count > 0)
     .map(r => ({ name: r.name, count: r.stat.count }));
 
-  const isRightAligned = (idx: number) => idx % 2 === 1;
+  const isOddIndex = (idx: number) => idx % 2 === 1;
 
   if (loading) return <div className="flex justify-center h-64"><Spinner label={t('stats.loading')} /></div>;
 
@@ -134,10 +135,10 @@ export default function TriggerStatsPage() {
                         <p className="text-sm text-default-700 whitespace-pre-wrap break-words">{rec.reason}</p>
                         <div className="space-y-2">
                           {rec.messages.map((m, i) => (
-                            <div key={i} className={`flex ${isRightAligned(i) ? 'justify-end' : 'justify-start'}`}>
+                            <div key={i} className={`flex ${isOddIndex(i) ? 'justify-end' : 'justify-start'}`}>
                               <div
                                 className={`max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm ${
-                                  isRightAligned(i)
+                                  isOddIndex(i)
                                     ? 'bg-primary-50 border-primary-100 text-primary-800'
                                     : 'bg-default-100 border-default-200 text-default-700'
                                 }`}
@@ -252,10 +253,10 @@ export default function TriggerStatsPage() {
                   <p className="text-sm font-semibold text-default-700">{t('stats.contextMessages')}</p>
                   <div className="space-y-3">
                     {selectedRecord.messages.map((m, idx) => (
-                      <div key={idx} className={`flex ${isRightAligned(idx) ? 'justify-end' : 'justify-start'}`}>
+                      <div key={idx} className={`flex ${isOddIndex(idx) ? 'justify-end' : 'justify-start'}`}>
                         <div
                           className={`max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm ${
-                            isRightAligned(idx)
+                            isOddIndex(idx)
                               ? 'bg-primary-50 border-primary-100 text-primary-800'
                               : 'bg-default-100 border-default-200 text-default-700'
                           }`}

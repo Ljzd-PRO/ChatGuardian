@@ -278,9 +278,8 @@ export default function RulesPage() {
     const keywordTarget = `${rule.name} ${rule.description} ${rule.topic_hints.join(' ')}`.toLowerCase();
     const keywordOk = keywordTarget.includes(loweredSearch);
     if (!matcherFilterEnabled) return keywordOk;
-    const usableFilters = activeMatcherFilters;
-    if (usableFilters.length === 0) return keywordOk;
-    return keywordOk && usableFilters.every(f => matcherContains(rule.matcher, f));
+    if (activeMatcherFilters.length === 0) return keywordOk;
+    return keywordOk && activeMatcherFilters.every(f => matcherContains(rule.matcher, f));
   }, [activeMatcherFilters, loweredSearch, matcherFilterEnabled]);
 
   function toggleSelect(id: string) {
@@ -382,9 +381,10 @@ export default function RulesPage() {
 
   useEffect(() => {
     setRulePage(1);
-  }, [search, matcherFilterEnabled, activeMatcherFilters.length]);
+  }, [search, matcherFilterEnabled, activeMatcherFilters]);
 
   useEffect(() => {
+    // Clamp current page when filtered rules shrink to keep pagination valid
     setRulePage(p => Math.min(Math.max(1, p), rulesPages));
   }, [rulesPages]);
 
