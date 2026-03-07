@@ -15,7 +15,7 @@ import { fetchRules } from '../api/rules';
 import TriggerChart from '../components/charts/TriggerChart';
 import type { RuleRecord } from '../api/stats';
 
-type RuleRecordWithRuleDetails = RuleRecord & { ruleLabel: string; ruleDescription?: string };
+type RuleRecordWithMetadata = RuleRecord & { ruleLabel: string; ruleDescription?: string };
 
 export default function TriggerStatsPage() {
   const { t } = useTranslation();
@@ -23,7 +23,7 @@ export default function TriggerStatsPage() {
   const { data: rules, isLoading: rulesLoading } = useQuery({ queryKey: ['rules'], queryFn: fetchRules });
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
-  const [selectedRecord, setSelectedRecord] = useState<RuleRecordWithRuleDetails | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<RuleRecordWithMetadata | null>(null);
   const RULES_PER_PAGE = 5;
 
   const loading = statsLoading || rulesLoading;
