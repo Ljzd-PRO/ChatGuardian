@@ -93,11 +93,14 @@ def _revoke_token(token: str) -> None:
 
 
 # Paths that do NOT require authentication
-_PUBLIC_PREFIXES = ("/api/auth/", "/health", "/app", "/")
+_PUBLIC_PREFIXES = ("/api/auth/", "/health", "/app/", "/app")
+_PUBLIC_EXACT = {"/", "/health"}
 
 def _is_public_path(path: str) -> bool:
+    if path in _PUBLIC_EXACT:
+        return True
     for prefix in _PUBLIC_PREFIXES:
-        if path == prefix or path.startswith(prefix):
+        if path.startswith(prefix):
             return True
     return False
 

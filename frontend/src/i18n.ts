@@ -747,7 +747,7 @@ const resources = {
         complete: {
           title: '设置完成！🎉',
           subtitle: 'ChatGuardian 已就绪，您已以管理员身份登录。',
-          goButton: '前往仓表盘',
+          goButton: '前往仪表盘',
         },
       },
     },
@@ -1099,7 +1099,7 @@ const resources = {
           title: '初始偵測規則',
           subtitle: '可選：建立第一條偵測規則以快速入門。',
           name: '規則名稱',
-          namePlaceholder: '例如：封鎖布床訊息',
+          namePlaceholder: '例如：封鎖垃圾訊息',
           description: '規則描述',
           descriptionPlaceholder: '描述該規則的偵測內容…',
           hint: '您可以在「規則」頁面中透過完整的匹配器配置添加更複雜的規則。',
@@ -1760,7 +1760,7 @@ const resources = {
           llm: 'LLM 구성',
           llmDesc: 'AI 모델 연결',
           adapters: '어댑터',
-          adaptersDesc: '체팅 플랫폼 연결',
+          adaptersDesc: '채팅 플랫폼 연결',
           notifications: '알림',
           notificationsDesc: '알림 구성',
           rules: '탐지 규칙',
@@ -1785,7 +1785,7 @@ const resources = {
         },
         adapters: {
           title: '어댑터 설정',
-          subtitle: '체팅 플랫폼을 연결합니다. 어댑터는 나중에 구성할 수 있습니다.',
+          subtitle: '채팅 플랫폼을 연결합니다. 어댑터는 나중에 구성할 수 있습니다.',
         },
         notifications: {
           title: '알림 설정',
@@ -1803,7 +1803,7 @@ const resources = {
         navigation: {
           next: '다음',
           back: '뒤로',
-          skip: '건너뼛기',
+          skip: '건너뛰기',
           complete: '설정 완료',
           saving: '저장 중…',
         },
