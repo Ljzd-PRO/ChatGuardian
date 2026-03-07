@@ -1377,7 +1377,7 @@ const resources = {
         triggers: '트리거 {{count}}회',
         confidence: '신뢰도',
         viewDetails: '자세히 보기',
-        triggeredAt: '{{time}} 트리거',
+        triggeredAt: '{{time}}에 트리거됨',
         confidenceValue: '신뢰도 {{value}}%',
         chatId: '채팅: {{id}}',
         suppressed: '차단됨',

@@ -121,6 +121,7 @@ export default function RulesPage() {
   }, [rules]);
 
   const selectedIds = useMemo(() => Object.keys(selectedRules).filter(id => selectedRules[id]), [selectedRules]);
+  const loweredSearch = useMemo(() => search.toLowerCase(), [search]);
   const activeMatcherFilters = useMemo(
     () => matcherFilters.filter(f => f.type),
     [matcherFilters],
@@ -275,12 +276,12 @@ export default function RulesPage() {
 
   const ruleMatchesSearch = useCallback((rule: DetectionRule) => {
     const keywordTarget = `${rule.name} ${rule.description} ${rule.topic_hints.join(' ')}`.toLowerCase();
-    const keywordOk = keywordTarget.includes(search.toLowerCase());
+    const keywordOk = keywordTarget.includes(loweredSearch);
     if (!matcherFilterEnabled) return keywordOk;
     const usableFilters = activeMatcherFilters;
     if (usableFilters.length === 0) return keywordOk;
     return keywordOk && usableFilters.every(f => matcherContains(rule.matcher, f));
-  }, [activeMatcherFilters, matcherFilterEnabled, search]);
+  }, [activeMatcherFilters, loweredSearch, matcherFilterEnabled]);
 
   function toggleSelect(id: string) {
     setSelectedRules(prev => ({ ...prev, [id]: !prev[id] }));
@@ -381,7 +382,7 @@ export default function RulesPage() {
 
   useEffect(() => {
     setRulePage(1);
-  }, [search, matcherFilterEnabled, activeMatcherFilters]);
+  }, [search, matcherFilterEnabled, activeMatcherFilters.length]);
 
   useEffect(() => {
     setRulePage(p => Math.min(Math.max(1, p), rulesPages));
