@@ -254,7 +254,6 @@ export default function TriggerStatsPage() {
                         >
                           <Chip size="sm" variant="flat" color="secondary" className="shrink-0">{key}</Chip>
                           <Snippet
-                            hideCopyButton
                             hideSymbol
                             variant="flat"
                             size="sm"
