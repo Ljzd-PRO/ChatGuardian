@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  Accordion, AccordionItem, Card, CardBody, CardHeader, Chip, Input, Progress, Spinner,
+  Accordion, AccordionItem, Button, Card, CardBody, CardHeader, Chip, Input, Modal, ModalBody, ModalContent,
+  ModalFooter, ModalHeader, Pagination, Progress, Spinner,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import chart2Bold from '@iconify/icons-solar/chart-2-bold';
@@ -12,12 +13,18 @@ import { useTranslation } from 'react-i18next';
 import { fetchRuleStats } from '../api/stats';
 import { fetchRules } from '../api/rules';
 import TriggerChart from '../components/charts/TriggerChart';
+import type { RuleRecord } from '../api/stats';
+
+type RuleRecordWithMetadata = RuleRecord & { ruleLabel: string; ruleDescription?: string };
 
 export default function TriggerStatsPage() {
   const { t } = useTranslation();
   const { data: stats, isLoading: statsLoading } = useQuery({ queryKey: ['rule_stats'], queryFn: fetchRuleStats });
   const { data: rules, isLoading: rulesLoading } = useQuery({ queryKey: ['rules'], queryFn: fetchRules });
   const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [selectedRecord, setSelectedRecord] = useState<RuleRecordWithMetadata | null>(null);
+  const RULES_PER_PAGE = 5;
 
   const loading = statsLoading || rulesLoading;
 
@@ -36,9 +43,26 @@ export default function TriggerStatsPage() {
     return target.includes(query.toLowerCase());
   });
 
+  const pages = Math.max(1, Math.ceil(filtered.length / RULES_PER_PAGE));
+  const pagedRules = useMemo(
+    () => filtered.slice((page - 1) * RULES_PER_PAGE, page * RULES_PER_PAGE),
+    [filtered, page],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
+
+  useEffect(() => {
+    // Clamp current page when filtered results shrink to avoid empty views
+    setPage(p => Math.min(Math.max(1, p), pages));
+  }, [pages]);
+
   const chartData = filtered
     .filter(r => r.stat.count > 0)
     .map(r => ({ name: r.name, count: r.stat.count }));
+
+  const shouldRightAlign = (idx: number) => idx % 2 === 1;
 
   if (loading) return <div className="flex justify-center h-64"><Spinner label={t('stats.loading')} /></div>;
 
@@ -66,7 +90,7 @@ export default function TriggerStatsPage() {
       </div>
 
       <div className="space-y-4">
-        {filtered.map(r => (
+        {pagedRules.map(r => (
               <Card key={r.rule_id} className="border border-default-200 shadow-sm">
                 <CardHeader className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
@@ -107,16 +131,33 @@ export default function TriggerStatsPage() {
                         </div>
                       }
                     >
-                      <div className="space-y-1">
-                        <p className="text-sm text-default-600 italic">{rec.reason}</p>
-                        <div className="space-y-1 mt-2">
+                      <div className="space-y-3">
+                        <p className="text-sm text-default-700 whitespace-pre-wrap break-words">{rec.reason}</p>
+                        <div className="space-y-2">
                           {rec.messages.map((m, i) => (
-                            <div key={i} className="text-xs p-3 bg-default-100 rounded-lg border border-default-200">
-                              <span className="font-medium text-default-700">{m.sender}: </span>
-                              <span className="text-default-600">{m.content}</span>
+                            <div key={i} className={`flex ${shouldRightAlign(i) ? 'justify-end' : 'justify-start'}`}>
+                              <div
+                                className={`max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm ${
+                                  shouldRightAlign(i)
+                                    ? 'bg-primary-50 border-primary-100 text-primary-800'
+                                    : 'bg-default-100 border-default-200 text-default-700'
+                                }`}
+                              >
+                                <p className="text-xs font-medium text-default-500 mb-1">{m.sender}</p>
+                                <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
+                              </div>
                             </div>
                           ))}
                         </div>
+                        <Button
+                          size="sm"
+                          variant="light"
+                          color="primary"
+                          className="mt-1"
+                          onPress={() => setSelectedRecord({ ...rec, ruleLabel: r.name, ruleDescription: r.description })}
+                        >
+                          {t('stats.viewDetails')}
+                        </Button>
                       </div>
                     </AccordionItem>
                   ))}
@@ -125,7 +166,118 @@ export default function TriggerStatsPage() {
             )}
           </Card>
         ))}
+        <div className="flex items-center justify-between text-sm text-default-500">
+          <span>{t('common.entries', { count: filtered.length })}</span>
+          <Pagination
+            size="sm"
+            showControls
+            total={pages}
+            page={page}
+            onChange={setPage}
+            color="primary"
+          />
+        </div>
       </div>
+
+      <Modal
+        isOpen={!!selectedRecord}
+        onClose={() => setSelectedRecord(null)}
+        size="lg"
+        scrollBehavior="inside"
+      >
+        <ModalContent>
+          {selectedRecord && (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Icon icon={chatDotsBold} fontSize={18} className="text-primary" />
+                  <span className="font-semibold">{selectedRecord.ruleLabel}</span>
+                </div>
+                {selectedRecord.ruleDescription && (
+                  <p className="text-sm text-default-500">{selectedRecord.ruleDescription}</p>
+                )}
+              </ModalHeader>
+              <ModalBody className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Chip size="sm" variant="flat" color="secondary">
+                    {t('stats.triggeredAt', { time: selectedRecord.trigger_time })}
+                  </Chip>
+                  <Chip
+                    size="sm"
+                    variant="flat"
+                    color="warning"
+                    startContent={<Icon icon={clockCircleBold} fontSize={12} />}
+                  >
+                    {t('stats.confidenceValue', { value: (selectedRecord.confidence * 100).toFixed(0) })}
+                  </Chip>
+                  <Chip size="sm" variant="flat" color="primary">
+                    {selectedRecord.result}
+                  </Chip>
+                  {selectedRecord.chat_id && (
+                    <Chip size="sm" variant="flat" color="default">
+                      {t('stats.chatId', { id: selectedRecord.chat_id })}
+                    </Chip>
+                  )}
+                </div>
+                {selectedRecord.trigger_suppressed && (
+                  <div className="rounded-lg border border-warning-200 bg-warning-50 p-3 text-sm text-warning-700 space-y-1">
+                    <p className="font-semibold">{t('stats.suppressed')}</p>
+                    {selectedRecord.suppression_reason && (
+                      <p className="whitespace-pre-wrap break-words">{selectedRecord.suppression_reason}</p>
+                    )}
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-default-700">{t('stats.reasonLabel')}</p>
+                  <p className="text-sm text-default-700 whitespace-pre-wrap break-words">{selectedRecord.reason}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-default-700">{t('stats.extractedParams')}</p>
+                  {selectedRecord.extracted_params && Object.keys(selectedRecord.extracted_params).length > 0 ? (
+                    <div className="grid gap-2">
+                      {Object.entries(selectedRecord.extracted_params).map(([key, val]) => (
+                        <div
+                          key={key}
+                          className="flex items-start gap-2 rounded-lg border border-default-200 bg-default-50 px-3 py-2"
+                        >
+                          <Chip size="sm" variant="flat" color="secondary" className="shrink-0">{key}</Chip>
+                          <span className="text-sm text-default-700 break-words">{val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-default-500">{t('stats.noParams')}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-default-700">{t('stats.contextMessages')}</p>
+                  <div className="space-y-3">
+                    {selectedRecord.messages.map((m, idx) => (
+                      <div key={idx} className={`flex ${shouldRightAlign(idx) ? 'justify-end' : 'justify-start'}`}>
+                        <div
+                          className={`max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm ${
+                            shouldRightAlign(idx)
+                              ? 'bg-primary-50 border-primary-100 text-primary-800'
+                              : 'bg-default-100 border-default-200 text-default-700'
+                          }`}
+                        >
+                          <p className="text-xs font-medium text-default-500 mb-1">{m.sender}</p>
+                          <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" onPress={() => setSelectedRecord(null)}>
+                  {t('common.cancel')}
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 }
