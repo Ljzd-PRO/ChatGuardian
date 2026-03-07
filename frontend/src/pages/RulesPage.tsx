@@ -376,7 +376,7 @@ export default function RulesPage() {
   const rulesPages = Math.max(1, Math.ceil(filteredRules.length / RULES_PER_PAGE));
   const pagedRules = useMemo(
     () => filteredRules.slice((rulePage - 1) * RULES_PER_PAGE, rulePage * RULES_PER_PAGE),
-    [filteredRules, rulePage, RULES_PER_PAGE],
+    [filteredRules, rulePage],
   );
 
   useEffect(() => {

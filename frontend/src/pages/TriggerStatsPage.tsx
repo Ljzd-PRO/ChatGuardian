@@ -44,7 +44,7 @@ export default function TriggerStatsPage() {
   const pages = Math.max(1, Math.ceil(filtered.length / RULES_PER_PAGE));
   const pagedRules = useMemo(
     () => filtered.slice((page - 1) * RULES_PER_PAGE, page * RULES_PER_PAGE),
-    [filtered, page, RULES_PER_PAGE],
+    [filtered, page],
   );
 
   useEffect(() => {
@@ -130,12 +130,12 @@ export default function TriggerStatsPage() {
                         <p className="text-sm text-default-700 whitespace-pre-wrap break-words">{rec.reason}</p>
                         <div className="space-y-2">
                           {rec.messages.map((m, i) => {
-                            const isMine = i % 2 === 1;
+                            const isRightAligned = i % 2 === 1;
                             return (
-                              <div key={i} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                              <div key={i} className={`flex ${isRightAligned ? 'justify-end' : 'justify-start'}`}>
                                 <div
                                   className={`max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm ${
-                                    isMine
+                                    isRightAligned
                                       ? 'bg-primary-50 border-primary-100 text-primary-800'
                                       : 'bg-default-100 border-default-200 text-default-700'
                                   }`}
@@ -251,12 +251,12 @@ export default function TriggerStatsPage() {
                   <p className="text-sm font-semibold text-default-700">{t('stats.contextMessages')}</p>
                   <div className="space-y-3">
                     {selectedRecord.messages.map((m, idx) => {
-                      const isMine = idx % 2 === 1;
+                      const isRightAligned = idx % 2 === 1;
                       return (
-                        <div key={idx} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                        <div key={idx} className={`flex ${isRightAligned ? 'justify-end' : 'justify-start'}`}>
                           <div
                             className={`max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm ${
-                              isMine
+                              isRightAligned
                                 ? 'bg-primary-50 border-primary-100 text-primary-800'
                                 : 'bg-default-100 border-default-200 text-default-700'
                             }`}
