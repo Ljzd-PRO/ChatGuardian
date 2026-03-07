@@ -22,19 +22,19 @@ export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
     <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur border-b border-divider">
       <div className="flex items-center gap-4">
         <Button isIconOnly size="md" variant="light" className="md:hidden" onPress={onMenuClick}>
-          <Icon icon={hamburgerMenuBold} width={22} />
+          <Icon icon={hamburgerMenuBold} fontSize={22} />
         </Button>
         <h1 className="text-lg md:text-xl font-semibold text-default-900">{title}</h1>
       </div>
       <div className="flex items-center gap-3">
-        <Icon icon={sun2Bold} width={18} className="text-default-500" />
+        <Icon icon={sun2Bold} fontSize={18} className="text-default-500" />
         <Switch
           size="md"
           isSelected={isDark}
           onValueChange={toggle}
           aria-label={t('common.toggleDark')}
         />
-        <Icon icon={moonBold} width={18} className="text-default-500" />
+        <Icon icon={moonBold} fontSize={18} className="text-default-500" />
         <Select
           size="md"
           aria-label={t('common.language')}

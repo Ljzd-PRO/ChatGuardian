@@ -59,25 +59,25 @@ export default function DashboardPage() {
         <StatsCard
           title={t('dashboard.totalRules')}
           value={dash?.total_rules ?? 0}
-          icon={<Icon icon={shieldCheckBold} width={18} />}
+          icon={<Icon icon={shieldCheckBold} fontSize={18} />}
           color="primary"
         />
         <StatsCard
           title={t('dashboard.enabledRules')}
           value={dash?.enabled_rules ?? 0}
-          icon={<Icon icon={lightningBold} width={18} />}
+          icon={<Icon icon={lightningBold} fontSize={18} />}
           color="success"
         />
         <StatsCard
           title={t('dashboard.triggersToday')}
           value={dash?.triggers_today ?? 0}
-          icon={<Icon icon={pulse2Bold} width={18} />}
+          icon={<Icon icon={pulse2Bold} fontSize={18} />}
           color="warning"
         />
         <StatsCard
           title={t('dashboard.triggerRate')}
           value={`${((dash?.trigger_rate ?? 0) * 100).toFixed(1)}%`}
-          icon={<Icon icon={chart2Bold} width={18} />}
+          icon={<Icon icon={chart2Bold} fontSize={18} />}
           color="danger"
         />
       </div>
@@ -107,7 +107,7 @@ export default function DashboardPage() {
                     size="sm"
                     variant="flat"
                     color={a.running ? 'success' : 'default'}
-                    startContent={<Icon icon={plugCircleBold} width={14} />}
+                    startContent={<Icon icon={plugCircleBold} fontSize={14} />}
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">{a.name}</span>

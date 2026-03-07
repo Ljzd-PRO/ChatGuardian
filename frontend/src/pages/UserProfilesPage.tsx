@@ -32,7 +32,7 @@ export default function UserProfilesPage() {
         placeholder={t('users.searchPlaceholder')}
         value={search}
         onValueChange={setSearch}
-        startContent={<Icon icon={textFieldFocusBold} width={16} />}
+        startContent={<Icon icon={textFieldFocusBold} fontSize={16} />}
         className="max-w-sm"
       />
       {filtered.length === 0 && (

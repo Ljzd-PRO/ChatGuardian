@@ -53,7 +53,7 @@ export default function LogsPage() {
         <Button
           size="sm"
           variant="flat"
-          startContent={<Icon icon={refreshCircleBold} width={16} className={isFetching ? 'animate-spin' : ''} />}
+          startContent={<Icon icon={refreshCircleBold} fontSize={16} className={isFetching ? 'animate-spin' : ''} />}
           onPress={() => refetch()}
         >
           {t('logs.refresh')}
@@ -62,7 +62,7 @@ export default function LogsPage() {
           size="sm"
           color="danger"
           variant="flat"
-          startContent={<Icon icon={trashBin2Bold} width={16} />}
+          startContent={<Icon icon={trashBin2Bold} fontSize={16} />}
           isLoading={clear.isPending}
           onPress={() => clear.mutate()}
         >

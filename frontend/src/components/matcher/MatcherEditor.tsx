@@ -81,7 +81,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
           color={color}
           size="sm"
           variant="flat"
-          startContent={<Icon icon={MATCHER_ICONS[value.type]} width={14} />}
+          startContent={<Icon icon={MATCHER_ICONS[value.type]} fontSize={14} />}
         >
           {value.type.toUpperCase()}
         </Chip>
@@ -105,7 +105,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
                   color={TYPE_COLORS[matcherType] ?? 'default'}
                   className="justify-center"
                 >
-                  <Icon icon={MATCHER_ICONS[matcherType]} width={14} />
+                  <Icon icon={MATCHER_ICONS[matcherType]} fontSize={14} />
                 </Chip>
               )}
             >
@@ -115,7 +115,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
         </Select>
         {onRemove && (
           <Button isIconOnly size="sm" color="danger" variant="light" onPress={onRemove}>
-            <Icon icon={trashBin2Bold} width={16} />
+            <Icon icon={trashBin2Bold} fontSize={16} />
           </Button>
         )}
       </div>
@@ -200,7 +200,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
           <Button
             size="sm"
             variant="flat"
-            startContent={<Icon icon={addCircleBold} width={16} />}
+            startContent={<Icon icon={addCircleBold} fontSize={16} />}
             onPress={() => onChange({ ...value, matchers: [...value.matchers, { type: 'all' }] })}
           >
             {t('matcher.addCondition')}

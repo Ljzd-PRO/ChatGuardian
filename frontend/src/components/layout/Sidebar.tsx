@@ -44,7 +44,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       <div className="flex items-center justify-between px-6 py-7 border-b border-divider">
         <span className="font-bold text-xl text-primary">{t('common.appName')}</span>
         <Button isIconOnly size="md" variant="light" className="md:hidden" onPress={onClose}>
-          <Icon icon={closeCircleBold} width={20} />
+          <Icon icon={closeCircleBold} fontSize={20} />
         </Button>
       </div>
       <ul className="flex-1 overflow-y-auto py-5 space-y-3 px-4">
@@ -60,7 +60,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                     ? 'bg-primary text-primary-foreground font-medium'
                     : 'text-default-600 hover:bg-default-100 hover:text-default-900'}`}
               >
-                <Icon icon={icon} width={20} />
+                <Icon icon={icon} fontSize={20} />
                 {t(labelKey)}
               </Link>
             </li>

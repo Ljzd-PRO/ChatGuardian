@@ -186,7 +186,7 @@ function QueueTable({
           className="w-64"
           placeholder={t('queues.search')}
           value={query}
-          startContent={<Icon icon={textFieldFocusBold} width={14} className="text-default-500" />}
+          startContent={<Icon icon={textFieldFocusBold} fontSize={14} className="text-default-500" />}
           onValueChange={setQuery}
         />
 
@@ -196,7 +196,7 @@ function QueueTable({
               size="sm"
               color="warning"
               variant="flat"
-              startContent={<Icon icon={dangerTriangleBold} width={18} />}
+              startContent={<Icon icon={dangerTriangleBold} fontSize={18} />}
               isDisabled={bulkDisabled || selectedMessages.length === 0}
               onPress={() => setConfirmBulk(true)}
             >
@@ -206,7 +206,7 @@ function QueueTable({
               size="sm"
               color="danger"
               variant="solid"
-              startContent={<Icon icon={trashBin2Bold} width={18} />}
+              startContent={<Icon icon={trashBin2Bold} fontSize={18} />}
               isDisabled={bulkDisabled || (filtered.length === 0)}
               isLoading={clearing}
               onPress={() => setConfirmClear(true)}
@@ -229,7 +229,7 @@ function QueueTable({
           {(column) => (
             <TableColumn key={column.key} className="text-sm md:text-base">
               <div className="flex items-center gap-2">
-                {column.icon && <Icon icon={column.icon} width={16} className="text-default-500" />}
+                {column.icon && <Icon icon={column.icon} fontSize={16} className="text-default-500" />}
                 <span>{column.label}</span>
               </div>
             </TableColumn>
@@ -251,7 +251,7 @@ function QueueTable({
                     color="danger"
                     variant="light"
                     isDisabled={bulkDisabled}
-                    startContent={<Icon icon={trashBin2Bold} width={16} />}
+                    startContent={<Icon icon={trashBin2Bold} fontSize={16} />}
                     onPress={() => onDeleteOne?.({
                       adapter: m.adapter,
                       platform: m.platform,
@@ -292,7 +292,7 @@ function QueueTable({
                 <Button variant="flat" onPress={() => setConfirmBulk(false)}>{t('common.cancel')}</Button>
                 <Button
                   color="danger"
-                  startContent={<Icon icon={trashBin2Bold} width={18} />}
+                  startContent={<Icon icon={trashBin2Bold} fontSize={18} />}
                   isDisabled={selectedMessages.length === 0}
                   onPress={() => {
                     setConfirmBulk(false);
@@ -317,7 +317,7 @@ function QueueTable({
                 <Button variant="flat" onPress={() => setConfirmClear(false)}>{t('common.cancel')}</Button>
                 <Button
                   color="danger"
-                  startContent={<Icon icon={trashBin2Bold} width={18} />}
+                  startContent={<Icon icon={trashBin2Bold} fontSize={18} />}
                   onPress={() => {
                     setConfirmClear(false);
                     onClearAll?.();

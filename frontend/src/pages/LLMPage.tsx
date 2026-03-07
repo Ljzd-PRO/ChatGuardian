@@ -76,7 +76,7 @@ export default function LLMPage() {
               size="sm"
               color="primary"
               variant="flat"
-              startContent={<Icon icon={lightningBold} width={16} />}
+              startContent={<Icon icon={lightningBold} fontSize={16} />}
               isLoading={pinging}
               onPress={doPing}
             >
@@ -113,20 +113,20 @@ export default function LLMPage() {
             </Select>
             <Input
               label={t('llm.model')}
-              startContent={<Icon icon={cpuBoltBold} width={16} className="text-default-500" />}
+              startContent={<Icon icon={cpuBoltBold} fontSize={16} className="text-default-500" />}
               value={form.llm_langchain_model ?? ''}
               onValueChange={v => setForm(f => ({ ...f, llm_langchain_model: v }))}
             />
             <Input
               label={t('llm.apiBase')}
-              startContent={<Icon icon={linkBold} width={16} className="text-default-500" />}
+              startContent={<Icon icon={linkBold} fontSize={16} className="text-default-500" />}
               value={form.llm_langchain_api_base ?? ''}
               onValueChange={v => setForm(f => ({ ...f, llm_langchain_api_base: v.trim() === '' ? null : v }))}
             />
             <Input
               label={t('llm.apiKey')}
               type="password"
-              startContent={<Icon icon={keyBold} width={16} className="text-default-500" />}
+              startContent={<Icon icon={keyBold} fontSize={16} className="text-default-500" />}
               value={form.llm_langchain_api_key ?? ''}
               onValueChange={v => setForm(f => ({ ...f, llm_langchain_api_key: v.trim() === '' ? null : v }))}
             />
@@ -134,68 +134,68 @@ export default function LLMPage() {
               label={t('llm.temperature')}
               type="number"
               step="0.05"
-              startContent={<Icon icon={thermometerBold} width={16} className="text-default-500" />}
+              startContent={<Icon icon={thermometerBold} fontSize={16} className="text-default-500" />}
               value={String(form.llm_langchain_temperature ?? 0)}
               onValueChange={v => setForm(f => ({ ...f, llm_langchain_temperature: Number(v) }))}
             />
             <Input
               label={t('llm.displayTimezone')}
-              startContent={<Icon icon={earthBold} width={16} className="text-default-500" />}
+              startContent={<Icon icon={earthBold} fontSize={16} className="text-default-500" />}
               value={form.llm_display_timezone ?? ''}
               onValueChange={v => setForm(f => ({ ...f, llm_display_timezone: v }))}
             />
             <Input
               label={t('llm.timeout')}
               type="number"
-              startContent={<Icon icon={clockCircleBold} width={16} className="text-default-500" />}
+              startContent={<Icon icon={clockCircleBold} fontSize={16} className="text-default-500" />}
               value={String(form.llm_timeout_seconds ?? 30)}
               onValueChange={v => setForm(f => ({ ...f, llm_timeout_seconds: Number(v) }))}
             />
             <Input
               label={t('llm.maxParallelBatches')}
               type="number"
-              startContent={<Icon icon={layersBold} width={16} className="text-default-500" />}
+              startContent={<Icon icon={layersBold} fontSize={16} className="text-default-500" />}
               value={String(form.llm_max_parallel_batches ?? 3)}
               onValueChange={v => setForm(f => ({ ...f, llm_max_parallel_batches: Number(v) }))}
             />
             <Input
               label={t('llm.rulesPerBatch')}
               type="number"
-              startContent={<Icon icon={boxBold} width={16} className="text-default-500" />}
+              startContent={<Icon icon={boxBold} fontSize={16} className="text-default-500" />}
               value={String(form.llm_rules_per_batch ?? 2)}
               onValueChange={v => setForm(f => ({ ...f, llm_rules_per_batch: Number(v) }))}
             />
             <Input
               label={t('llm.batchTimeout')}
               type="number"
-              startContent={<Icon icon={clockCircleBold} width={16} className="text-default-500" />}
+              startContent={<Icon icon={clockCircleBold} fontSize={16} className="text-default-500" />}
               value={String(form.llm_batch_timeout_seconds ?? 30)}
               onValueChange={v => setForm(f => ({ ...f, llm_batch_timeout_seconds: Number(v) }))}
             />
             <Input
               label={t('llm.batchMaxRetries')}
               type="number"
-              startContent={<Icon icon={pulse2Bold} width={16} className="text-default-500" />}
+              startContent={<Icon icon={pulse2Bold} fontSize={16} className="text-default-500" />}
               value={String(form.llm_batch_max_retries ?? 1)}
               onValueChange={v => setForm(f => ({ ...f, llm_batch_max_retries: Number(v) }))}
             />
             <Input
               label={t('llm.batchRateLimit')}
               type="number"
-              startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" />}
+              startContent={<Icon icon={chart2Bold} fontSize={16} className="text-default-500" />}
               value={String(form.llm_batch_rate_limit_per_second ?? 0)}
               onValueChange={v => setForm(f => ({ ...f, llm_batch_rate_limit_per_second: Number(v) }))}
             />
             <Input
               label={t('llm.idempotencyCacheSize')}
               type="number"
-              startContent={<Icon icon={databaseBold} width={16} className="text-default-500" />}
+              startContent={<Icon icon={databaseBold} fontSize={16} className="text-default-500" />}
               value={String(form.llm_batch_idempotency_cache_size ?? 1024)}
               onValueChange={v => setForm(f => ({ ...f, llm_batch_idempotency_cache_size: Number(v) }))}
             />
             <Input
               label={t('llm.ollamaBaseUrl')}
-              startContent={<Icon icon={linkBold} width={16} className="text-default-500" />}
+              startContent={<Icon icon={linkBold} fontSize={16} className="text-default-500" />}
               value={form.llm_ollama_base_url ?? ''}
               onValueChange={v => setForm(f => ({ ...f, llm_ollama_base_url: v }))}
             />

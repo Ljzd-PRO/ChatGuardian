@@ -46,7 +46,7 @@ export default function TriggerStatsPage() {
     <div className="space-y-6">
         <Card>
           <CardHeader className="flex items-center gap-2">
-            <Icon icon={chart2Bold} width={16} className="text-primary" />
+            <Icon icon={chart2Bold} fontSize={16} className="text-primary" />
             <span className="font-semibold">{t('stats.overview')}</span>
           </CardHeader>
           <CardBody>
@@ -57,7 +57,7 @@ export default function TriggerStatsPage() {
       <div className="flex justify-end">
         <Input
           size="sm"
-          startContent={<Icon icon={textFieldFocusBold} width={14} className="text-default-500" />}
+          startContent={<Icon icon={textFieldFocusBold} fontSize={14} className="text-default-500" />}
           className="w-64"
           placeholder={t('stats.searchRules')}
           value={query}
@@ -70,7 +70,7 @@ export default function TriggerStatsPage() {
               <Card key={r.rule_id} className="border border-default-200 shadow-sm">
                 <CardHeader className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <Icon icon={chatDotsBold} width={16} className="text-primary" />
+                    <Icon icon={chatDotsBold} fontSize={16} className="text-primary" />
                     <div>
                       <span className="font-medium text-default-900">{r.name}</span>
                       <p className="text-xs text-default-500">{r.description}</p>
@@ -101,7 +101,7 @@ export default function TriggerStatsPage() {
                             aria-label={t('stats.confidence')}
                           />
                           <div className="flex items-center gap-1 text-xs text-default-500">
-                            <Icon icon={clockCircleBold} width={12} />
+                            <Icon icon={clockCircleBold} fontSize={12} />
                             {(rec.confidence * 100).toFixed(0)}%
                           </div>
                         </div>
