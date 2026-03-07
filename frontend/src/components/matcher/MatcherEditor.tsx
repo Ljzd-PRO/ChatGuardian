@@ -87,7 +87,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
         </Chip>
         <Select
           size="sm"
-          className="w-36"
+          className="w-40"
           selectedKeys={[value.type]}
           onSelectionChange={(keys) => {
             const k = Array.from(keys)[0] as MatcherType;
@@ -103,9 +103,9 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
                   size="sm"
                   variant="flat"
                   color={TYPE_COLORS[matcherType] ?? 'default'}
-                  className="min-w-[44px] justify-center"
-                  startContent={<Icon icon={MATCHER_ICONS[matcherType]} width={14} />}
+                  className="justify-center"
                 >
+                  <Icon icon={MATCHER_ICONS[matcherType]} width={14} />
                 </Chip>
               )}
             >
