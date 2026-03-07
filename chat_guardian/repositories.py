@@ -571,6 +571,21 @@ class DetectionResultRepository:
             known_ids.add(message.message_id)
 
         last.context_messages = merged
+        if self._db is not None:
+            with self._db.session_factory() as session:
+                row = session.scalar(
+                    select(_DetectionResultRecord)
+                    .where(
+                        _DetectionResultRecord.rule_id == rule_id,
+                        _DetectionResultRecord.triggered.is_(True),
+                        _DetectionResultRecord.trigger_suppressed.is_(False),
+                    )
+                    .order_by(_DetectionResultRecord.id.desc())
+                    .limit(1)
+                )
+                if row is not None:
+                    row.payload_json = last.model_dump_json()
+                    session.commit()
         return last
 
 

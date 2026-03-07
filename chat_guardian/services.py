@@ -845,6 +845,10 @@ class DetectionEngine:
                     suppressed = True
                     suppression_reason = "context overlaps with last triggered result"
 
+            if suppressed:
+                logger.debug(f"  ↩️ 抑制结果已合并至最近记录 | rule_id={decision.rule_id}")
+                continue
+
             result = DetectionResult(
                 result_id=f"{event_id}:{decision.rule_id}:{len(all_results)}",
                 event_id=event_id,
@@ -1114,10 +1118,7 @@ class SelfMessageMemoryService:
             name = str(topic_data.get("name", "")).strip()
             if not name:
                 continue
-            try:
-                score = int(topic_data.get("score", 1))
-            except (TypeError, ValueError):
-                score = 1
+            score = 1  # 每检测到一次该话题，固定 +1
             keywords = [str(k).strip() for k in topic_data.get("keywords", []) if str(k).strip()]
 
             if name in profile.interests:
