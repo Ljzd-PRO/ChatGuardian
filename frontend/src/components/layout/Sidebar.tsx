@@ -110,4 +110,3 @@ export function useSidebar() {
 }
 
 export const Menu = hamburgerMenuBold;
-export { Menu as MenuIcon };

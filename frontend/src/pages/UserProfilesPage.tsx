@@ -4,7 +4,7 @@ import {
   Card, CardBody, CardHeader, Input, Spinner, Chip, Progress,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
-import compassBigBold from '@iconify/icons-solar/compass-big-bold';
+import magniferBold from '@iconify/icons-solar/magnifer-bold';
 import { useTranslation } from 'react-i18next';
 import { fetchUserProfiles } from '../api/users';
 import {
@@ -32,7 +32,7 @@ export default function UserProfilesPage() {
         placeholder={t('users.searchPlaceholder')}
         value={search}
         onValueChange={setSearch}
-        startContent={<Icon icon={compassBigBold} width={16} />}
+        startContent={<Icon icon={magniferBold} width={16} />}
         className="max-w-sm"
       />
       {filtered.length === 0 && (

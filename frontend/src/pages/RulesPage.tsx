@@ -18,7 +18,7 @@ import filterBold from '@iconify/icons-solar/filter-bold';
 import hashtagCircleBold from '@iconify/icons-solar/hashtag-circle-bold';
 import listCheckBold from '@iconify/icons-solar/list-check-bold';
 import magicStick2Bold from '@iconify/icons-solar/magic-stick-2-bold';
-import compassBigBold from '@iconify/icons-solar/compass-big-bold';
+import magniferBold from '@iconify/icons-solar/magnifer-bold';
 import pen2Bold from '@iconify/icons-solar/pen-2-bold';
 import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
 import pulse2Bold from '@iconify/icons-solar/pulse-2-bold';
@@ -534,7 +534,7 @@ export default function RulesPage() {
           <div className="flex flex-1 gap-2 items-center min-w-[280px]">
             <Input
               size="sm"
-              startContent={<Icon icon={compassBigBold} width={14} className="text-default-500" />}
+              startContent={<Icon icon={magniferBold} width={14} className="text-default-500" />}
               placeholder={t('rules.searchPlaceholder')}
               value={search}
               onValueChange={setSearch}
