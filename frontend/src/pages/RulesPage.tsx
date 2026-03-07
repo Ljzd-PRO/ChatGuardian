@@ -795,7 +795,7 @@ export default function RulesPage() {
                     </div>
                   )}
                   <Accordion
-                    selectionMode="multiple"
+                    selectionMode="single"
                     defaultExpandedKeys={new Set()}
                     variant="shadow"
                     itemClasses={{

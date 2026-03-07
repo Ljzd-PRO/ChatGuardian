@@ -1645,7 +1645,7 @@ const resources = {
         triggeredAt: 'Déclenché à {{time}}',
         confidenceValue: 'Confiance {{value}}%',
         chatId: 'Chat : {{id}}',
-        suppressed: 'Supprimé',
+        suppressed: 'Inhibé',
         reasonLabel: 'Raison',
         extractedParams: 'Paramètres extraits',
         noParams: 'Aucun paramètre',
