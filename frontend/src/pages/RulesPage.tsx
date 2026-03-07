@@ -381,7 +381,7 @@ export default function RulesPage() {
 
   useEffect(() => {
     setRulePage(1);
-  }, [search, matcherFilterEnabled, activeMatcherFilters, ruleMatchesSearch]);
+  }, [search, matcherFilterEnabled, activeMatcherFilters]);
 
   useEffect(() => {
     setRulePage(p => Math.min(Math.max(1, p), rulesPages));

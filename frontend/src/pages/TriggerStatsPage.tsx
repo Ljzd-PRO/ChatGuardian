@@ -15,13 +15,15 @@ import { fetchRules } from '../api/rules';
 import TriggerChart from '../components/charts/TriggerChart';
 import type { RuleRecord } from '../api/stats';
 
+type RuleRecordWithMeta = RuleRecord & { ruleLabel: string; ruleDescription?: string };
+
 export default function TriggerStatsPage() {
   const { t } = useTranslation();
   const { data: stats, isLoading: statsLoading } = useQuery({ queryKey: ['rule_stats'], queryFn: fetchRuleStats });
   const { data: rules, isLoading: rulesLoading } = useQuery({ queryKey: ['rules'], queryFn: fetchRules });
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
-  const [selectedRecord, setSelectedRecord] = useState<(RuleRecord & { ruleLabel: string; ruleDescription?: string }) | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<RuleRecordWithMeta | null>(null);
   const RULES_PER_PAGE = 5;
 
   const loading = statsLoading || rulesLoading;
@@ -58,6 +60,8 @@ export default function TriggerStatsPage() {
   const chartData = filtered
     .filter(r => r.stat.count > 0)
     .map(r => ({ name: r.name, count: r.stat.count }));
+
+  const isRightAligned = (idx: number) => idx % 2 === 1;
 
   if (loading) return <div className="flex justify-center h-64"><Spinner label={t('stats.loading')} /></div>;
 
@@ -129,23 +133,20 @@ export default function TriggerStatsPage() {
                       <div className="space-y-3">
                         <p className="text-sm text-default-700 whitespace-pre-wrap break-words">{rec.reason}</p>
                         <div className="space-y-2">
-                          {rec.messages.map((m, i) => {
-                            const isRightAligned = i % 2 === 1;
-                            return (
-                              <div key={i} className={`flex ${isRightAligned ? 'justify-end' : 'justify-start'}`}>
-                                <div
-                                  className={`max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm ${
-                                    isRightAligned
-                                      ? 'bg-primary-50 border-primary-100 text-primary-800'
-                                      : 'bg-default-100 border-default-200 text-default-700'
-                                  }`}
-                                >
-                                  <p className="text-xs font-medium text-default-500 mb-1">{m.sender}</p>
-                                  <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
-                                </div>
+                          {rec.messages.map((m, i) => (
+                            <div key={i} className={`flex ${isRightAligned(i) ? 'justify-end' : 'justify-start'}`}>
+                              <div
+                                className={`max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm ${
+                                  isRightAligned(i)
+                                    ? 'bg-primary-50 border-primary-100 text-primary-800'
+                                    : 'bg-default-100 border-default-200 text-default-700'
+                                }`}
+                              >
+                                <p className="text-xs font-medium text-default-500 mb-1">{m.sender}</p>
+                                <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
                               </div>
-                            );
-                          })}
+                            </div>
+                          ))}
                         </div>
                         <Button
                           size="sm"
@@ -250,23 +251,20 @@ export default function TriggerStatsPage() {
                 <div className="space-y-2">
                   <p className="text-sm font-semibold text-default-700">{t('stats.contextMessages')}</p>
                   <div className="space-y-3">
-                    {selectedRecord.messages.map((m, idx) => {
-                      const isRightAligned = idx % 2 === 1;
-                      return (
-                        <div key={idx} className={`flex ${isRightAligned ? 'justify-end' : 'justify-start'}`}>
-                          <div
-                            className={`max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm ${
-                              isRightAligned
-                                ? 'bg-primary-50 border-primary-100 text-primary-800'
-                                : 'bg-default-100 border-default-200 text-default-700'
-                            }`}
-                          >
-                            <p className="text-xs font-medium text-default-500 mb-1">{m.sender}</p>
-                            <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
-                          </div>
+                    {selectedRecord.messages.map((m, idx) => (
+                      <div key={idx} className={`flex ${isRightAligned(idx) ? 'justify-end' : 'justify-start'}`}>
+                        <div
+                          className={`max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm ${
+                            isRightAligned(idx)
+                              ? 'bg-primary-50 border-primary-100 text-primary-800'
+                              : 'bg-default-100 border-default-200 text-default-700'
+                          }`}
+                        >
+                          <p className="text-xs font-medium text-default-500 mb-1">{m.sender}</p>
+                          <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </ModalBody>
