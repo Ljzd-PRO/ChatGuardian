@@ -957,7 +957,7 @@ export default function RulesPage() {
                           value={p.key}
                           onValueChange={v => updateParam(i, 'key', v)}
                         />
-                        <Input
+                        <Textarea
                           size="sm"
                           label={t('rules.description')}
                           startContent={<Icon icon={alignLeftBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
