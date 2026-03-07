@@ -7,13 +7,16 @@ FastAPI 应用与路由定义。
 from __future__ import annotations
 
 import os
+import secrets
+import uuid
 from collections import deque
 from contextlib import asynccontextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
+from typing import NamedTuple
 
-from fastapi import Body, FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
@@ -30,6 +33,7 @@ from chat_guardian.notifiers import (
     build_notifiers_from_settings,
 )
 from chat_guardian.repositories import (
+    AdminCredentialRepository,
     ChatHistoryStore,
     DetectionResultRepository,
     FeedbackRepository,
@@ -53,6 +57,49 @@ from chat_guardian.services import (
 from chat_guardian.settings import settings, Settings
 
 ENV_ONLY_KEYS = frozenset({"database_url", "app_name", "environment"})
+
+# ── Token store ────────────────────────────────────────────────────────────────
+# Maps token → expiry datetime (UTC).  Tokens are invalidated on logout or expiry.
+TOKEN_TTL = timedelta(hours=24)
+
+class _TokenEntry(NamedTuple):
+    username: str
+    expiry: datetime
+
+
+_active_tokens: dict[str, _TokenEntry] = {}
+
+
+def _create_token(username: str) -> str:
+    token = secrets.token_urlsafe(32)
+    expiry = datetime.now(tz=timezone.utc) + TOKEN_TTL
+    _active_tokens[token] = _TokenEntry(username=username, expiry=expiry)
+    return token
+
+
+def _validate_token(token: str) -> str | None:
+    """返回 token 对应的用户名，无效或过期时返回 None。"""
+    entry = _active_tokens.get(token)
+    if entry is None:
+        return None
+    if datetime.now(tz=timezone.utc) > entry.expiry:
+        del _active_tokens[token]
+        return None
+    return entry.username
+
+
+def _revoke_token(token: str) -> None:
+    _active_tokens.pop(token, None)
+
+
+# Paths that do NOT require authentication
+_PUBLIC_PREFIXES = ("/api/auth/", "/health", "/app", "/")
+
+def _is_public_path(path: str) -> bool:
+    for prefix in _PUBLIC_PREFIXES:
+        if path == prefix or path.startswith(prefix):
+            return True
+    return False
 
 
 @asynccontextmanager
@@ -127,6 +174,10 @@ class AppContainer:
                     from loguru import logger
                     logger.warning(f"⚠️ 配置项 '{key}' 加载失败，已使用默认值: {exc}")
 
+        self.admin_credential_repository = AdminCredentialRepository(
+            database_url=settings.database_url
+        )
+
         self.chat_history_store = ChatHistoryStore(
             pending_queue_limit=settings.pending_queue_limit,
             history_list_limit=settings.history_list_limit,
@@ -187,6 +238,95 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # ── Auth middleware ────────────────────────────────────────────────────────
+    @app.middleware("http")
+    async def auth_middleware(request: Request, call_next):
+        """所有 /api/* 路由（除 /api/auth/* 外）都需要有效的 Bearer token。"""
+        path = request.url.path
+        # 公开路径不需要验证
+        if _is_public_path(path):
+            return await call_next(request)
+        # 需要认证的路径：检查 Bearer token
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+        token = auth_header[len("Bearer "):]
+        username = _validate_token(token)
+        if username is None:
+            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+        return await call_next(request)
+
+    # ── Auth routes ────────────────────────────────────────────────────────────
+
+    @app.get("/api/auth/status")
+    async def auth_status():
+        """返回是否已完成首次设置（创建了管理员账号）。"""
+        setup_complete = container.admin_credential_repository.has_credentials()
+        return {"setup_complete": setup_complete}
+
+    @app.post("/api/auth/setup")
+    async def auth_setup(payload: dict):
+        """首次设置：创建管理员账号密码。若已存在账号则拒绝（需先登录后才能更改）。"""
+        if container.admin_credential_repository.has_credentials():
+            raise HTTPException(status_code=409, detail="Admin account already exists")
+        username: str = payload.get("username", "").strip()
+        password: str = payload.get("password", "")
+        if not username:
+            raise HTTPException(status_code=422, detail="Username is required")
+        if len(password) < 6:
+            raise HTTPException(status_code=422, detail="Password must be at least 6 characters")
+        container.admin_credential_repository.set_credentials(username, password)
+        token = _create_token(username)
+        return {"status": "ok", "token": token, "username": username}
+
+    @app.post("/api/auth/login")
+    async def auth_login(payload: dict):
+        """账号密码登录，返回 Bearer token。"""
+        username: str = payload.get("username", "")
+        password: str = payload.get("password", "")
+        if not container.admin_credential_repository.verify_credentials(username, password):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        token = _create_token(username)
+        return {"status": "ok", "token": token, "username": username}
+
+    @app.post("/api/auth/logout")
+    async def auth_logout(request: Request):
+        """吊销当前 token，使会话立即失效。"""
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[len("Bearer "):]
+            _revoke_token(token)
+        return {"status": "ok"}
+
+    @app.get("/api/auth/me")
+    async def auth_me(request: Request):
+        """返回当前登录用户名。"""
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header[len("Bearer "):] if auth_header.startswith("Bearer ") else ""
+        username = _validate_token(token)
+        if username is None:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        return {"username": username}
+
+    @app.post("/api/auth/change-password")
+    async def auth_change_password(request: Request, payload: dict):
+        """修改管理员密码（需要已登录）。"""
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header[len("Bearer "):] if auth_header.startswith("Bearer ") else ""
+        username = _validate_token(token)
+        if username is None:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        new_password: str = payload.get("new_password", "")
+        if len(new_password) < 6:
+            raise HTTPException(status_code=422, detail="Password must be at least 6 characters")
+        container.admin_credential_repository.set_credentials(username, new_password)
+        # Invalidate all existing tokens for security
+        for t in list(_active_tokens.keys()):
+            if _active_tokens[t].username == username:
+                del _active_tokens[t]
+        new_token = _create_token(username)
+        return {"status": "ok", "token": new_token}
 
     @app.get("/health")
     async def health() -> dict[str, str]:

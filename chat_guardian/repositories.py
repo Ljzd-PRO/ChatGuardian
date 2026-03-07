@@ -12,6 +12,10 @@ from collections import defaultdict, deque
 from datetime import datetime
 from typing import Any
 
+import base64
+import hashlib
+import os
+
 from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, delete, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
@@ -72,6 +76,15 @@ class _SettingRecord(_Base):
 
     key: Mapped[str] = mapped_column(String(128), primary_key=True)
     value: Mapped[str] = mapped_column(Text)
+
+
+class _AdminCredentialRecord(_Base):
+    __tablename__ = "admin_credentials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(Text)
+    salt: Mapped[str] = mapped_column(Text)
 
 
 class _RepositoryDatabase:
@@ -634,3 +647,74 @@ class SettingsRepository:
                 else:
                     row.value = serialized
             session.commit()
+
+
+class AdminCredentialRepository:
+    """管理员账号密码存储与验证（使用 PBKDF2-SHA256 哈希）。
+
+    Args:
+        database_url: 连接字符串。
+    """
+
+    _ITERATIONS = 260_000
+
+    def __init__(self, database_url: str | None = None):
+        self._db = _get_db_manager(database_url)
+
+    def has_credentials(self) -> bool:
+        """检查是否已设置过管理员账号密码。"""
+        if self._db is None:
+            return False
+        with self._db.session_factory() as session:
+            row = session.scalar(select(_AdminCredentialRecord).limit(1))
+            return row is not None
+
+    def get_username(self) -> str | None:
+        """返回当前管理员用户名，若未设置则返回 None。"""
+        if self._db is None:
+            return None
+        with self._db.session_factory() as session:
+            row = session.scalar(select(_AdminCredentialRecord).limit(1))
+            return row.username if row else None
+
+    @staticmethod
+    def _hash_password(password: str, salt: str) -> str:
+        return hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            salt.encode("utf-8"),
+            AdminCredentialRepository._ITERATIONS,
+        ).hex()
+
+    def set_credentials(self, username: str, password: str) -> None:
+        """设置（或覆盖）管理员账号密码。密码将被 PBKDF2-SHA256 哈希后存储。"""
+        if self._db is None:
+            return
+        salt = base64.b64encode(os.urandom(32)).decode("utf-8")
+        password_hash = self._hash_password(password, salt)
+        with self._db.session_factory() as session:
+            # 始终只保留一个管理员账号
+            session.execute(delete(_AdminCredentialRecord))
+            session.add(
+                _AdminCredentialRecord(
+                    username=username,
+                    password_hash=password_hash,
+                    salt=salt,
+                )
+            )
+            session.commit()
+
+    def verify_credentials(self, username: str, password: str) -> bool:
+        """验证账号密码，正确时返回 True。"""
+        if self._db is None:
+            return False
+        with self._db.session_factory() as session:
+            row = session.scalar(
+                select(_AdminCredentialRecord).where(
+                    _AdminCredentialRecord.username == username
+                )
+            )
+        if row is None:
+            return False
+        expected = self._hash_password(password, row.salt)
+        return expected == row.password_hash

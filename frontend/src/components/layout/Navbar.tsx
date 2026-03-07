@@ -1,12 +1,15 @@
-import { Button, Select, SelectItem } from '@heroui/react';
+import { Button, Select, SelectItem, Tooltip } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import hamburgerMenuBold from '@iconify/icons-solar/hamburger-menu-bold';
 import moonBold from '@iconify/icons-solar/moon-bold';
 import sun2Bold from '@iconify/icons-solar/sun-2-bold';
 import earthBold from '@iconify/icons-solar/earth-bold';
+import logoutBold from '@iconify/icons-solar/logout-bold';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../hooks/useTheme';
 import { supportedLanguages } from '../../i18n';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TopNavbarProps {
   onMenuClick: () => void;
@@ -16,8 +19,15 @@ interface TopNavbarProps {
 export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
   const { t, i18n } = useTranslation();
   const { isDark, toggle } = useTheme();
+  const { username, logout } = useAuth();
+  const navigate = useNavigate();
   const resolved = i18n.resolvedLanguage ?? i18n.language;
   const currentLang = supportedLanguages.some(l => l.code === resolved) ? resolved : 'en';
+
+  async function handleLogout() {
+    await logout();
+    navigate('/login', { replace: true });
+  }
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur border-b border-divider">
@@ -53,6 +63,20 @@ export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
         >
           <Icon icon={isDark ? moonBold : sun2Bold} fontSize={20} />
         </Button>
+        {username && (
+          <Tooltip content={t('auth.login.logoutTooltip', { username })}>
+            <Button
+              isIconOnly
+              size="md"
+              variant="flat"
+              color="default"
+              onPress={handleLogout}
+              aria-label="Logout"
+            >
+              <Icon icon={logoutBold} fontSize={20} />
+            </Button>
+          </Tooltip>
+        )}
       </div>
     </header>
   );
