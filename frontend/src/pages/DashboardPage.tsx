@@ -166,6 +166,7 @@ export default function DashboardPage() {
                 className="text-default-500 flex justify-start text-xs data-pressed:scale-100"
                 radius="none"
                 variant="light"
+                isDisabled
               >
                 {t('dashboard.viewAll')}
               </Button>
