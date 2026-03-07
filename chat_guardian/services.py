@@ -854,7 +854,7 @@ class DetectionEngine:
                 event_id=event_id,
                 rule_id=decision.rule_id,
                 adapter=event.platform,
-                chat_type=event.chat_type.value if hasattr(event.chat_type, 'value') else str(event.chat_type),
+                chat_type=event.chat_type.value,
                 chat_id=event.chat_id,
                 message_id=event.message.message_id,
                 decision=decision,
