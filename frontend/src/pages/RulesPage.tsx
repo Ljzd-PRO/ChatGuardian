@@ -802,7 +802,7 @@ export default function RulesPage() {
                   aria-label={t('rules.enableRule')}
                 />
                 <Button isIconOnly size="md" variant="flat" onPress={() => openEdit(rule)}>
-                  <Icon icon={pen2Bold} width={18} />
+                  <Icon icon={pen2Bold} fontSize={ICON_SIZES.button} />
                 </Button>
                 <Button
                   isIconOnly
@@ -811,7 +811,7 @@ export default function RulesPage() {
                   color="danger"
                   onPress={() => setDeleting(rule)}
                 >
-                  <Icon icon={trashBin2Bold} width={18} />
+                  <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />
                 </Button>
               </div>
             </CardBody>
@@ -964,7 +964,7 @@ export default function RulesPage() {
                           {t('rules.required')}
                         </Switch>
                         <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => removeParam(i)}>
-                          <Icon icon={trashBin2Bold} width={16} />
+                          <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />
                         </Button>
                       </div>
                     </div>
