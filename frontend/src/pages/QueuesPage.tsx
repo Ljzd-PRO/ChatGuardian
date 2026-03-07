@@ -16,6 +16,7 @@ import textBoldCircle from '@iconify/icons-solar/text-bold-circle-bold';
 import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
 import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
 import usersGroupRoundedBold from '@iconify/icons-solar/users-group-rounded-bold';
+import settingsBold from '@iconify/icons-solar/settings-bold';
 import { useTranslation } from 'react-i18next';
 import { clearHistoryMessages, deleteHistoryMessages, fetchQueues } from '../api/queues';
 import type { HistoryMessageKey, QueueMessage } from '../api/queues';
@@ -68,7 +69,7 @@ function QueueTable({
   const columns = useMemo<{ key: string; label: string; icon?: IconifyIcon }[]>(() => {
     const base = COLUMN_CONFIG.map(c => ({ key: c.key, label: t(c.labelKey), icon: c.icon }));
     if (enableHistoryActions) {
-      base.push({ key: 'actions', label: t('common.actions'), icon: trashBin2Bold });
+      base.push({ key: 'actions', label: t('common.actions'), icon: settingsBold });
     }
     return base;
   }, [enableHistoryActions, t]);
