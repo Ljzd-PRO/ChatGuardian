@@ -1,6 +1,16 @@
 import type { MatcherUnion, MatcherType } from '../../api/types';
 import { Button, Input, Select, SelectItem, Chip } from '@heroui/react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Icon, type IconifyIcon } from '@iconify/react';
+import addCircleBold from '@iconify/icons-solar/add-circle-bold';
+import bellBingBold from '@iconify/icons-solar/bell-bing-bold';
+import checkCircleBold from '@iconify/icons-solar/check-circle-bold';
+import checkSquareBold from '@iconify/icons-solar/check-square-bold';
+import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
+import closeCircleBold from '@iconify/icons-solar/close-circle-bold';
+import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
+import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
+import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
+import usersGroupRoundedBold from '@iconify/icons-solar/users-group-rounded-bold';
 import { useTranslation } from 'react-i18next';
 
 const TYPE_COLORS: Record<string, 'primary' | 'secondary' | 'danger' | 'default' | 'warning' | 'success'> = {
@@ -18,6 +28,18 @@ const TYPE_COLORS: Record<string, 'primary' | 'secondary' | 'danger' | 'default'
 const ALL_TYPES: MatcherType[] = [
   'and', 'or', 'not', 'all', 'sender', 'mention', 'chat', 'chat_type', 'adapter',
 ];
+
+const MATCHER_ICONS: Record<MatcherType, IconifyIcon> = {
+  and: checkSquareBold,
+  or: addCircleBold,
+  not: closeCircleBold,
+  all: checkCircleBold,
+  sender: userRoundedBold,
+  mention: bellBingBold,
+  chat: chatDotsBold,
+  chat_type: usersGroupRoundedBold,
+  adapter: plugCircleBold,
+};
 
 function defaultMatcher(type: MatcherType): MatcherUnion {
   switch (type) {
@@ -55,7 +77,12 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
       style={{ marginLeft: indent }}
     >
       <div className="flex items-center gap-2 flex-wrap">
-        <Chip color={color} size="sm" variant="flat">
+        <Chip
+          color={color}
+          size="sm"
+          variant="flat"
+          startContent={<Icon icon={MATCHER_ICONS[value.type]} width={14} />}
+        >
           {value.type.toUpperCase()}
         </Chip>
         <Select
@@ -76,9 +103,10 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
                   size="sm"
                   variant="flat"
                   color={TYPE_COLORS[matcherType] ?? 'default'}
-                  className="min-w-[48px] justify-center"
+                  className="min-w-[44px] justify-center"
+                  startContent={<Icon icon={MATCHER_ICONS[matcherType]} width={14} />}
                 >
-                  {matcherType.toUpperCase()}
+                  <span className="sr-only">{t(`matcher.types.${matcherType}`)}</span>
                 </Chip>
               )}
             >
@@ -88,7 +116,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
         </Select>
         {onRemove && (
           <Button isIconOnly size="sm" color="danger" variant="light" onPress={onRemove}>
-            <Trash2 size={14} />
+            <Icon icon={trashBin2Bold} width={16} />
           </Button>
         )}
       </div>
@@ -173,7 +201,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
           <Button
             size="sm"
             variant="flat"
-            startContent={<Plus size={14} />}
+            startContent={<Icon icon={addCircleBold} width={16} />}
             onPress={() => onChange({ ...value, matchers: [...value.matchers, { type: 'all' }] })}
           >
             {t('matcher.addCondition')}

@@ -1,5 +1,8 @@
 import { Button, Select, SelectItem, Switch } from '@heroui/react';
-import { Menu, Moon, Sun } from 'lucide-react';
+import { Icon } from '@iconify/react';
+import hamburgerMenuBold from '@iconify/icons-solar/hamburger-menu-bold';
+import moonBold from '@iconify/icons-solar/moon-bold';
+import sun2Bold from '@iconify/icons-solar/sun-2-bold';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
 import { supportedLanguages } from '../../i18n';
@@ -19,19 +22,19 @@ export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
     <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur border-b border-divider">
       <div className="flex items-center gap-4">
         <Button isIconOnly size="md" variant="light" className="md:hidden" onPress={onMenuClick}>
-          <Menu size={22} />
+          <Icon icon={hamburgerMenuBold} width={22} />
         </Button>
         <h1 className="text-lg md:text-xl font-semibold text-default-900">{title}</h1>
       </div>
       <div className="flex items-center gap-3">
-        <Sun size={18} className="text-default-500" />
+        <Icon icon={sun2Bold} width={18} className="text-default-500" />
         <Switch
           size="md"
           isSelected={isDark}
           onValueChange={toggle}
           aria-label={t('common.toggleDark')}
         />
-        <Moon size={18} className="text-default-500" />
+        <Icon icon={moonBold} width={18} className="text-default-500" />
         <Select
           size="md"
           aria-label={t('common.language')}
