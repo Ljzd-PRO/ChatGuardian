@@ -82,13 +82,12 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
           color={color}
           size="sm"
           variant="flat"
-          startContent={<Icon icon={MATCHER_ICONS[value.type]} fontSize={ICON_SIZES.chip} />}
         >
-          {value.type.toUpperCase()}
+          <Icon icon={MATCHER_ICONS[value.type]} fontSize={ICON_SIZES.chip} />
         </Chip>
         <Select
           size="sm"
-          className="w-40"
+          className="w-40 justify-center"
           selectedKeys={[value.type]}
           onSelectionChange={(keys) => {
             const k = Array.from(keys)[0] as MatcherType;
@@ -115,7 +114,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
           ))}
         </Select>
         {onRemove && (
-          <Button isIconOnly size="sm" color="danger" variant="light" onPress={onRemove}>
+          <Button isIconOnly size="sm" color="danger" variant="light" onPress={onRemove} className="ml-auto">
             <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />
           </Button>
         )}
