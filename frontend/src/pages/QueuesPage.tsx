@@ -30,6 +30,8 @@ const COLUMN_CONFIG: { key: string; labelKey: string; icon: IconifyIcon }[] = [
   { key: 'content', labelKey: 'queues.content', icon: textBoldCircle },
   { key: 'time', labelKey: 'queues.time', icon: clockCircleBold },
 ];
+/** Tailwind classes applied to the selection-checkbox column (first th/td) */
+const SELECTION_COL_CLASS = 'first:w-12 first:min-w-0 first:px-2';
 const COLUMN_STYLES: Record<string, string> = {
   adapter: 'w-28 min-w-[7rem]',
   type: 'w-24 min-w-[6rem]',
@@ -260,8 +262,8 @@ function QueueTable({
         sortDescriptor={sortDescriptor}
         onSortChange={setSortDescriptor}
         classNames={{
-          th: 'first:w-12 first:min-w-0 first:px-2',
-          td: 'first:w-12 first:min-w-0 first:px-2',
+          th: SELECTION_COL_CLASS,
+          td: SELECTION_COL_CLASS,
           sortIcon: 'text-default-500',
         }}
       >
