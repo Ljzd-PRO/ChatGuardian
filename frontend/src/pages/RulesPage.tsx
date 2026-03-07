@@ -534,7 +534,7 @@ export default function RulesPage() {
           <div className="flex flex-1 gap-2 items-center min-w-[280px]">
             <Input
               size="sm"
-      startContent={<Icon icon={magnifierBold} width={14} className="text-default-500" />}
+              startContent={<Icon icon={magnifierBold} width={14} className="text-default-500" />}
               placeholder={t('rules.searchPlaceholder')}
               value={search}
               onValueChange={setSearch}
