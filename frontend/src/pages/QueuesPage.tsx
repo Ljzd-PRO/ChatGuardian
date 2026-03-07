@@ -30,6 +30,8 @@ const COLUMN_CONFIG: { key: string; labelKey: string; icon: IconifyIcon }[] = [
   { key: 'content', labelKey: 'queues.content', icon: textBoldCircle },
   { key: 'time', labelKey: 'queues.time', icon: clockCircleBold },
 ];
+/** Tailwind classes applied to the selection-checkbox column (first th/td) */
+const SELECTION_COL_CLASS = 'first:w-12 first:min-w-0 first:px-2';
 const COLUMN_STYLES: Record<string, string> = {
   adapter: 'w-28 min-w-[7rem]',
   type: 'w-24 min-w-[6rem]',
@@ -260,9 +262,9 @@ function QueueTable({
         sortDescriptor={sortDescriptor}
         onSortChange={setSortDescriptor}
         classNames={{
-          th: 'whitespace-nowrap data-[allows-sorting=true]:flex data-[allows-sorting=true]:flex-row data-[allows-sorting=true]:items-center data-[allows-sorting=true]:gap-2',
+          th: enableHistoryActions ? SELECTION_COL_CLASS : undefined,
+          td: enableHistoryActions ? SELECTION_COL_CLASS : undefined,
           sortIcon: 'text-default-500',
-          wrapper: 'overflow-visible',
         }}
       >
         <TableHeader columns={columns}>
@@ -273,10 +275,10 @@ function QueueTable({
               align="start"
               className={cn('text-sm md:text-base whitespace-nowrap', COLUMN_STYLES[column.key] ?? '')}
             >
-              <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1">
                 {column.icon && <Icon icon={column.icon} fontSize={ICON_SIZES.input} className="text-default-500" />}
-                <span>{column.label}</span>
-              </div>
+                {column.label}
+              </span>
             </TableColumn>
           )}
         </TableHeader>

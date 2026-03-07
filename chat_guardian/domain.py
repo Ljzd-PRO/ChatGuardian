@@ -221,6 +221,8 @@ class DetectionResult(BaseModel):
         result_id: 结果唯一 ID。
         event_id: 事件 ID。
         rule_id: 规则 ID。
+        adapter: 适配器名称（平台标识）。
+        chat_type: 聊天类型（group/private）。
         chat_id: 会话 ID。
         message_id: 消息 ID。
         decision: 规则决策。
@@ -233,6 +235,8 @@ class DetectionResult(BaseModel):
     result_id: str
     event_id: str
     rule_id: str
+    adapter: str = ''
+    chat_type: str = ''
     chat_id: str
     message_id: str
     decision: RuleDecision

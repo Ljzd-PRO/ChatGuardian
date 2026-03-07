@@ -5,6 +5,8 @@ export interface RuleRecord {
   result_id?: string;
   event_id?: string;
   rule_id?: string;
+  adapter?: string;
+  chat_type?: string;
   chat_id?: string;
   message_id?: string;
   trigger_time: string;
