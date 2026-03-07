@@ -121,7 +121,7 @@ export default function RulesPage() {
   }, [rules]);
 
   const selectedIds = useMemo(() => Object.keys(selectedRules).filter(id => selectedRules[id]), [selectedRules]);
-  const loweredSearch = useMemo(() => search.toLowerCase(), [search]);
+  const lowerCaseSearch = useMemo(() => search.toLowerCase(), [search]);
   const activeMatcherFilters = useMemo(
     () => matcherFilters.filter(f => f.type),
     [matcherFilters],
@@ -276,11 +276,11 @@ export default function RulesPage() {
 
   const ruleMatchesSearch = useCallback((rule: DetectionRule) => {
     const keywordTarget = `${rule.name} ${rule.description} ${rule.topic_hints.join(' ')}`.toLowerCase();
-    const keywordOk = keywordTarget.includes(loweredSearch);
+    const keywordOk = keywordTarget.includes(lowerCaseSearch);
     if (!matcherFilterEnabled) return keywordOk;
     if (activeMatcherFilters.length === 0) return keywordOk;
     return keywordOk && activeMatcherFilters.every(f => matcherContains(rule.matcher, f));
-  }, [activeMatcherFilters, loweredSearch, matcherFilterEnabled]);
+  }, [activeMatcherFilters, lowerCaseSearch, matcherFilterEnabled]);
 
   function toggleSelect(id: string) {
     setSelectedRules(prev => ({ ...prev, [id]: !prev[id] }));
