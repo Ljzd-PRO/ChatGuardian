@@ -276,6 +276,7 @@ export default function RulesPage() {
         selectionMode="multiple"
         defaultExpandedKeys={new Set()}
         itemClasses={{ title: 'w-full' }}
+        variant="splitted"
         className="bg-transparent"
       >
         <AccordionItem
@@ -291,13 +292,8 @@ export default function RulesPage() {
             </div>
           )}
         >
-          <Card className="shadow-md border border-default-200">
+          <Card className="shadow-md">
             <CardBody className="space-y-4">
-              <div className="flex items-center justify-end gap-3 flex-wrap">
-                <Button color="primary" size="sm" isDisabled={!settings} isLoading={saveDetection.isPending} onPress={() => saveDetection.mutate()}>
-                  {t('common.save')}
-                </Button>
-              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <Input
                   label={t('rules.appName')}
@@ -378,6 +374,11 @@ export default function RulesPage() {
                   onValueChange={v => setDetForm(f => ({ ...f, external_rule_generation_endpoint: v }))}
                   className="md:col-span-2"
                 />
+              </div>
+              <div className="flex items-center justify-end gap-3 flex-wrap">
+                <Button color="primary" size="sm" isDisabled={!settings} isLoading={saveDetection.isPending} onPress={() => saveDetection.mutate()}>
+                  {t('common.save')}
+                </Button>
               </div>
               {saveDetection.isSuccess && <p className="text-success text-sm">{t('common.saved')}</p>}
               {saveDetection.isError && <p className="text-danger text-sm">{t('common.saveFailed')}</p>}
