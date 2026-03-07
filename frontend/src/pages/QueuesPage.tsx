@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
   Card, CardBody, Chip, Input, Pagination, Select, SelectItem, Spinner,
-  Tab, Tabs, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  Tab, Tabs, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, cn,
 } from '@heroui/react';
 import type { Selection, SortDescriptor } from '@heroui/react';
 import { Icon, type IconifyIcon } from '@iconify/react';
@@ -30,6 +30,15 @@ const COLUMN_CONFIG: { key: string; labelKey: string; icon: IconifyIcon }[] = [
   { key: 'content', labelKey: 'queues.content', icon: textBoldCircle },
   { key: 'time', labelKey: 'queues.time', icon: clockCircleBold },
 ];
+const COLUMN_STYLES: Record<string, string> = {
+  adapter: 'w-28 min-w-[7rem]',
+  type: 'w-24 min-w-[6rem]',
+  chat: 'w-44 min-w-[10rem]',
+  sender: 'w-44 min-w-[11rem]',
+  content: 'w-[18rem] min-w-[16rem] max-w-[22rem]',
+  time: 'w-48 min-w-[12rem]',
+  actions: 'w-32 min-w-[8rem]',
+};
 const ROWS_PER_PAGE = 10;
 type SelectionKey = Selection extends Set<infer K> ? K : never;
 
@@ -250,13 +259,19 @@ function QueueTable({
         bottomContent={bottomContent}
         sortDescriptor={sortDescriptor}
         onSortChange={setSortDescriptor}
+        classNames={{
+          th: 'whitespace-nowrap data-[allows-sorting=true]:flex data-[allows-sorting=true]:flex-row data-[allows-sorting=true]:items-center data-[allows-sorting=true]:gap-2',
+          sortIcon: 'text-default-500',
+          wrapper: 'overflow-visible',
+        }}
       >
         <TableHeader columns={columns}>
           {(column) => (
             <TableColumn
               key={column.key}
               allowsSorting={column.sortable !== false && column.key !== 'actions'}
-              className="text-sm md:text-base"
+              align="start"
+              className={cn('text-sm md:text-base whitespace-nowrap', COLUMN_STYLES[column.key] ?? '')}
             >
               <div className="flex items-center gap-2">
                 {column.icon && <Icon icon={column.icon} fontSize={ICON_SIZES.input} className="text-default-500" />}
@@ -269,13 +284,13 @@ function QueueTable({
           {enableHistoryActions
             ? pageItems.map(m => (
               <TableRow key={messageKey(m)}>
-                <TableCell><Chip size="sm" variant="flat">{m.adapter}</Chip></TableCell>
-                <TableCell><Chip size="sm" color="primary" variant="flat">{m.chat_type}</Chip></TableCell>
-                <TableCell className="text-xs md:text-sm text-default-500">{m.chat_id}</TableCell>
-                <TableCell className="text-sm md:text-base">{m.sender_name}</TableCell>
-                <TableCell className="text-sm md:text-base max-w-xs md:max-w-md truncate">{m.content}</TableCell>
-                <TableCell className="text-xs md:text-sm text-default-400">{new Date(m.timestamp).toLocaleString()}</TableCell>
-                <TableCell>
+                <TableCell className={COLUMN_STYLES.adapter}><Chip size="sm" variant="flat">{m.adapter}</Chip></TableCell>
+                <TableCell className={COLUMN_STYLES.type}><Chip size="sm" color="primary" variant="flat">{m.chat_type}</Chip></TableCell>
+                <TableCell className={cn('text-xs md:text-sm text-default-500', COLUMN_STYLES.chat)}>{m.chat_id}</TableCell>
+                <TableCell className={cn('text-sm md:text-base', COLUMN_STYLES.sender)}>{m.sender_name}</TableCell>
+                <TableCell className={cn('text-sm md:text-base truncate', COLUMN_STYLES.content)} title={m.content}>{m.content}</TableCell>
+                <TableCell className={cn('text-xs md:text-sm text-default-400', COLUMN_STYLES.time)}>{new Date(m.timestamp).toLocaleString()}</TableCell>
+                <TableCell className={COLUMN_STYLES.actions}>
                   <Button
                     size="sm"
                     color="danger"
@@ -297,12 +312,12 @@ function QueueTable({
             ))
             : pageItems.map(m => (
               <TableRow key={messageKey(m)}>
-                <TableCell><Chip size="sm" variant="flat">{m.adapter}</Chip></TableCell>
-                <TableCell><Chip size="sm" color="primary" variant="flat">{m.chat_type}</Chip></TableCell>
-                <TableCell className="text-xs md:text-sm text-default-500">{m.chat_id}</TableCell>
-                <TableCell className="text-sm md:text-base">{m.sender_name}</TableCell>
-                <TableCell className="text-sm md:text-base max-w-xs md:max-w-md truncate">{m.content}</TableCell>
-                <TableCell className="text-xs md:text-sm text-default-400">{new Date(m.timestamp).toLocaleString()}</TableCell>
+                <TableCell className={COLUMN_STYLES.adapter}><Chip size="sm" variant="flat">{m.adapter}</Chip></TableCell>
+                <TableCell className={COLUMN_STYLES.type}><Chip size="sm" color="primary" variant="flat">{m.chat_type}</Chip></TableCell>
+                <TableCell className={cn('text-xs md:text-sm text-default-500', COLUMN_STYLES.chat)}>{m.chat_id}</TableCell>
+                <TableCell className={cn('text-sm md:text-base', COLUMN_STYLES.sender)}>{m.sender_name}</TableCell>
+                <TableCell className={cn('text-sm md:text-base truncate', COLUMN_STYLES.content)} title={m.content}>{m.content}</TableCell>
+                <TableCell className={cn('text-xs md:text-sm text-default-400', COLUMN_STYLES.time)}>{new Date(m.timestamp).toLocaleString()}</TableCell>
               </TableRow>
             ))}
         </TableBody>
@@ -386,14 +401,7 @@ export default function QueuesPage() {
   if (isLoading) return <div className="flex justify-center h-64"><Spinner label={t('queues.loading')} /></div>;
 
   return (
-    <Tabs aria-label={t('queues.messages')}>
-      <Tab key="pending" title={t('queues.pending', { count: data?.pending.length ?? 0 })}>
-        <Card className="mt-2">
-          <CardBody>
-            <QueueTable messages={data?.pending ?? []} loading={isFetching} />
-          </CardBody>
-        </Card>
-      </Tab>
+    <Tabs aria-label={t('queues.messages')} defaultSelectedKey="history">
       <Tab key="history" title={t('queues.history', { count: data?.history.length ?? 0 })}>
         <Card className="mt-2">
           <CardBody>
@@ -407,6 +415,13 @@ export default function QueuesPage() {
               loading={isFetching || remove.isPending}
               clearing={clearHistory.isPending}
             />
+          </CardBody>
+        </Card>
+      </Tab>
+      <Tab key="pending" title={t('queues.pending', { count: data?.pending.length ?? 0 })}>
+        <Card className="mt-2">
+          <CardBody>
+            <QueueTable messages={data?.pending ?? []} loading={isFetching} />
           </CardBody>
         </Card>
       </Tab>
