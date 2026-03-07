@@ -695,6 +695,7 @@ export default function RulesPage() {
 
       {/* Edit modal */}
       <Modal
+        isDismissable={false}
         isOpen={!!editing}
         onClose={() => setEditing(null)}
         size="3xl"
