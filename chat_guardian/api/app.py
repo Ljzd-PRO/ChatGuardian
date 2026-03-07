@@ -419,6 +419,9 @@ def create_app() -> FastAPI:
                 if r.decision.triggered and r.generated_at.date() == today:
                     triggers_today += 1
 
+        messages_today = sum(
+            1 for r in container.detection_result_repository.results if r.generated_at.date() == today
+        )
         total_results = sum(
             len(v) for v in container.detection_result_repository.results_by_rule.values()
         )
@@ -435,6 +438,7 @@ def create_app() -> FastAPI:
             "enabled_rules": enabled_rules,
             "triggers_today": triggers_today,
             "trigger_rate": trigger_rate,
+            "messages_today": messages_today,
             "llm_status": llm_diag,
         }
 

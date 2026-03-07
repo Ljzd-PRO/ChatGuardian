@@ -1,13 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardBody, CardHeader, Chip, Spinner } from '@heroui/react';
-import { Icon } from '@iconify/react';
-import chart2Bold from '@iconify/icons-solar/chart-2-bold';
+import { Button, Card, CardBody, CardHeader, Chip, Spinner, cn } from '@heroui/react';
+import { Icon, type IconifyIcon } from '@iconify/react';
 import lightningBold from '@iconify/icons-solar/lightning-bold';
 import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
 import pulse2Bold from '@iconify/icons-solar/pulse-2-bold';
 import shieldCheckBold from '@iconify/icons-solar/shield-check-bold';
+import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
 import { useTranslation } from 'react-i18next';
-import StatsCard from '../components/charts/StatsCard';
 import TriggerChart from '../components/charts/TriggerChart';
 import { fetchDashboard } from '../api/dashboard';
 import { fetchAdapters } from '../api/adapters';
@@ -45,6 +44,50 @@ export default function DashboardPage() {
         .slice(0, 10)
     : [];
 
+  type StatCard = {
+    title: string;
+    value: number;
+    change: string;
+    changeType: 'positive' | 'neutral' | 'negative';
+    trendChipPosition: 'top' | 'bottom';
+    icon: IconifyIcon;
+  };
+
+  const statCards: StatCard[] = [
+    {
+      title: t('dashboard.totalRules'),
+      value: dash?.total_rules ?? 0,
+      change: t('dashboard.liveChip'),
+      changeType: 'neutral' as const,
+      trendChipPosition: 'top' as const,
+      icon: shieldCheckBold,
+    },
+    {
+      title: t('dashboard.enabledRules'),
+      value: dash?.enabled_rules ?? 0,
+      change: dash?.total_rules ? `${Math.round(((dash.enabled_rules ?? 0) / dash.total_rules) * 100)}%` : '0%',
+      changeType: 'positive' as const,
+      trendChipPosition: 'top' as const,
+      icon: lightningBold,
+    },
+    {
+      title: t('dashboard.triggersToday'),
+      value: dash?.triggers_today ?? 0,
+      change: t('dashboard.todayLabel'),
+      changeType: (dash?.triggers_today ?? 0) > 0 ? ('positive' as const) : ('neutral' as const),
+      trendChipPosition: 'top' as const,
+      icon: pulse2Bold,
+    },
+    {
+      title: t('dashboard.messagesToday'),
+      value: dash?.messages_today ?? 0,
+      change: t('dashboard.todayLabel'),
+      changeType: (dash?.messages_today ?? 0) > 0 ? ('positive' as const) : ('neutral' as const),
+      trendChipPosition: 'bottom' as const,
+      icon: chatDotsBold,
+    },
+  ];
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -56,32 +99,81 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatsCard
-          title={t('dashboard.totalRules')}
-          value={dash?.total_rules ?? 0}
-          icon={<Icon icon={shieldCheckBold} fontSize={ICON_SIZES.dashboard} />}
-          color="primary"
-        />
-        <StatsCard
-          title={t('dashboard.enabledRules')}
-          value={dash?.enabled_rules ?? 0}
-          icon={<Icon icon={lightningBold} fontSize={ICON_SIZES.dashboard} />}
-          color="success"
-        />
-        <StatsCard
-          title={t('dashboard.triggersToday')}
-          value={dash?.triggers_today ?? 0}
-          icon={<Icon icon={pulse2Bold} fontSize={ICON_SIZES.dashboard} />}
-          color="warning"
-        />
-        <StatsCard
-          title={t('dashboard.triggerRate')}
-          value={`${((dash?.trigger_rate ?? 0) * 100).toFixed(1)}%`}
-          icon={<Icon icon={chart2Bold} fontSize={ICON_SIZES.dashboard} />}
-          color="danger"
-        />
-      </div>
+      <dl className="grid w-full grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        {statCards.map(({ title, value, change, changeType, trendChipPosition, icon }, idx) => (
+          <Card key={idx} className="relative dark:border-default-100 border border-transparent overflow-hidden">
+            <div className="flex p-4 items-center gap-4">
+              <div
+                className={cn('mt-1 flex h-10 w-10 items-center justify-center rounded-md', {
+                  'bg-success-50': changeType === 'positive',
+                  'bg-warning-50': changeType === 'neutral',
+                  'bg-danger-50': changeType === 'negative',
+                })}
+              >
+                <Icon
+                  className={
+                    changeType === 'positive'
+                      ? 'text-success'
+                      : changeType === 'neutral'
+                        ? 'text-warning'
+                        : 'text-danger'
+                  }
+                  icon={icon}
+                  fontSize={ICON_SIZES.dashboard}
+                />
+              </div>
+
+              <div className="flex flex-col gap-y-1">
+                <dt className="text-small text-default-500">{title}</dt>
+                <dd className="text-default-700 text-3xl font-semibold">{value}</dd>
+              </div>
+
+              <Chip
+                className={cn('absolute right-4', {
+                  'top-4': trendChipPosition === 'top',
+                  'bottom-4': trendChipPosition === 'bottom',
+                })}
+                classNames={{
+                  content: 'font-semibold text-[0.7rem]',
+                }}
+                color={
+                  changeType === 'positive'
+                    ? 'success'
+                    : changeType === 'neutral'
+                      ? 'warning'
+                      : 'danger'
+                }
+                radius="sm"
+                size="sm"
+                startContent={
+                  changeType === 'positive' ? (
+                    <Icon height={12} icon={'solar:arrow-right-up-linear'} width={12} />
+                  ) : changeType === 'neutral' ? (
+                    <Icon height={12} icon={'solar:arrow-right-linear'} width={12} />
+                  ) : (
+                    <Icon height={12} icon={'solar:arrow-right-down-linear'} width={12} />
+                  )
+                }
+                variant="flat"
+              >
+                {change}
+              </Chip>
+            </div>
+
+            <div className="bg-default-100">
+              <Button
+                fullWidth
+                className="text-default-500 flex justify-start text-xs data-pressed:scale-100"
+                radius="none"
+                variant="light"
+                isDisabled
+              >
+                {t('dashboard.viewAll')}
+              </Button>
+            </div>
+          </Card>
+        ))}
+      </dl>
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Chart */}

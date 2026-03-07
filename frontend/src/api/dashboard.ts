@@ -5,6 +5,7 @@ export interface DashboardData {
   enabled_rules: number;
   triggers_today: number;
   trigger_rate: number;
+  messages_today: number;
   llm_status: Record<string, unknown>;
 }
 

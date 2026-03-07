@@ -5,7 +5,7 @@ import {
   Card, CardBody, Chip, Input, Pagination, Select, SelectItem, Spinner,
   Tab, Tabs, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
 } from '@heroui/react';
-import type { Selection } from '@heroui/react';
+import type { Selection, SortDescriptor } from '@heroui/react';
 import { Icon, type IconifyIcon } from '@iconify/react';
 import dangerTriangleBold from '@iconify/icons-solar/danger-triangle-bold';
 import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
@@ -63,14 +63,15 @@ function QueueTable({
   const [confirmBulk, setConfirmBulk] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [page, setPage] = useState(1);
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({ column: 'time', direction: 'descending' });
 
   const adapters = useMemo(() => [...new Set(messages.map(m => m.adapter))], [messages]);
   const types = useMemo(() => [...new Set(messages.map(m => m.chat_type))], [messages]);
 
-  const columns = useMemo<{ key: string; label: string; icon?: IconifyIcon }[]>(() => {
-    const base = COLUMN_CONFIG.map(c => ({ key: c.key, label: t(c.labelKey), icon: c.icon }));
+  const columns = useMemo<{ key: string; label: string; icon?: IconifyIcon; sortable?: boolean }[]>(() => {
+    const base = COLUMN_CONFIG.map(c => ({ key: c.key, label: t(c.labelKey), icon: c.icon, sortable: true }));
     if (enableHistoryActions) {
-      base.push({ key: 'actions', label: t('common.actions'), icon: settingsBold });
+      base.push({ key: 'actions', label: t('common.actions'), icon: settingsBold, sortable: false });
     }
     return base;
   }, [enableHistoryActions, t]);
@@ -89,11 +90,33 @@ function QueueTable({
     );
   }), [adapterFilter, messages, query, searchField, typeFilter]);
 
+  const sorted = useMemo(() => {
+    const items = [...filtered];
+    const { column, direction } = sortDescriptor;
+    if (!column) return items;
+    const dir = direction === 'descending' ? -1 : 1;
+    items.sort((a, b) => {
+      const getValue = (key: string) => {
+        switch (key) {
+          case 'adapter': return a.adapter.localeCompare(b.adapter);
+          case 'type': return a.chat_type.localeCompare(b.chat_type);
+          case 'chat': return a.chat_id.localeCompare(b.chat_id);
+          case 'sender': return a.sender_name.localeCompare(b.sender_name);
+          case 'content': return a.content.localeCompare(b.content);
+          case 'time': return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+          default: return 0;
+        }
+      };
+      return getValue(column as string) * dir;
+    });
+    return items;
+  }, [filtered, sortDescriptor]);
+
   const filteredKeys = useMemo(() => new Set(filtered.map(messageKey)), [filtered]);
   const pages = useMemo(() => Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE)), [filtered.length]);
   const pageItems = useMemo(
-    () => filtered.slice((page - 1) * ROWS_PER_PAGE, page * ROWS_PER_PAGE),
-    [filtered, page],
+    () => sorted.slice((page - 1) * ROWS_PER_PAGE, page * ROWS_PER_PAGE),
+    [sorted, page],
   );
 
   useEffect(() => {
@@ -225,10 +248,16 @@ function QueueTable({
         onSelectionChange={enableHistoryActions ? (keys => setSelectedKeys(keys)) : undefined}
         isHeaderSticky
         bottomContent={bottomContent}
+        sortDescriptor={sortDescriptor}
+        onSortChange={setSortDescriptor}
       >
         <TableHeader columns={columns}>
           {(column) => (
-            <TableColumn key={column.key} className="text-sm md:text-base">
+            <TableColumn
+              key={column.key}
+              allowsSorting={column.sortable !== false && column.key !== 'actions'}
+              className="text-sm md:text-base"
+            >
               <div className="flex items-center gap-2">
                 {column.icon && <Icon icon={column.icon} fontSize={ICON_SIZES.input} className="text-default-500" />}
                 <span>{column.label}</span>

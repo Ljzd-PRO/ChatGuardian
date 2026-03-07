@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Accordion, AccordionItem, Button, Card, CardBody, Checkbox, Chip, Input, Modal, ModalBody,
@@ -70,9 +70,6 @@ export default function RulesPage() {
   const [selectedRules, setSelectedRules] = useState<Record<string, boolean>>({});
   const [matcherFilters, setMatcherFilters] = useState<Partial<LeafMatcher>[]>([{ type: 'sender' }]);
   const [matcherFilterEnabled, setMatcherFilterEnabled] = useState(false);
-  const [swipeStart, setSwipeStart] = useState<number | null>(null);
-  const [swipedRule, setSwipedRule] = useState<string | null>(null);
-  const swipeTimer = useRef<number | null>(null);
   const [rulePage, setRulePage] = useState(1);
   const RULES_PER_PAGE = 5;
 
@@ -92,10 +89,6 @@ export default function RulesPage() {
       external_rule_generation_endpoint: settings.external_rule_generation_endpoint ?? '',
     });
   }, [settings]);
-
-  useEffect(() => () => {
-    if (swipeTimer.current) window.clearTimeout(swipeTimer.current);
-  }, []);
 
   const upsert = useMutation({
     mutationFn: upsertRule,
@@ -133,19 +126,27 @@ export default function RulesPage() {
     setMatcherFilters(prev => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
   }, []);
   const matcherPreview = useMemo(() => {
-    const leafLabel = (icon: IconifyIcon, text: string) => (
-      <div className="flex items-center gap-2 text-sm text-default-700">
-        <Icon icon={icon} fontSize={ICON_SIZES.chip} className="text-default-500" />
-        <span className="truncate">{text}</span>
-      </div>
+    const leafLabel = (
+      icon: IconifyIcon,
+      text: string,
+      color: 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger' = 'default',
+    ) => (
+      <Chip
+        variant="flat"
+        color={color}
+        size="sm"
+        startContent={<Icon icon={icon} fontSize={ICON_SIZES.chip} className="text-inherit" />}
+        classNames={{ content: 'truncate max-w-[16rem]' }}
+      >
+        {text}
+      </Chip>
     );
 
     const renderMatcher = (m: MatcherUnion, path = 'root'): ReactNode => {
       if (m.type === 'all') {
         return (
           <div key={path} className="flex items-center gap-2 text-sm font-medium text-success">
-            <Icon icon={checkCircleBold} fontSize={ICON_SIZES.chip} />
-            <span>{t('matcher.preview.all')}</span>
+            {leafLabel(checkCircleBold, t('matcher.preview.all'), 'success')}
           </div>
         );
       }
@@ -153,7 +154,7 @@ export default function RulesPage() {
         return (
           <div key={path} className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
-              <Chip size="sm" variant="bordered" color="secondary" className="uppercase">
+              <Chip size="sm" variant="flat" color="secondary" className="uppercase">
                 {t(`matcher.types.${m.type}`)}
               </Chip>
             </div>
@@ -171,8 +172,7 @@ export default function RulesPage() {
         return (
           <div key={path} className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-semibold text-danger">
-              <Icon icon={closeCircleBold} fontSize={ICON_SIZES.chip} />
-              <span className="uppercase tracking-wide">{t('matcher.types.not')}</span>
+              {leafLabel(closeCircleBold, t('matcher.types.not'), 'danger')}
             </div>
             <div className="pl-4 border-l border-default-200">
               {renderMatcher(m.matcher, `${path}-not`)}
@@ -310,26 +310,6 @@ export default function RulesPage() {
         setBulkConfirmOpen(false);
         setSelectedRules({});
       });
-  }
-
-  function handleTouchStart(x: number, id: string) {
-    setSwipeStart(x);
-    setSwipedRule(id);
-    if (swipeTimer.current) window.clearTimeout(swipeTimer.current);
-    swipeTimer.current = window.setTimeout(() => setSwipedRule(null), 3500);
-  }
-
-  function handleTouchMove(x: number) {
-    if (swipeStart === null) return;
-    const diff = swipeStart - x;
-    if (diff > 60) {
-      setSwipeStart(null);
-      if (swipedRule) setDeleting(rules?.find(r => r.rule_id === swipedRule) ?? null);
-    }
-  }
-
-  function handleTouchEnd() {
-    setSwipeStart(null);
   }
 
   function openNew() {
@@ -723,13 +703,8 @@ export default function RulesPage() {
 
       <div className="space-y-4">
         {pagedRules.map(rule => (
-          <Card key={rule.rule_id} className="w-full border border-default-200 shadow-sm">
-            <CardBody
-              className="flex flex-col gap-3 md:flex-row md:items-start justify-between md:gap-6"
-              onTouchStart={e => handleTouchStart(e.touches[0].clientX, rule.rule_id)}
-              onTouchMove={e => handleTouchMove(e.touches[0].clientX)}
-              onTouchEnd={handleTouchEnd}
-            >
+            <Card key={rule.rule_id} className="w-full border border-default-200 shadow-sm">
+              <CardBody className="flex flex-col gap-3 md:flex-row md:items-start justify-between md:gap-6">
               <div className="flex items-start gap-3 flex-1 min-w-0">
                 <Checkbox
                   isSelected={!!selectedRules[rule.rule_id]}

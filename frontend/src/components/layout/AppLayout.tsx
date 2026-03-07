@@ -29,6 +29,9 @@ export default function AppLayout() {
       <div className="flex-1 flex flex-col min-w-0">
         <TopNavbar onMenuClick={toggle} title={title} />
         <main className="flex-1 p-4 md:p-6 overflow-auto">
+          <div className="md:hidden mb-4">
+            <h1 className="text-2xl font-bold text-default-900">{title}</h1>
+          </div>
           <Outlet />
         </main>
       </div>
