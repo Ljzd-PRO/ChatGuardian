@@ -43,7 +43,7 @@ export default function TriggerChart({ data }: TriggerChartProps) {
             dataKey="count"
             nameKey="name"
             innerRadius="60%"
-            paddingAngle={-20}
+            paddingAngle={2}
             strokeWidth={0}
           >
             {data.map((_, index) => (
