@@ -250,7 +250,7 @@ export default function TriggerStatsPage() {
                       {Object.entries(selectedRecord.extracted_params).map(([key, val]) => (
                         <div
                           key={key}
-                          className="flex items-start gap-2 rounded-lg border border-default-200 bg-default-50 px-3 py-2"
+                          className="flex items-center gap-2 justify-start rounded-lg border border-default-200 bg-default-50 px-3 py-2"
                         >
                           <Chip size="sm" variant="flat" color="secondary" className="shrink-0">{key}</Chip>
                           <Snippet
