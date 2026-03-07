@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { fetchAdapters, startAdapters, stopAdapters } from '../api/adapters';
 import { fetchSettings, updateSettings } from '../api/settings';
 import type { AppSettings } from '../api/settings';
+import { ICON_SIZES } from '../constants/iconSizes';
 
 export default function AdaptersPage() {
   const { t } = useTranslation();
@@ -81,7 +82,7 @@ export default function AdaptersPage() {
             <Button
               color="success"
               variant="flat"
-              startContent={<Icon icon={playBold} width={14} />}
+              startContent={<Icon icon={playBold} fontSize={ICON_SIZES.button} />}
               isLoading={start.isPending}
               onPress={() => start.mutate()}
             >
@@ -90,7 +91,7 @@ export default function AdaptersPage() {
             <Button
               color="danger"
               variant="flat"
-              startContent={<Icon icon={stopBold} width={14} />}
+              startContent={<Icon icon={stopBold} fontSize={ICON_SIZES.button} />}
               isLoading={stop.isPending}
               onPress={() => stop.mutate()}
             >

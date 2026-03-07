@@ -19,6 +19,7 @@ import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
 import { useTranslation } from 'react-i18next';
 import { fetchNotificationsConfig, updateSettings } from '../api/settings';
 import type { AppSettings } from '../api/settings';
+import { ICON_SIZES } from '../constants/iconSizes';
 
 export default function NotificationsPage() {
   const { t } = useTranslation();
@@ -151,7 +152,7 @@ export default function NotificationsPage() {
 
         <Button
           color="primary"
-          startContent={<Icon icon={disketteBold} width={16} />}
+          startContent={<Icon icon={disketteBold} fontSize={ICON_SIZES.button} />}
           isLoading={save.isPending}
           onPress={() => save.mutate()}
         >

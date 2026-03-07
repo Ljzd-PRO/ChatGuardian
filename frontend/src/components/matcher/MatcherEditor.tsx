@@ -12,6 +12,7 @@ import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
 import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
 import usersGroupRoundedBold from '@iconify/icons-solar/users-group-rounded-bold';
 import { useTranslation } from 'react-i18next';
+import { ICON_SIZES } from '../../constants/iconSizes';
 
 const TYPE_COLORS: Record<string, 'primary' | 'secondary' | 'danger' | 'default' | 'warning' | 'success'> = {
   and: 'primary',
@@ -81,7 +82,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
           color={color}
           size="sm"
           variant="flat"
-          startContent={<Icon icon={MATCHER_ICONS[value.type]} width={14} />}
+          startContent={<Icon icon={MATCHER_ICONS[value.type]} fontSize={ICON_SIZES.chip} />}
         >
           {value.type.toUpperCase()}
         </Chip>
@@ -105,7 +106,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
                   color={TYPE_COLORS[matcherType] ?? 'default'}
                   className="justify-center"
                 >
-                  <Icon icon={MATCHER_ICONS[matcherType]} width={14} />
+                  <Icon icon={MATCHER_ICONS[matcherType]} fontSize={ICON_SIZES.chip} />
                 </Chip>
               )}
             >
@@ -115,7 +116,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
         </Select>
         {onRemove && (
           <Button isIconOnly size="sm" color="danger" variant="light" onPress={onRemove}>
-            <Icon icon={trashBin2Bold} width={16} />
+            <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />
           </Button>
         )}
       </div>
@@ -200,7 +201,7 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
           <Button
             size="sm"
             variant="flat"
-            startContent={<Icon icon={addCircleBold} width={16} />}
+            startContent={<Icon icon={addCircleBold} fontSize={ICON_SIZES.button} />}
             onPress={() => onChange({ ...value, matchers: [...value.matchers, { type: 'all' }] })}
           >
             {t('matcher.addCondition')}

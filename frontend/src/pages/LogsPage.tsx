@@ -7,6 +7,7 @@ import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
 import { useTranslation } from 'react-i18next';
 import { clearLogs, fetchLogs } from '../api/logs';
 import type { LogEntry } from '../api/logs';
+import { ICON_SIZES } from '../constants/iconSizes';
 
 const LEVEL_COLORS: Record<string, 'default' | 'primary' | 'warning' | 'danger' | 'success'> = {
   DEBUG:    'default',
@@ -53,7 +54,13 @@ export default function LogsPage() {
         <Button
           size="sm"
           variant="flat"
-          startContent={<Icon icon={refreshCircleBold} width={16} className={isFetching ? 'animate-spin' : ''} />}
+          startContent={(
+            <Icon
+              icon={refreshCircleBold}
+              fontSize={ICON_SIZES.button}
+              className={isFetching ? 'animate-spin' : ''}
+            />
+          )}
           onPress={() => refetch()}
         >
           {t('logs.refresh')}
@@ -62,7 +69,7 @@ export default function LogsPage() {
           size="sm"
           color="danger"
           variant="flat"
-          startContent={<Icon icon={trashBin2Bold} width={16} />}
+          startContent={<Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />}
           isLoading={clear.isPending}
           onPress={() => clear.mutate()}
         >

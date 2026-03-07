@@ -19,6 +19,7 @@ import thermometerBold from '@iconify/icons-solar/thermometer-bold';
 import { useTranslation } from 'react-i18next';
 import { fetchLLMHealth, fetchSettings, updateSettings } from '../api/settings';
 import type { AppSettings } from '../api/settings';
+import { ICON_SIZES } from '../constants/iconSizes';
 
 export default function LLMPage() {
   const { t } = useTranslation();
@@ -76,7 +77,7 @@ export default function LLMPage() {
               size="sm"
               color="primary"
               variant="flat"
-              startContent={<Icon icon={lightningBold} width={16} />}
+              startContent={<Icon icon={lightningBold} fontSize={ICON_SIZES.button} />}
               isLoading={pinging}
               onPress={doPing}
             >

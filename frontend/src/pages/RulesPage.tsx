@@ -38,6 +38,7 @@ import type {
 import MatcherEditor from '../components/matcher/MatcherEditor';
 import { fetchSettings, updateSettings } from '../api/settings';
 import type { AppSettings } from '../api/settings';
+import { ICON_SIZES } from '../constants/iconSizes';
 
 type LeafMatcher = MatchSender | MatchMention | MatchChatInfo | MatchChatType | MatchAdapter;
 const LEAF_MATCHER_TYPES: LeafMatcher['type'][] = ['sender', 'mention', 'chat', 'chat_type', 'adapter'];
@@ -139,7 +140,7 @@ export default function RulesPage() {
         variant="flat"
         color={color}
         className="max-w-[180px]"
-        startContent={<Icon icon={icon} width={14} />}
+        startContent={<Icon icon={icon} fontSize={ICON_SIZES.chip} />}
       >
         <span className="truncate">{label}</span>
       </Chip>
@@ -153,7 +154,7 @@ export default function RulesPage() {
             size="sm"
             variant="flat"
             color="success"
-            startContent={<Icon icon={checkCircleBold} width={14} />}
+            startContent={<Icon icon={checkCircleBold} fontSize={ICON_SIZES.chip} />}
           >
             {t('matcher.preview.all')}
           </Chip>
@@ -184,15 +185,15 @@ export default function RulesPage() {
       if (m.type === 'not') {
         return (
           <div key={path} className="flex items-center gap-1">
-            <Chip
-              size="sm"
-              variant="bordered"
-              color="danger"
-              startContent={<Icon icon={closeCircleBold} width={14} />}
-              className="uppercase tracking-wide"
-            >
-              {t('matcher.types.not')}
-            </Chip>
+          <Chip
+            size="sm"
+            variant="bordered"
+            color="danger"
+            startContent={<Icon icon={closeCircleBold} fontSize={ICON_SIZES.chip} />}
+            className="uppercase tracking-wide"
+          >
+            {t('matcher.types.not')}
+          </Chip>
             {renderMatcher(m.matcher, `${path}-not`)}
           </div>
         );
@@ -499,13 +500,18 @@ export default function RulesPage() {
         <div className="flex items-center gap-3 flex-wrap">
           <p className="text-default-500 text-sm">{t('rules.ruleCount', { count: filteredRules.length })}</p>
           <div className="flex gap-2 flex-wrap items-center">
-            <Chip size="sm" variant="flat" color="primary" startContent={<Icon icon={filterBold} width={16} />}>
+            <Chip
+              size="sm"
+              variant="flat"
+              color="primary"
+              startContent={<Icon icon={filterBold} fontSize={ICON_SIZES.chip} />}
+            >
               {t('rules.filtersActive', { count: matcherFilterEnabled ? activeMatcherFilters.length : 0 })}
             </Chip>
             <Button
               size="sm"
               variant="flat"
-              startContent={<Icon icon={closeCircleBold} width={16} />}
+              startContent={<Icon icon={closeCircleBold} fontSize={ICON_SIZES.button} />}
               onPress={() => { setMatcherFilterEnabled(false); setMatcherFilters([{ type: 'sender' }]); }}
             >
               {t('rules.clearFilters')}
@@ -513,7 +519,7 @@ export default function RulesPage() {
             <Button
               size="sm"
               variant="flat"
-              startContent={<Icon icon={checkSquareBold} width={16} />}
+              startContent={<Icon icon={checkSquareBold} fontSize={ICON_SIZES.button} />}
               onPress={() => selectAllFiltered(filteredRules.map(r => r.rule_id))}
               isDisabled={filteredRules.length === 0}
             >
@@ -522,7 +528,7 @@ export default function RulesPage() {
             <Button
               size="sm"
               variant="light"
-              startContent={<Icon icon={closeCircleBold} width={16} />}
+              startContent={<Icon icon={closeCircleBold} fontSize={ICON_SIZES.button} />}
               onPress={() => setSelectedRules({})}
               isDisabled={selectedIds.length === 0}
             >
@@ -534,14 +540,19 @@ export default function RulesPage() {
           <div className="flex flex-1 gap-2 items-center min-w-[280px]">
             <Input
               size="sm"
-              startContent={<Icon icon={textFieldFocusBold} width={14} className="text-default-500" />}
+              startContent={<Icon icon={textFieldFocusBold} fontSize={ICON_SIZES.button} className="text-default-500" />}
               placeholder={t('rules.searchPlaceholder')}
               value={search}
               onValueChange={setSearch}
               aria-label={t('rules.searchPlaceholder')}
               className="w-full min-w-[220px]"
             />
-            <Button color="primary" startContent={<Icon icon={addCircleBold} width={18} />} onPress={openNew} className="whitespace-nowrap">
+            <Button
+              color="primary"
+              startContent={<Icon icon={addCircleBold} fontSize={ICON_SIZES.button} />}
+              onPress={openNew}
+              className="whitespace-nowrap"
+            >
               {t('rules.newRule')}
             </Button>
           </div>
@@ -549,7 +560,7 @@ export default function RulesPage() {
             <Button
               size="sm"
               variant="flat"
-              startContent={<Icon icon={settingsBold} width={16} />}
+              startContent={<Icon icon={settingsBold} fontSize={ICON_SIZES.button} />}
               onPress={() => setMatcherFilterEnabled(v => !v)}
               color={matcherFilterEnabled ? 'primary' : 'default'}
             >
@@ -558,7 +569,7 @@ export default function RulesPage() {
             <Button
               size="sm"
               variant="flat"
-              startContent={<Icon icon={shieldCheckBold} width={16} />}
+              startContent={<Icon icon={shieldCheckBold} fontSize={ICON_SIZES.button} />}
               isDisabled={selectedIds.length === 0}
               onPress={() => handleBulkEnable(true, selectedIds)}
             >
@@ -567,7 +578,7 @@ export default function RulesPage() {
             <Button
               size="sm"
               variant="flat"
-              startContent={<Icon icon={shieldCheckBold} width={16} />}
+              startContent={<Icon icon={shieldCheckBold} fontSize={ICON_SIZES.button} />}
               isDisabled={selectedIds.length === 0}
               onPress={() => handleBulkEnable(false, selectedIds)}
             >
@@ -577,7 +588,7 @@ export default function RulesPage() {
               size="sm"
               variant="flat"
               color="danger"
-              startContent={<Icon icon={trashBin2Bold} width={16} />}
+              startContent={<Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />}
               isDisabled={selectedIds.length === 0}
               onPress={() => setBulkConfirmOpen(true)}
             >
@@ -616,7 +627,7 @@ export default function RulesPage() {
                       onPress={() => setMatcherFilters(f => f.filter((_, i) => i !== idx))}
                       aria-label={t('rules.clearFilters')}
                     >
-                      <Icon icon={trashBin2Bold} width={16} />
+                      <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />
                     </Button>
                   )}
                 </div>
@@ -687,7 +698,7 @@ export default function RulesPage() {
               <Button
                 size="sm"
                 variant="flat"
-                startContent={<Icon icon={addCircleBold} width={16} />}
+                startContent={<Icon icon={addCircleBold} fontSize={ICON_SIZES.button} />}
                 onPress={() => setMatcherFilters(f => [...f, { type: 'sender' }])}
               >
                 {t('rules.addMatcherFilter')}
@@ -726,11 +737,16 @@ export default function RulesPage() {
                       size="sm"
                       color={rule.enabled ? 'success' : 'default'}
                       variant="flat"
-                      startContent={<Icon icon={pulse2Bold} width={14} />}
+                      startContent={<Icon icon={pulse2Bold} fontSize={ICON_SIZES.chip} />}
                     >
                       {rule.enabled ? t('common.enabled') : t('common.disabled')}
                     </Chip>
-                    <Chip size="sm" variant="flat" color="primary" startContent={<Icon icon={tuning2Bold} width={14} />}>
+                    <Chip
+                      size="sm"
+                      variant="flat"
+                      color="primary"
+                      startContent={<Icon icon={tuning2Bold} fontSize={ICON_SIZES.chip} />}
+                    >
                       {t('rules.threshold', { value: rule.score_threshold.toFixed(2) })}
                     </Chip>
                   </div>
@@ -743,7 +759,7 @@ export default function RulesPage() {
                           size="sm"
                           variant="solid"
                           color="secondary"
-                          startContent={<Icon icon={hashtagCircleBold} width={14} />}
+                          startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.chip} />}
                         >
                           {topic}
                         </Chip>
@@ -758,7 +774,7 @@ export default function RulesPage() {
                           size="sm"
                           variant={param.required ? 'solid' : 'bordered'}
                           color="warning"
-                          startContent={<Icon icon={tagBold} width={14} />}
+                          startContent={<Icon icon={tagBold} fontSize={ICON_SIZES.chip} />}
                         >
                           {param.key || t('rules.unnamedParam')}{param.required ? ' *' : ''}
                         </Chip>
@@ -767,7 +783,11 @@ export default function RulesPage() {
                   )}
                   <div className="flex items-center gap-2">
                     <Tooltip content={matcherPreview(rule)}>
-                      <Button size="sm" variant="light" startContent={<Icon icon={eyeBold} width={16} />}>
+                      <Button
+                        size="sm"
+                        variant="light"
+                        startContent={<Icon icon={eyeBold} fontSize={ICON_SIZES.button} />}
+                      >
                         {t('rules.matcherPreviewLabel')}
                       </Button>
                     </Tooltip>
@@ -903,12 +923,17 @@ export default function RulesPage() {
 
                 {/* Parameters */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Icon icon={listCheckBold} width={16} className="text-default-500" />
-                      <p className="text-sm font-medium text-default-700">{t('rules.parameters')}</p>
-                    </div>
-                    <Button size="sm" variant="flat" onPress={addParam} startContent={<Icon icon={addCircleBold} width={16} />}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Icon icon={listCheckBold} width={16} className="text-default-500" />
+                        <p className="text-sm font-medium text-default-700">{t('rules.parameters')}</p>
+                      </div>
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      onPress={addParam}
+                      startContent={<Icon icon={addCircleBold} fontSize={ICON_SIZES.button} />}
+                    >
                       {t('common.add')}
                     </Button>
                   </div>

@@ -20,6 +20,7 @@ import settingsBold from '@iconify/icons-solar/settings-bold';
 import { useTranslation } from 'react-i18next';
 import { clearHistoryMessages, deleteHistoryMessages, fetchQueues } from '../api/queues';
 import type { HistoryMessageKey, QueueMessage } from '../api/queues';
+import { ICON_SIZES } from '../constants/iconSizes';
 
 const COLUMN_CONFIG: { key: string; labelKey: string; icon: IconifyIcon }[] = [
   { key: 'adapter', labelKey: 'queues.adapter', icon: plugCircleBold },
@@ -196,7 +197,7 @@ function QueueTable({
               size="sm"
               color="warning"
               variant="flat"
-              startContent={<Icon icon={dangerTriangleBold} width={18} />}
+              startContent={<Icon icon={dangerTriangleBold} fontSize={ICON_SIZES.button} />}
               isDisabled={bulkDisabled || selectedMessages.length === 0}
               onPress={() => setConfirmBulk(true)}
             >
@@ -206,7 +207,7 @@ function QueueTable({
               size="sm"
               color="danger"
               variant="solid"
-              startContent={<Icon icon={trashBin2Bold} width={18} />}
+              startContent={<Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />}
               isDisabled={bulkDisabled || (filtered.length === 0)}
               isLoading={clearing}
               onPress={() => setConfirmClear(true)}
@@ -251,7 +252,7 @@ function QueueTable({
                     color="danger"
                     variant="light"
                     isDisabled={bulkDisabled}
-                    startContent={<Icon icon={trashBin2Bold} width={16} />}
+                    startContent={<Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />}
                     onPress={() => onDeleteOne?.({
                       adapter: m.adapter,
                       platform: m.platform,
@@ -292,7 +293,7 @@ function QueueTable({
                 <Button variant="flat" onPress={() => setConfirmBulk(false)}>{t('common.cancel')}</Button>
                 <Button
                   color="danger"
-                  startContent={<Icon icon={trashBin2Bold} width={18} />}
+                  startContent={<Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />}
                   isDisabled={selectedMessages.length === 0}
                   onPress={() => {
                     setConfirmBulk(false);
@@ -317,7 +318,7 @@ function QueueTable({
                 <Button variant="flat" onPress={() => setConfirmClear(false)}>{t('common.cancel')}</Button>
                 <Button
                   color="danger"
-                  startContent={<Icon icon={trashBin2Bold} width={18} />}
+                  startContent={<Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />}
                   onPress={() => {
                     setConfirmClear(false);
                     onClearAll?.();
