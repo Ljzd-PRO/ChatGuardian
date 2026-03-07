@@ -7,11 +7,8 @@ import {
 import { Icon, type IconifyIcon } from '@iconify/react';
 import addCircleBold from '@iconify/icons-solar/add-circle-bold';
 import alignLeftBold from '@iconify/icons-solar/align-left-bold';
-import bellBingBold from '@iconify/icons-solar/bell-bing-bold';
 import chart2Bold from '@iconify/icons-solar/chart-2-bold';
-import checkCircleBold from '@iconify/icons-solar/check-circle-bold';
 import checkSquareBold from '@iconify/icons-solar/check-square-bold';
-import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
 import closeCircleBold from '@iconify/icons-solar/close-circle-bold';
 import eyeBold from '@iconify/icons-solar/eye-bold';
 import filterBold from '@iconify/icons-solar/filter-bold';
@@ -20,15 +17,12 @@ import listCheckBold from '@iconify/icons-solar/list-check-bold';
 import magicStick2Bold from '@iconify/icons-solar/magic-stick-2-bold';
 import textFieldFocusBold from '@iconify/icons-solar/text-field-focus-bold';
 import pen2Bold from '@iconify/icons-solar/pen-2-bold';
-import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
 import pulse2Bold from '@iconify/icons-solar/pulse-2-bold';
 import settingsBold from '@iconify/icons-solar/settings-bold';
 import shieldCheckBold from '@iconify/icons-solar/shield-check-bold';
 import tagBold from '@iconify/icons-solar/tag-bold';
 import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
 import tuning2Bold from '@iconify/icons-solar/tuning-2-bold';
-import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
-import usersGroupRoundedBold from '@iconify/icons-solar/users-group-rounded-bold';
 import { useTranslation } from 'react-i18next';
 import { fetchRules, upsertRule, deleteRule } from '../api/rules';
 import type {
@@ -36,6 +30,7 @@ import type {
   MatchAdapter, MatchChatInfo, MatchChatType, MatchMention, MatchSender,
 } from '../api/types';
 import MatcherEditor from '../components/matcher/MatcherEditor';
+import { MATCHER_ICONS, TYPE_COLORS } from '../components/matcher/constants';
 import { fetchSettings, updateSettings } from '../api/settings';
 import type { AppSettings } from '../api/settings';
 import { ICON_SIZES } from '../constants/iconSizes';
@@ -146,15 +141,22 @@ export default function RulesPage() {
       if (m.type === 'all') {
         return (
           <div key={path} className="flex items-center gap-2 text-sm font-medium text-success">
-            {leafLabel(checkCircleBold, t('matcher.preview.all'), 'success')}
+            {leafLabel(MATCHER_ICONS.all, t('matcher.preview.all'), TYPE_COLORS.all ?? 'success')}
           </div>
         );
       }
       if (m.type === 'and' || m.type === 'or') {
+        const color = TYPE_COLORS[m.type] ?? 'default';
         return (
           <div key={path} className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
-              <Chip size="sm" variant="flat" color="secondary" className="uppercase">
+              <Chip
+                size="sm"
+                variant="flat"
+                color={color}
+                className="uppercase"
+                startContent={<Icon icon={MATCHER_ICONS[m.type]} fontSize={ICON_SIZES.chip} />}
+              >
                 {t(`matcher.types.${m.type}`)}
               </Chip>
             </div>
@@ -172,7 +174,7 @@ export default function RulesPage() {
         return (
           <div key={path} className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-semibold text-danger">
-              {leafLabel(closeCircleBold, t('matcher.types.not'), 'danger')}
+              {leafLabel(MATCHER_ICONS.not, t('matcher.types.not'), TYPE_COLORS.not ?? 'danger')}
             </div>
             <div className="pl-4 border-l border-default-200">
               {renderMatcher(m.matcher, `${path}-not`)}
@@ -181,51 +183,61 @@ export default function RulesPage() {
         );
       }
       if (m.type === 'sender') {
+        const color = TYPE_COLORS[m.type] ?? 'default';
         return (
           <div key={path}>
             {leafLabel(
-              userRoundedBold,
+              MATCHER_ICONS.sender,
               `${t('matcher.types.sender')}: ${m.display_name || m.user_id || t('common.none')}`,
+              color,
             )}
           </div>
         );
       }
       if (m.type === 'mention') {
+        const color = TYPE_COLORS[m.type] ?? 'default';
         return (
           <div key={path}>
             {leafLabel(
-              bellBingBold,
+              MATCHER_ICONS.mention,
               `${t('matcher.types.mention')}: ${m.display_name || m.user_id || t('common.none')}`,
+              color,
             )}
           </div>
         );
       }
       if (m.type === 'chat') {
+        const color = TYPE_COLORS[m.type] ?? 'default';
         return (
           <div key={path}>
             {leafLabel(
-              chatDotsBold,
+              MATCHER_ICONS.chat,
               `${t('matcher.types.chat')}: ${m.chat_id || t('common.none')}`,
+              color,
             )}
           </div>
         );
       }
       if (m.type === 'chat_type') {
+        const color = TYPE_COLORS[m.type] ?? 'default';
         return (
           <div key={path}>
             {leafLabel(
-              usersGroupRoundedBold,
+              MATCHER_ICONS.chat_type,
               `${t('matcher.types.chat_type')}: ${m.chat_type}`,
+              color,
             )}
           </div>
         );
       }
       if (m.type === 'adapter') {
+        const color = TYPE_COLORS[m.type] ?? 'default';
         return (
           <div key={path}>
             {leafLabel(
-              plugCircleBold,
+              MATCHER_ICONS.adapter,
               `${t('matcher.types.adapter')}: ${m.adapter_name || t('common.none')}`,
+              color,
             )}
           </div>
         );

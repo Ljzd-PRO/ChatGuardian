@@ -1,46 +1,15 @@
 import type { MatcherUnion, MatcherType } from '../../api/types';
 import { Button, Input, Select, SelectItem, Chip } from '@heroui/react';
-import { Icon, type IconifyIcon } from '@iconify/react';
+import { Icon } from '@iconify/react';
 import addCircleBold from '@iconify/icons-solar/add-circle-bold';
-import bellBingBold from '@iconify/icons-solar/bell-bing-bold';
-import checkCircleBold from '@iconify/icons-solar/check-circle-bold';
-import checkSquareBold from '@iconify/icons-solar/check-square-bold';
-import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
-import closeCircleBold from '@iconify/icons-solar/close-circle-bold';
-import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
 import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
-import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
-import usersGroupRoundedBold from '@iconify/icons-solar/users-group-rounded-bold';
 import { useTranslation } from 'react-i18next';
 import { ICON_SIZES } from '../../constants/iconSizes';
-
-const TYPE_COLORS: Record<string, 'primary' | 'secondary' | 'danger' | 'default' | 'warning' | 'success'> = {
-  and: 'primary',
-  or: 'secondary',
-  not: 'danger',
-  all: 'success',
-  sender: 'default',
-  mention: 'default',
-  chat: 'default',
-  chat_type: 'warning',
-  adapter: 'default',
-};
+import { MATCHER_ICONS, TYPE_COLORS } from './constants';
 
 const ALL_TYPES: MatcherType[] = [
   'and', 'or', 'not', 'all', 'sender', 'mention', 'chat', 'chat_type', 'adapter',
 ];
-
-const MATCHER_ICONS: Record<MatcherType, IconifyIcon> = {
-  and: checkSquareBold,
-  or: addCircleBold,
-  not: closeCircleBold,
-  all: checkCircleBold,
-  sender: userRoundedBold,
-  mention: bellBingBold,
-  chat: chatDotsBold,
-  chat_type: usersGroupRoundedBold,
-  adapter: plugCircleBold,
-};
 
 function defaultMatcher(type: MatcherType): MatcherUnion {
   switch (type) {

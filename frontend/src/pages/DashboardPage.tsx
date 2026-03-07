@@ -12,6 +12,7 @@ import { fetchDashboard } from '../api/dashboard';
 import { fetchAdapters } from '../api/adapters';
 import { fetchRuleStats } from '../api/stats';
 import { ICON_SIZES } from '../constants/iconSizes';
+import { Link } from 'react-router-dom';
 
 export default function DashboardPage() {
   const { t } = useTranslation();
@@ -47,44 +48,39 @@ export default function DashboardPage() {
   type StatCard = {
     title: string;
     value: number;
-    change: string;
-    changeType: 'positive' | 'neutral' | 'negative';
-    trendChipPosition: 'top' | 'bottom';
     icon: IconifyIcon;
+    color: 'success' | 'warning' | 'danger' | 'secondary';
+    href: string;
   };
 
   const statCards: StatCard[] = [
     {
       title: t('dashboard.totalRules'),
       value: dash?.total_rules ?? 0,
-      change: t('dashboard.liveChip'),
-      changeType: 'neutral' as const,
-      trendChipPosition: 'top' as const,
       icon: shieldCheckBold,
+      color: 'secondary' as const,
+      href: '/rules',
     },
     {
       title: t('dashboard.enabledRules'),
       value: dash?.enabled_rules ?? 0,
-      change: dash?.total_rules ? `${Math.round(((dash.enabled_rules ?? 0) / dash.total_rules) * 100)}%` : '0%',
-      changeType: 'positive' as const,
-      trendChipPosition: 'top' as const,
       icon: lightningBold,
+      color: 'success' as const,
+      href: '/rules',
     },
     {
       title: t('dashboard.triggersToday'),
       value: dash?.triggers_today ?? 0,
-      change: t('dashboard.todayLabel'),
-      changeType: (dash?.triggers_today ?? 0) > 0 ? ('positive' as const) : ('neutral' as const),
-      trendChipPosition: 'top' as const,
       icon: pulse2Bold,
+      color: 'warning' as const,
+      href: '/stats',
     },
     {
       title: t('dashboard.messagesToday'),
       value: dash?.messages_today ?? 0,
-      change: t('dashboard.todayLabel'),
-      changeType: (dash?.messages_today ?? 0) > 0 ? ('positive' as const) : ('neutral' as const),
-      trendChipPosition: 'bottom' as const,
       icon: chatDotsBold,
+      color: 'secondary' as const,
+      href: '/queues',
     },
   ];
 
@@ -100,23 +96,26 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Stats row */}
       <dl className="grid w-full grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {statCards.map(({ title, value, change, changeType, trendChipPosition, icon }, idx) => (
+        {statCards.map(({ title, value, icon, color, href }, idx) => (
           <Card key={idx} className="relative dark:border-default-100 border border-transparent overflow-hidden">
             <div className="flex p-4 items-center gap-4">
               <div
                 className={cn('mt-1 flex h-10 w-10 items-center justify-center rounded-md', {
-                  'bg-success-50': changeType === 'positive',
-                  'bg-warning-50': changeType === 'neutral',
-                  'bg-danger-50': changeType === 'negative',
+                  'bg-success-50': color === 'success',
+                  'bg-warning-50': color === 'warning',
+                  'bg-danger-50': color === 'danger',
+                  'bg-secondary-50': color === 'secondary',
                 })}
               >
                 <Icon
                   className={
-                    changeType === 'positive'
+                    color === 'success'
                       ? 'text-success'
-                      : changeType === 'neutral'
+                      : color === 'warning'
                         ? 'text-warning'
-                        : 'text-danger'
+                        : color === 'danger'
+                          ? 'text-danger'
+                          : 'text-secondary'
                   }
                   icon={icon}
                   fontSize={ICON_SIZES.dashboard}
@@ -127,46 +126,16 @@ export default function DashboardPage() {
                 <dt className="text-small text-default-500">{title}</dt>
                 <dd className="text-default-700 text-3xl font-semibold">{value}</dd>
               </div>
-
-              <Chip
-                className={cn('absolute right-4', {
-                  'top-4': trendChipPosition === 'top',
-                  'bottom-4': trendChipPosition === 'bottom',
-                })}
-                classNames={{
-                  content: 'font-semibold text-[0.7rem]',
-                }}
-                color={
-                  changeType === 'positive'
-                    ? 'success'
-                    : changeType === 'neutral'
-                      ? 'warning'
-                      : 'danger'
-                }
-                radius="sm"
-                size="sm"
-                startContent={
-                  changeType === 'positive' ? (
-                    <Icon height={12} icon={'solar:arrow-right-up-linear'} width={12} />
-                  ) : changeType === 'neutral' ? (
-                    <Icon height={12} icon={'solar:arrow-right-linear'} width={12} />
-                  ) : (
-                    <Icon height={12} icon={'solar:arrow-right-down-linear'} width={12} />
-                  )
-                }
-                variant="flat"
-              >
-                {change}
-              </Chip>
             </div>
 
             <div className="bg-default-100">
               <Button
+                as={Link}
+                to={href}
                 fullWidth
                 className="text-default-500 flex justify-start text-xs data-pressed:scale-100"
                 radius="none"
                 variant="light"
-                isDisabled
               >
                 {t('dashboard.viewAll')}
               </Button>
