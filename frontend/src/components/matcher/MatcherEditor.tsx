@@ -106,7 +106,6 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
                   className="min-w-[44px] justify-center"
                   startContent={<Icon icon={MATCHER_ICONS[matcherType]} width={14} />}
                 >
-                  <span className="sr-only">{t(`matcher.types.${matcherType}`)}</span>
                 </Chip>
               )}
             >

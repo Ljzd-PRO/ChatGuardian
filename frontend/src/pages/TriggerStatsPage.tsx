@@ -7,7 +7,7 @@ import { Icon } from '@iconify/react';
 import chart2Bold from '@iconify/icons-solar/chart-2-bold';
 import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
 import clockCircleBold from '@iconify/icons-solar/clock-circle-bold';
-import magniferBold from '@iconify/icons-solar/magnifer-bold';
+import textFieldFocusBold from '@iconify/icons-solar/text-field-focus-bold';
 import { useTranslation } from 'react-i18next';
 import { fetchRuleStats } from '../api/stats';
 import { fetchRules } from '../api/rules';
@@ -57,7 +57,7 @@ export default function TriggerStatsPage() {
       <div className="flex justify-end">
         <Input
           size="sm"
-          startContent={<Icon icon={magniferBold} width={14} className="text-default-500" />}
+          startContent={<Icon icon={textFieldFocusBold} width={14} className="text-default-500" />}
           className="w-64"
           placeholder={t('stats.searchRules')}
           value={query}

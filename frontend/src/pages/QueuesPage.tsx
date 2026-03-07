@@ -7,10 +7,10 @@ import {
 } from '@heroui/react';
 import type { Selection } from '@heroui/react';
 import { Icon, type IconifyIcon } from '@iconify/react';
-import alertTriangleBold from '@iconify/icons-solar/danger-triangle-bold';
+import dangerTriangleBold from '@iconify/icons-solar/danger-triangle-bold';
 import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
 import clockCircleBold from '@iconify/icons-solar/clock-circle-bold';
-import magniferBold from '@iconify/icons-solar/magnifer-bold';
+import textFieldFocusBold from '@iconify/icons-solar/text-field-focus-bold';
 import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
 import textBoldCircle from '@iconify/icons-solar/text-bold-circle-bold';
 import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
@@ -186,7 +186,7 @@ function QueueTable({
           className="w-64"
           placeholder={t('queues.search')}
           value={query}
-          startContent={<Icon icon={magniferBold} width={14} className="text-default-500" />}
+          startContent={<Icon icon={textFieldFocusBold} width={14} className="text-default-500" />}
           onValueChange={setQuery}
         />
 
@@ -196,7 +196,7 @@ function QueueTable({
               size="sm"
               color="warning"
               variant="flat"
-              startContent={<Icon icon={alertTriangleBold} width={18} />}
+              startContent={<Icon icon={dangerTriangleBold} width={18} />}
               isDisabled={bulkDisabled || selectedMessages.length === 0}
               onPress={() => setConfirmBulk(true)}
             >
