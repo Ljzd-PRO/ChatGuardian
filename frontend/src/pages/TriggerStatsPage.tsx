@@ -287,15 +287,15 @@ export default function TriggerStatsPage() {
                           className="flex items-center gap-2 justify-start rounded-lg border border-default-200 bg-default-50 px-3 py-2"
                         >
                           <Chip size="sm" variant="flat" color="secondary" className="shrink-0">{key}</Chip>
-                          <Snippet
+                          {val ? <Snippet
                             hideSymbol
                             variant="flat"
                             size="sm"
                             className="text-left"
-                            classNames={{ pre: 'whitespace-pre-wrap break-words text-sm' }}
+                            classNames={{pre: 'whitespace-pre-wrap break-words text-sm'}}
                           >
                             {String(val)}
-                          </Snippet>
+                          </Snippet> : null}
                         </div>
                       ))}
                     </div>
