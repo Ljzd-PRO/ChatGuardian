@@ -229,9 +229,30 @@ function LLMHealthCard() {
       <CardBody className="space-y-2">
         {sched
           ? Object.entries(sched).map(([k, v]) => (
-              <div key={k} className="flex items-center justify-between py-1 border-b border-divider last:border-0">
-                <span className="text-sm text-default-500">{k}</span>
-                <span className="text-sm font-medium text-default-800">{String(v)}</span>
+              <div key={k} className="py-2 border-b border-divider last:border-0 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-default-500">{k}</span>
+                  {typeof v === 'object' && v !== null ? (
+                    <Chip size="sm" variant="flat" color="secondary">
+                      {t('common.viewDetails')}
+                    </Chip>
+                  ) : (
+                    <span className="text-sm font-medium text-default-800">{String(v)}</span>
+                  )}
+                </div>
+                {typeof v === 'object' && v !== null && (
+                  <details className="rounded-medium border border-default-200 bg-default-50 p-3 text-sm text-default-700">
+                    <summary className="cursor-pointer text-primary text-sm">{t('common.viewDetails')}</summary>
+                    <div className="mt-2 space-y-1">
+                      {Object.entries(v as Record<string, unknown>).map(([mk, mv]) => (
+                        <div key={mk} className="flex items-center justify-between gap-2 text-xs">
+                          <span className="text-default-500">{mk}</span>
+                          <span className="font-mono text-default-800 break-all">{typeof mv === 'object' && mv !== null ? JSON.stringify(mv) : String(mv)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
               </div>
             ))
           : <p className="text-sm text-default-400">{t('llm.noScheduler')}</p>}

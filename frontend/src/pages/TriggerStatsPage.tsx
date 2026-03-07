@@ -12,11 +12,15 @@ import documentTextBold from '@iconify/icons-solar/document-text-bold';
 import dangerTriangleBold from '@iconify/icons-solar/danger-triangle-bold';
 import tagBold from '@iconify/icons-solar/tag-bold';
 import textFieldFocusBold from '@iconify/icons-solar/text-field-focus-bold';
+import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
+import hashtagCircleBold from '@iconify/icons-solar/hashtag-circle-bold';
+import usersGroupRoundedBold from '@iconify/icons-solar/users-group-rounded-bold';
 import { useTranslation } from 'react-i18next';
 import { fetchRuleStats } from '../api/stats';
 import { fetchRules } from '../api/rules';
 import TriggerChart from '../components/charts/TriggerChart';
 import type { RuleRecord } from '../api/stats';
+import { ICON_SIZES } from '../constants/iconSizes';
 
 type RuleRecordWithMetadata = RuleRecord & { ruleLabel: string; ruleDescription?: string };
 
@@ -116,7 +120,7 @@ export default function TriggerStatsPage() {
                     <AccordionItem
                       key={rec.id}
                       title={
-                        <div className="flex items-center gap-2 text-sm">
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
                           <span className="text-default-500">{rec.trigger_time}</span>
                           <Progress
                             size="sm"
@@ -129,6 +133,36 @@ export default function TriggerStatsPage() {
                             <Icon icon={clockCircleBold} fontSize={12} />
                             {(rec.confidence * 100).toFixed(0)}%
                           </div>
+                          {rec.adapter && (
+                            <Chip
+                              size="sm"
+                              variant="flat"
+                              color="secondary"
+                              startContent={<Icon icon={plugCircleBold} fontSize={ICON_SIZES.chip} />}
+                            >
+                              {rec.adapter}
+                            </Chip>
+                          )}
+                          {rec.chat_type && (
+                            <Chip
+                              size="sm"
+                              variant="flat"
+                              color="primary"
+                              startContent={<Icon icon={usersGroupRoundedBold} fontSize={ICON_SIZES.chip} />}
+                            >
+                              {rec.chat_type}
+                            </Chip>
+                          )}
+                          {rec.chat_id && (
+                            <Chip
+                              size="sm"
+                              variant="flat"
+                              color="default"
+                              startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.chip} />}
+                            >
+                              {rec.chat_id}
+                            </Chip>
+                          )}
                         </div>
                       }
                     >
