@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Accordion, AccordionItem, Button, Card, CardBody, Checkbox, Chip, Input, Modal, ModalBody,
-  ModalContent, ModalFooter, ModalHeader, Select, SelectItem, Spinner, Switch, Slider, Textarea, Tooltip,
+  ModalContent, ModalFooter, ModalHeader, Pagination, Select, SelectItem, Spinner, Switch, Slider, Textarea,
 } from '@heroui/react';
 import { Icon, type IconifyIcon } from '@iconify/react';
 import addCircleBold from '@iconify/icons-solar/add-circle-bold';
@@ -73,6 +73,8 @@ export default function RulesPage() {
   const [swipeStart, setSwipeStart] = useState<number | null>(null);
   const [swipedRule, setSwipedRule] = useState<string | null>(null);
   const swipeTimer = useRef<number | null>(null);
+  const [rulePage, setRulePage] = useState(1);
+  const RULES_PER_PAGE = 5;
 
   useEffect(() => {
     if (!settings) return;
@@ -130,114 +132,108 @@ export default function RulesPage() {
     setMatcherFilters(prev => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
   }, []);
   const matcherPreview = useMemo(() => {
-    const leafChip = (
-      color: 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger',
-      icon: IconifyIcon,
-      label: string,
-    ) => (
-      <Chip
-        size="sm"
-        variant="flat"
-        color={color}
-        className="max-w-[180px]"
-        startContent={<Icon icon={icon} fontSize={ICON_SIZES.chip} />}
-      >
-        <span className="truncate">{label}</span>
-      </Chip>
+    const leafLabel = (icon: IconifyIcon, text: string) => (
+      <div className="flex items-center gap-2 text-sm text-default-700">
+        <Icon icon={icon} fontSize={ICON_SIZES.chip} className="text-default-500" />
+        <span className="truncate">{text}</span>
+      </div>
     );
 
     const renderMatcher = (m: MatcherUnion, path = 'root'): ReactNode => {
       if (m.type === 'all') {
         return (
-          <Chip
-            key={path}
-            size="sm"
-            variant="flat"
-            color="success"
-            startContent={<Icon icon={checkCircleBold} fontSize={ICON_SIZES.chip} />}
-          >
-            {t('matcher.preview.all')}
-          </Chip>
+          <div key={path} className="flex items-center gap-2 text-sm font-medium text-success">
+            <Icon icon={checkCircleBold} fontSize={ICON_SIZES.chip} />
+            <span>{t('matcher.preview.all')}</span>
+          </div>
         );
       }
       if (m.type === 'and' || m.type === 'or') {
-        const connector = (
-          <Chip
-            size="sm"
-            variant="bordered"
-            color="secondary"
-            className="uppercase tracking-wide"
-          >
-            {t(`matcher.types.${m.type}`)}
-          </Chip>
-        );
         return (
-          <div key={path} className="flex flex-wrap items-center gap-1">
-            {m.matchers.map((child, idx) => (
-              <div key={`${path}-${idx}`} className="flex items-center gap-1">
-                {idx > 0 && connector}
-                {renderMatcher(child, `${path}-${idx}`)}
-              </div>
-            ))}
+          <div key={path} className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary">
+              <Chip size="sm" variant="bordered" color="secondary" className="uppercase">
+                {t(`matcher.types.${m.type}`)}
+              </Chip>
+            </div>
+            <div className="pl-4 border-l border-default-200 space-y-2">
+              {m.matchers.map((child, idx) => (
+                <div key={`${path}-${idx}`} className="relative">
+                  {renderMatcher(child, `${path}-${idx}`)}
+                </div>
+              ))}
+            </div>
           </div>
         );
       }
       if (m.type === 'not') {
         return (
-          <div key={path} className="flex items-center gap-1">
-          <Chip
-            size="sm"
-            variant="bordered"
-            color="danger"
-            startContent={<Icon icon={closeCircleBold} fontSize={ICON_SIZES.chip} />}
-            className="uppercase tracking-wide"
-          >
-            {t('matcher.types.not')}
-          </Chip>
-            {renderMatcher(m.matcher, `${path}-not`)}
+          <div key={path} className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-danger">
+              <Icon icon={closeCircleBold} fontSize={ICON_SIZES.chip} />
+              <span className="uppercase tracking-wide">{t('matcher.types.not')}</span>
+            </div>
+            <div className="pl-4 border-l border-default-200">
+              {renderMatcher(m.matcher, `${path}-not`)}
+            </div>
           </div>
         );
       }
       if (m.type === 'sender') {
-        return leafChip(
-          'primary',
-          userRoundedBold,
-          `${t('matcher.types.sender')}:${m.display_name || m.user_id || t('common.none')}`,
+        return (
+          <div key={path}>
+            {leafLabel(
+              userRoundedBold,
+              `${t('matcher.types.sender')}: ${m.display_name || m.user_id || t('common.none')}`,
+            )}
+          </div>
         );
       }
       if (m.type === 'mention') {
-        return leafChip(
-          'secondary',
-          bellBingBold,
-          `${t('matcher.types.mention')}:${m.display_name || m.user_id || t('common.none')}`,
+        return (
+          <div key={path}>
+            {leafLabel(
+              bellBingBold,
+              `${t('matcher.types.mention')}: ${m.display_name || m.user_id || t('common.none')}`,
+            )}
+          </div>
         );
       }
       if (m.type === 'chat') {
-        return leafChip(
-          'default',
-          chatDotsBold,
-          `${t('matcher.types.chat')}:${m.chat_id || t('common.none')}`,
+        return (
+          <div key={path}>
+            {leafLabel(
+              chatDotsBold,
+              `${t('matcher.types.chat')}: ${m.chat_id || t('common.none')}`,
+            )}
+          </div>
         );
       }
       if (m.type === 'chat_type') {
-        return leafChip(
-          'warning',
-          usersGroupRoundedBold,
-          `${t('matcher.types.chat_type')}:${m.chat_type}`,
+        return (
+          <div key={path}>
+            {leafLabel(
+              usersGroupRoundedBold,
+              `${t('matcher.types.chat_type')}: ${m.chat_type}`,
+            )}
+          </div>
         );
       }
       if (m.type === 'adapter') {
-        return leafChip(
-          'default',
-          plugCircleBold,
-          `${t('matcher.types.adapter')}:${m.adapter_name || t('common.none')}`,
+        return (
+          <div key={path}>
+            {leafLabel(
+              plugCircleBold,
+              `${t('matcher.types.adapter')}: ${m.adapter_name || t('common.none')}`,
+            )}
+          </div>
         );
       }
       return null;
     };
 
     return (rule: DetectionRule) => (
-      <div className="flex flex-wrap items-center gap-1 max-w-lg">
+      <div className="flex flex-col gap-2 max-w-xl">
         {renderMatcher(rule.matcher)}
       </div>
     );
@@ -277,14 +273,14 @@ export default function RulesPage() {
     }
   }
 
-  function ruleMatchesSearch(rule: DetectionRule) {
+  const ruleMatchesSearch = useCallback((rule: DetectionRule) => {
     const keywordTarget = `${rule.name} ${rule.description} ${rule.topic_hints.join(' ')}`.toLowerCase();
     const keywordOk = keywordTarget.includes(search.toLowerCase());
     if (!matcherFilterEnabled) return keywordOk;
     const usableFilters = activeMatcherFilters;
     if (usableFilters.length === 0) return keywordOk;
     return keywordOk && usableFilters.every(f => matcherContains(rule.matcher, f));
-  }
+  }, [activeMatcherFilters, matcherFilterEnabled, search]);
 
   function toggleSelect(id: string) {
     setSelectedRules(prev => ({ ...prev, [id]: !prev[id] }));
@@ -373,9 +369,25 @@ export default function RulesPage() {
     setEditing({ ...editing, parameters: editing.parameters.filter((_, idx) => idx !== i) });
   }
 
-  if (isLoading) return <div className="flex justify-center h-64"><Spinner label={t('rules.loading')} /></div>;
+  const filteredRules = useMemo(
+    () => (rules ?? []).filter(ruleMatchesSearch),
+    [ruleMatchesSearch, rules],
+  );
+  const rulesPages = Math.max(1, Math.ceil(filteredRules.length / RULES_PER_PAGE));
+  const pagedRules = useMemo(
+    () => filteredRules.slice((rulePage - 1) * RULES_PER_PAGE, rulePage * RULES_PER_PAGE),
+    [filteredRules, rulePage, RULES_PER_PAGE],
+  );
 
-  const filteredRules = (rules ?? []).filter(ruleMatchesSearch);
+  useEffect(() => {
+    setRulePage(1);
+  }, [search, matcherFilterEnabled, activeMatcherFilters, ruleMatchesSearch]);
+
+  useEffect(() => {
+    setRulePage(p => Math.min(Math.max(1, p), rulesPages));
+  }, [rulesPages]);
+
+  if (isLoading) return <div className="flex justify-center h-64"><Spinner label={t('rules.loading')} /></div>;
 
   return (
     <div className="space-y-4">
@@ -709,7 +721,7 @@ export default function RulesPage() {
       </div>
 
       <div className="space-y-4">
-        {filteredRules.map(rule => (
+        {pagedRules.map(rule => (
           <Card key={rule.rule_id} className="w-full border border-default-200 shadow-sm">
             <CardBody
               className="flex flex-col gap-3 md:flex-row md:items-start justify-between md:gap-6"
@@ -781,17 +793,28 @@ export default function RulesPage() {
                       ))}
                     </div>
                   )}
-                  <div className="flex items-center gap-2">
-                    <Tooltip content={matcherPreview(rule)}>
-                      <Button
-                        size="sm"
-                        variant="light"
-                        startContent={<Icon icon={eyeBold} fontSize={ICON_SIZES.button} />}
-                      >
-                        {t('rules.matcherPreviewLabel')}
-                      </Button>
-                    </Tooltip>
-                  </div>
+                  <Accordion
+                    selectionMode="multiple"
+                    defaultExpandedKeys={new Set()}
+                    variant="shadow"
+                    itemClasses={{
+                      title: 'text-sm font-semibold text-default-700',
+                      content: 'px-2 pb-2',
+                    }}
+                  >
+                    <AccordionItem
+                      key={`matcher-${rule.rule_id}`}
+                      aria-label={t('rules.matcherPreviewLabel')}
+                      title={(
+                        <div className="flex items-center gap-2">
+                          <Icon icon={eyeBold} fontSize={ICON_SIZES.button} className="text-primary" />
+                          <span>{t('rules.matcherPreviewLabel')}</span>
+                        </div>
+                      )}
+                    >
+                      <div className="mt-1">{matcherPreview(rule)}</div>
+                    </AccordionItem>
+                  </Accordion>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -817,6 +840,17 @@ export default function RulesPage() {
             </CardBody>
           </Card>
         ))}
+        <div className="flex items-center justify-between text-sm text-default-500">
+          <span>{t('common.entries', { count: filteredRules.length })}</span>
+          <Pagination
+            size="sm"
+            showControls
+            total={rulesPages}
+            page={rulePage}
+            onChange={setRulePage}
+            color="primary"
+          />
+        </div>
       </div>
 
       {/* Edit modal */}

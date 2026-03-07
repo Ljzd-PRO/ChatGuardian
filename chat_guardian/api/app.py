@@ -318,14 +318,22 @@ def create_app() -> FastAPI:
             for r in triggered_results:
                 records.append({
                     "id": r.result_id,
+                    "result_id": r.result_id,
+                    "event_id": r.event_id,
+                    "rule_id": r.rule_id,
+                    "chat_id": r.chat_id,
+                    "message_id": r.message_id,
                     "trigger_time": r.generated_at.strftime("%Y-%m-%d %H:%M:%S"),
                     "confidence": round(r.decision.confidence, 2),
                     "result": "Triggered (Suppressed)" if r.trigger_suppressed else "Triggered",
+                    "trigger_suppressed": r.trigger_suppressed,
+                    "suppression_reason": r.suppression_reason,
                     "rule_name": rule.name,
                     "messages": [
                         {"sender": m.sender_name or m.sender_id, "content": str(m)}
                         for m in r.context_messages
                     ],
+                    "extracted_params": r.decision.extracted_params,
                     "reason": r.decision.reason,
                 })
 
