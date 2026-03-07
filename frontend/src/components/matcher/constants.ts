@@ -10,7 +10,7 @@ import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
 import usersGroupRoundedBold from '@iconify/icons-solar/users-group-rounded-bold';
 import type { MatcherType } from '../../api/types';
 
-export const TYPE_COLORS: Record<string, 'primary' | 'secondary' | 'danger' | 'default' | 'warning' | 'success'> = {
+export const TYPE_COLORS: Record<MatcherType, 'primary' | 'secondary' | 'danger' | 'default' | 'warning' | 'success'> = {
   and: 'primary',
   or: 'secondary',
   not: 'danger',
