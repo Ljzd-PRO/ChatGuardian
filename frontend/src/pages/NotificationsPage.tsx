@@ -19,6 +19,7 @@ import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
 import { useTranslation } from 'react-i18next';
 import { fetchNotificationsConfig, updateSettings } from '../api/settings';
 import type { AppSettings } from '../api/settings';
+import { ICON_SIZES } from '../constants/iconSizes';
 
 export default function NotificationsPage() {
   const { t } = useTranslation();
@@ -65,39 +66,39 @@ export default function NotificationsPage() {
         <CardBody className="space-y-3">
           <Input
             label={t('notifications.toEmail')}
-            startContent={<Icon icon={letterBold} fontSize={16} className="text-default-500" />}
+            startContent={<Icon icon={letterBold} width={16} className="text-default-500" />}
             value={form.email_notifier_to_email ?? ''}
             onValueChange={v => setForm(f => ({ ...f, email_notifier_to_email: v.trim() === '' ? null : v }))}
           />
           <Input
             label={t('notifications.smtpHost')}
-            startContent={<Icon icon={server2Bold} fontSize={16} className="text-default-500" />}
+            startContent={<Icon icon={server2Bold} width={16} className="text-default-500" />}
             value={form.smtp_host ?? ''}
             onValueChange={v => setForm(f => ({ ...f, smtp_host: v.trim() === '' ? null : v }))}
           />
           <Input
             label={t('notifications.smtpPort')}
             type="number"
-            startContent={<Icon icon={hashtagBold} fontSize={16} className="text-default-500" />}
+            startContent={<Icon icon={hashtagBold} width={16} className="text-default-500" />}
             value={String(form.smtp_port ?? 587)}
             onValueChange={v => setForm(f => ({ ...f, smtp_port: Number(v) }))}
           />
           <Input
             label={t('notifications.smtpUsername')}
-            startContent={<Icon icon={userRoundedBold} fontSize={16} className="text-default-500" />}
+            startContent={<Icon icon={userRoundedBold} width={16} className="text-default-500" />}
             value={form.smtp_username ?? ''}
             onValueChange={v => setForm(f => ({ ...f, smtp_username: v.trim() === '' ? null : v }))}
           />
           <Input
             label={t('notifications.smtpPassword')}
             type="password"
-            startContent={<Icon icon={keyBold} fontSize={16} className="text-default-500" />}
+            startContent={<Icon icon={keyBold} width={16} className="text-default-500" />}
             value={form.smtp_password ?? ''}
             onValueChange={v => setForm(f => ({ ...f, smtp_password: v.trim() === '' ? null : v }))}
           />
           <Input
             label={t('notifications.smtpSender')}
-            startContent={<Icon icon={sendSquareBold} fontSize={16} className="text-default-500" />}
+            startContent={<Icon icon={sendSquareBold} width={16} className="text-default-500" />}
             value={form.smtp_sender ?? ''}
             onValueChange={v => setForm(f => ({ ...f, smtp_sender: v.trim() === '' ? null : v }))}
           />
@@ -117,32 +118,32 @@ export default function NotificationsPage() {
         <CardBody className="space-y-3">
           <Input
             label={t('notifications.deviceKey')}
-            startContent={<Icon icon={smartphone2Bold} fontSize={16} className="text-default-500" />}
+            startContent={<Icon icon={smartphone2Bold} width={16} className="text-default-500" />}
             value={form.bark_device_key ?? ''}
             onValueChange={v => setForm(f => ({ ...f, bark_device_key: v }))}
           />
           <Input
             label={t('notifications.deviceKeys')}
             description={t('notifications.multiDevice')}
-            startContent={<Icon icon={bellBingBold} fontSize={16} className="text-default-500" />}
+            startContent={<Icon icon={bellBingBold} width={16} className="text-default-500" />}
             value={(form.bark_device_keys ?? []).join(', ')}
             onValueChange={v => setForm(f => ({ ...f, bark_device_keys: v.split(',').map(x => x.trim()).filter(Boolean) }))}
           />
           <Input
             label={t('notifications.serverUrl')}
-            startContent={<Icon icon={earthBold} fontSize={16} className="text-default-500" />}
+            startContent={<Icon icon={earthBold} width={16} className="text-default-500" />}
             value={form.bark_server_url ?? 'https://api.day.app'}
             onValueChange={v => setForm(f => ({ ...f, bark_server_url: v }))}
           />
           <Input
             label={t('notifications.group')}
-            startContent={<Icon icon={tagBold} fontSize={16} className="text-default-500" />}
+            startContent={<Icon icon={tagBold} width={16} className="text-default-500" />}
             value={form.bark_group ?? ''}
             onValueChange={v => setForm(f => ({ ...f, bark_group: v.trim() === '' ? null : v }))}
           />
           <Input
             label={t('notifications.level')}
-            startContent={<Icon icon={chart2Bold} fontSize={16} className="text-default-500" />}
+            startContent={<Icon icon={chart2Bold} width={16} className="text-default-500" />}
             value={form.bark_level ?? ''}
             onValueChange={v => setForm(f => ({ ...f, bark_level: v.trim() === '' ? null : v }))}
           />
@@ -151,7 +152,7 @@ export default function NotificationsPage() {
 
         <Button
           color="primary"
-          startContent={<Icon icon={disketteBold} fontSize={16} />}
+          startContent={<Icon icon={disketteBold} fontSize={ICON_SIZES.button} />}
           isLoading={save.isPending}
           onPress={() => save.mutate()}
         >
