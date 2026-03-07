@@ -262,8 +262,8 @@ function QueueTable({
         sortDescriptor={sortDescriptor}
         onSortChange={setSortDescriptor}
         classNames={{
-          th: SELECTION_COL_CLASS,
-          td: SELECTION_COL_CLASS,
+          th: enableHistoryActions ? SELECTION_COL_CLASS : undefined,
+          td: enableHistoryActions ? SELECTION_COL_CLASS : undefined,
           sortIcon: 'text-default-500',
         }}
       >
