@@ -1,8 +1,9 @@
-import { Button, Select, SelectItem, Switch } from '@heroui/react';
+import { Button, Select, SelectItem } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import hamburgerMenuBold from '@iconify/icons-solar/hamburger-menu-bold';
 import moonBold from '@iconify/icons-solar/moon-bold';
 import sun2Bold from '@iconify/icons-solar/sun-2-bold';
+import earthBold from '@iconify/icons-solar/earth-bold';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
 import { supportedLanguages } from '../../i18n';
@@ -24,17 +25,10 @@ export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
         <Button isIconOnly size="md" variant="light" className="md:hidden" onPress={onMenuClick}>
           <Icon icon={hamburgerMenuBold} fontSize={22} />
         </Button>
-        <h1 className="text-lg md:text-xl font-semibold text-default-900">{title}</h1>
+        <h1 className="hidden md:block text-lg md:text-xl font-semibold text-default-900">{title}</h1>
       </div>
       <div className="flex items-center gap-3">
-        <Icon icon={sun2Bold} fontSize={18} className="text-default-500" />
-        <Switch
-          size="md"
-          isSelected={isDark}
-          onValueChange={toggle}
-          aria-label={t('common.toggleDark')}
-        />
-        <Icon icon={moonBold} fontSize={18} className="text-default-500" />
+        <Icon icon={earthBold} fontSize={18} className="text-default-500" />
         <Select
           size="md"
           aria-label={t('common.language')}
@@ -49,6 +43,16 @@ export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
             <SelectItem key={lang.code}>{lang.label}</SelectItem>
           ))}
         </Select>
+        <Button
+          isIconOnly
+          size="md"
+          variant="flat"
+          color={isDark ? 'secondary' : 'warning'}
+          onPress={toggle}
+          aria-label={t('common.toggleDark')}
+        >
+          <Icon icon={isDark ? moonBold : sun2Bold} fontSize={20} />
+        </Button>
       </div>
     </header>
   );

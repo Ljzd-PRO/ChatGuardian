@@ -2,12 +2,15 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Accordion, AccordionItem, Button, Card, CardBody, CardHeader, Chip, Input, Modal, ModalBody, ModalContent,
-  ModalFooter, ModalHeader, Pagination, Progress, Spinner,
+  ModalFooter, ModalHeader, Pagination, Progress, Snippet, Spinner,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import chart2Bold from '@iconify/icons-solar/chart-2-bold';
 import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
 import clockCircleBold from '@iconify/icons-solar/clock-circle-bold';
+import documentTextBold from '@iconify/icons-solar/document-text-bold';
+import dangerTriangleBold from '@iconify/icons-solar/danger-triangle-bold';
+import tagBold from '@iconify/icons-solar/tag-bold';
 import textFieldFocusBold from '@iconify/icons-solar/text-field-focus-bold';
 import { useTranslation } from 'react-i18next';
 import { fetchRuleStats } from '../api/stats';
@@ -61,8 +64,6 @@ export default function TriggerStatsPage() {
   const chartData = filtered
     .filter(r => r.stat.count > 0)
     .map(r => ({ name: r.name, count: r.stat.count }));
-
-  const shouldRightAlign = (idx: number) => idx % 2 === 1;
 
   if (loading) return <div className="flex justify-center h-64"><Spinner label={t('stats.loading')} /></div>;
 
@@ -135,15 +136,9 @@ export default function TriggerStatsPage() {
                         <p className="text-sm text-default-700 whitespace-pre-wrap break-words">{rec.reason}</p>
                         <div className="space-y-2">
                           {rec.messages.map((m, i) => (
-                            <div key={i} className={`flex ${shouldRightAlign(i) ? 'justify-end' : 'justify-start'}`}>
-                              <div
-                                className={`max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm ${
-                                  shouldRightAlign(i)
-                                    ? 'bg-primary-50 border-primary-100 text-primary-800'
-                                    : 'bg-default-100 border-default-200 text-default-700'
-                                }`}
-                              >
-                                <p className="text-xs font-medium text-default-500 mb-1">{m.sender}</p>
+                            <div key={i} className="flex justify-start">
+                              <div className="max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm bg-primary-50 border-primary-100 text-primary-800">
+                                <p className="text-xs font-medium text-primary-600 mb-1">{m.sender}</p>
                                 <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
                               </div>
                             </div>
@@ -198,26 +193,37 @@ export default function TriggerStatsPage() {
                 )}
               </ModalHeader>
               <ModalBody className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <Chip size="sm" variant="flat" color="secondary">
-                    {t('stats.triggeredAt', { time: selectedRecord.trigger_time })}
-                  </Chip>
-                  <Chip
-                    size="sm"
-                    variant="flat"
-                    color="warning"
-                    startContent={<Icon icon={clockCircleBold} fontSize={12} />}
-                  >
-                    {t('stats.confidenceValue', { value: (selectedRecord.confidence * 100).toFixed(0) })}
-                  </Chip>
-                  <Chip size="sm" variant="flat" color="primary">
-                    {selectedRecord.result}
-                  </Chip>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex items-center gap-2 text-sm text-default-700">
+                    <Icon icon={clockCircleBold} fontSize={16} className="text-warning" />
+                    <span>{t('stats.triggeredAt', { time: selectedRecord.trigger_time })}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-default-700">
+                    <Icon icon={chart2Bold} fontSize={16} className="text-warning" />
+                    <span>{t('stats.confidenceValue', { value: (selectedRecord.confidence * 100).toFixed(0) })}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-default-700">
+                    <Icon icon={documentTextBold} fontSize={16} className="text-primary" />
+                    <span>{selectedRecord.result}</span>
+                  </div>
                   {selectedRecord.chat_id && (
-                    <Chip size="sm" variant="flat" color="default">
-                      {t('stats.chatId', { id: selectedRecord.chat_id })}
-                    </Chip>
+                    <div className="flex items-center gap-2 text-sm text-default-700">
+                      <Icon icon={chatDotsBold} fontSize={16} className="text-default-500" />
+                      <span>{t('stats.chatId', { id: selectedRecord.chat_id })}</span>
+                    </div>
                   )}
+                  <div className="flex items-center gap-2 text-sm text-default-700">
+                    <Icon
+                      icon={selectedRecord.trigger_suppressed ? dangerTriangleBold : documentTextBold}
+                      fontSize={16}
+                      className={selectedRecord.trigger_suppressed ? 'text-warning' : 'text-success'}
+                    />
+                    <span>
+                      {selectedRecord.trigger_suppressed
+                        ? t('stats.suppressed')
+                        : t('stats.notSuppressed')}
+                    </span>
+                  </div>
                 </div>
                 {selectedRecord.trigger_suppressed && (
                   <div className="rounded-lg border border-warning-200 bg-warning-50 p-3 text-sm text-warning-700 space-y-1">
@@ -228,11 +234,17 @@ export default function TriggerStatsPage() {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-default-700">{t('stats.reasonLabel')}</p>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-default-700">
+                    <Icon icon={documentTextBold} fontSize={16} className="text-primary" />
+                    <span>{t('stats.reasonLabel')}</span>
+                  </div>
                   <p className="text-sm text-default-700 whitespace-pre-wrap break-words">{selectedRecord.reason}</p>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-default-700">{t('stats.extractedParams')}</p>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-default-700">
+                    <Icon icon={tagBold} fontSize={16} className="text-secondary" />
+                    <span>{t('stats.extractedParams')}</span>
+                  </div>
                   {selectedRecord.extracted_params && Object.keys(selectedRecord.extracted_params).length > 0 ? (
                     <div className="grid gap-2">
                       {Object.entries(selectedRecord.extracted_params).map(([key, val]) => (
@@ -241,7 +253,16 @@ export default function TriggerStatsPage() {
                           className="flex items-start gap-2 rounded-lg border border-default-200 bg-default-50 px-3 py-2"
                         >
                           <Chip size="sm" variant="flat" color="secondary" className="shrink-0">{key}</Chip>
-                          <span className="text-sm text-default-700 break-words">{val}</span>
+                          <Snippet
+                            hideCopyButton
+                            hideSymbol
+                            variant="flat"
+                            size="sm"
+                            className="text-left"
+                            classNames={{ pre: 'whitespace-pre-wrap break-words text-sm' }}
+                          >
+                            {String(val)}
+                          </Snippet>
                         </div>
                       ))}
                     </div>
@@ -250,18 +271,15 @@ export default function TriggerStatsPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-default-700">{t('stats.contextMessages')}</p>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-default-700">
+                    <Icon icon={chatDotsBold} fontSize={16} className="text-primary" />
+                    <span>{t('stats.contextMessages')}</span>
+                  </div>
                   <div className="space-y-3">
                     {selectedRecord.messages.map((m, idx) => (
-                      <div key={idx} className={`flex ${shouldRightAlign(idx) ? 'justify-end' : 'justify-start'}`}>
-                        <div
-                          className={`max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm ${
-                            shouldRightAlign(idx)
-                              ? 'bg-primary-50 border-primary-100 text-primary-800'
-                              : 'bg-default-100 border-default-200 text-default-700'
-                          }`}
-                        >
-                          <p className="text-xs font-medium text-default-500 mb-1">{m.sender}</p>
+                      <div key={idx} className="flex justify-start">
+                        <div className="max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm bg-primary-50 border-primary-100 text-primary-800">
+                          <p className="text-xs font-medium text-primary-600 mb-1">{m.sender}</p>
                           <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
                         </div>
                       </div>
