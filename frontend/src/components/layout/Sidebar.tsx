@@ -109,4 +109,5 @@ export function useSidebar() {
   return { open, toggle: () => setOpen(p => !p), close: () => setOpen(false) };
 }
 
-export const MenuIcon = hamburgerMenuBold;
+export const Menu = hamburgerMenuBold;
+export { Menu as MenuIcon };
