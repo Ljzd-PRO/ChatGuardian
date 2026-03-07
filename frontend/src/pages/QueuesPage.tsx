@@ -260,9 +260,9 @@ function QueueTable({
         sortDescriptor={sortDescriptor}
         onSortChange={setSortDescriptor}
         classNames={{
-          th: 'whitespace-nowrap data-[allows-sorting=true]:flex data-[allows-sorting=true]:flex-row data-[allows-sorting=true]:items-center data-[allows-sorting=true]:gap-2',
+          th: 'first:w-12 first:min-w-0 first:px-2',
+          td: 'first:w-12 first:min-w-0 first:px-2',
           sortIcon: 'text-default-500',
-          wrapper: 'overflow-visible',
         }}
       >
         <TableHeader columns={columns}>
@@ -273,10 +273,10 @@ function QueueTable({
               align="start"
               className={cn('text-sm md:text-base whitespace-nowrap', COLUMN_STYLES[column.key] ?? '')}
             >
-              <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1">
                 {column.icon && <Icon icon={column.icon} fontSize={ICON_SIZES.input} className="text-default-500" />}
-                <span>{column.label}</span>
-              </div>
+                {column.label}
+              </span>
             </TableColumn>
           )}
         </TableHeader>

@@ -300,6 +300,8 @@ def create_app() -> FastAPI:
                     "result_id": r.result_id,
                     "event_id": r.event_id,
                     "rule_id": r.rule_id,
+                    "adapter": r.adapter,
+                    "chat_type": r.chat_type,
                     "chat_id": r.chat_id,
                     "message_id": r.message_id,
                     "trigger_time": r.generated_at.strftime("%Y-%m-%d %H:%M:%S"),

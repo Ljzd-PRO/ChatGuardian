@@ -42,6 +42,7 @@ const resources = {
         optionalHint: 'Optional',
         status: 'Status',
         actions: 'Actions',
+        total: 'Total',
       },
       layout: {
         nav: {
@@ -334,6 +335,7 @@ const resources = {
         optionalHint: '可选',
         status: '状态',
         actions: '操作',
+        total: '合计',
       },
       layout: {
         nav: {
@@ -623,6 +625,7 @@ const resources = {
         optionalHint: '可選',
         status: '狀態',
         actions: '操作',
+        total: '合計',
       },
       layout: {
         nav: {
@@ -912,6 +915,7 @@ const resources = {
         optionalHint: '任意',
         status: 'ステータス',
         actions: '操作',
+        total: '合計',
       },
       layout: {
         nav: {
@@ -1182,6 +1186,7 @@ const resources = {
         optionalHint: '선택 사항',
         status: '상태',
         actions: '동작',
+        total: '합계',
       },
       layout: {
         nav: {
@@ -1452,6 +1457,7 @@ const resources = {
         optionalHint: 'Optionnel',
         status: 'Statut',
         actions: 'Actions',
+        total: 'Total',
       },
       layout: {
         nav: {
@@ -1722,6 +1728,7 @@ const resources = {
         optionalHint: 'Optional',
         status: 'Status',
         actions: 'Aktionen',
+        total: 'Gesamt',
       },
       layout: {
         nav: {
@@ -1992,6 +1999,7 @@ const resources = {
         optionalHint: 'Необязательно',
         status: 'Статус',
         actions: 'Действия',
+        total: 'Итого',
       },
       layout: {
         nav: {

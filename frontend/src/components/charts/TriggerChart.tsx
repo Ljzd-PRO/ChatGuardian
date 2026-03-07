@@ -3,7 +3,6 @@ import {
   PieChart,
   Pie,
   Tooltip,
-  Cell,
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
 
@@ -31,7 +30,12 @@ export default function TriggerChart({ data }: TriggerChartProps) {
   }
 
   const total = data.reduce((sum, item) => sum + (item.count ?? 0), 0);
-  const totalLabel = t('common.total', { defaultValue: 'Total' });
+  const totalLabel = t('common.total');
+
+  const coloredData = data.map((item, index) => ({
+    ...item,
+    fill: COLORS[index % COLORS.length],
+  }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -39,27 +43,23 @@ export default function TriggerChart({ data }: TriggerChartProps) {
         <PieChart>
           <Tooltip />
           <Pie
-            data={data}
+            data={coloredData}
             dataKey="count"
             nameKey="name"
             innerRadius="60%"
             paddingAngle={2}
             strokeWidth={0}
-          >
-            {data.map((_, index) => (
-              <Cell key={index} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
+          />
         </PieChart>
       </ResponsiveContainer>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-default-700">
-        {data.map((item, index) => (
+        {coloredData.map((item) => (
           <div key={item.name} className="flex items-center justify-between gap-2 rounded-medium border border-default-200 px-3 py-2">
             <div className="flex items-center gap-2 min-w-0">
               <span
                 className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                style={{ backgroundColor: item.fill }}
               />
               <span className="truncate">{item.name}</span>
             </div>

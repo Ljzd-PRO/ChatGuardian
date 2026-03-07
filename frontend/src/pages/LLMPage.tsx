@@ -234,7 +234,7 @@ function LLMHealthCard() {
                   <span className="text-sm text-default-500">{k}</span>
                   {typeof v === 'object' && v !== null ? (
                     <Chip size="sm" variant="flat" color="secondary">
-                      {t('common.viewDetails')}
+                      {t('stats.viewDetails')}
                     </Chip>
                   ) : (
                     <span className="text-sm font-medium text-default-800">{String(v)}</span>
@@ -242,7 +242,7 @@ function LLMHealthCard() {
                 </div>
                 {typeof v === 'object' && v !== null && (
                   <details className="rounded-medium border border-default-200 bg-default-50 p-3 text-sm text-default-700">
-                    <summary className="cursor-pointer text-primary text-sm">{t('common.viewDetails')}</summary>
+                    <summary className="cursor-pointer text-primary text-sm">{t('stats.viewDetails')}</summary>
                     <div className="mt-2 space-y-1">
                       {Object.entries(v as Record<string, unknown>).map(([mk, mv]) => (
                         <div key={mk} className="flex items-center justify-between gap-2 text-xs">
