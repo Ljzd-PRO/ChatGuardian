@@ -13,7 +13,7 @@ from datetime import date, datetime
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
@@ -230,27 +230,6 @@ def create_app() -> FastAPI:
             "status": "stopped",
             "enabled_adapters": [adapter.name for adapter in container.adapter_manager.adapters],
         }
-
-    @app.get("/ui", response_class=HTMLResponse)
-    async def webui() -> str:
-        return """
-<!doctype html>
-<html lang="zh-CN">
-<head><meta charset="UTF-8"/><title>ChatGuardian MVP</title></head>
-<body style="font-family:Arial,sans-serif;max-width:900px;margin:24px auto;line-height:1.6;">
-    <h1>ChatGuardian MVP</h1>
-    <p>当前版本提供规则管理、检测、反馈、建议、MCP规则生成API。建议通过 API 客户端联调。</p>
-    <ul>
-        <li>规则管理：POST /rules</li>
-        <li>消息检测：POST /detect</li>
-        <li>反馈打分：POST /feedback</li>
-        <li>新规则建议：GET /suggestions/new-rules/{user_id}</li>
-        <li>规则改进建议：GET /suggestions/rule-improvements/{rule_id}</li>
-        <li>一句话生成规则：POST /rule-generation 或 /mcp/tools/generate-rule</li>
-    </ul>
-</body>
-</html>
-"""
 
     @app.post("/rules", response_model=DetectionRule)
     async def upsert_rule(payload: DetectionRule) -> DetectionRule:
