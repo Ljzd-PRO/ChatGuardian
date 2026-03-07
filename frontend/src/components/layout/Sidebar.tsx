@@ -73,7 +73,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-72 h-screen bg-background border-r border-divider sticky top-0 shrink-0">
+      <aside className="hidden md:flex flex-col w-60 h-screen bg-background border-r border-divider sticky top-0 shrink-0">
         {inner}
       </aside>
 
@@ -89,7 +89,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               onClick={onClose}
             />
             <motion.aside
-              className="relative z-10 w-72 h-full bg-background shadow-xl"
+              className="relative z-10 w-60 h-full bg-background shadow-xl"
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
