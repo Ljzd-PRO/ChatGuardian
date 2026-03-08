@@ -24,6 +24,11 @@ class OperationError(Exception):
         self.status_code = status_code
 
 
+def normalize_mcp_transport(transport: str | None) -> str:
+    """标准化 MCP 传输值，默认回落到 streamable-http。"""
+    return "sse" if transport == "sse" else "streamable-http"
+
+
 class ChatGuardianOperations:
     """封装 API 与 MCP 共享的业务逻辑，便于复用与单元测试。"""
 
@@ -160,7 +165,7 @@ class ChatGuardianOperations:
                         "chat_type": r.chat_type,
                         "chat_id": r.chat_id,
                         "message_id": r.message_id,
-                        "trigger_time": r.generated_at.strftime("%Y-%m-%d %H:%M:%S"),
+                        "trigger_time": r.generated_at.isoformat(),
                         "confidence": round(r.decision.confidence, 2),
                         "result": "Triggered (Suppressed)" if r.trigger_suppressed else "Triggered",
                         "trigger_suppressed": r.trigger_suppressed,
@@ -793,7 +798,7 @@ class ChatGuardianMCPService:
 
         async def _run():
             await self.server.run_http_async(
-                transport="sse" if transport == "sse" else "streamable-http",
+                transport=normalize_mcp_transport(transport),
                 host=host,
                 port=port,
                 path=path,
