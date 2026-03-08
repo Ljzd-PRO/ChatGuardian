@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 import secrets
 
-from fastapi import Body, Depends, FastAPI, HTTPException, Header
+from fastapi import Body, FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
