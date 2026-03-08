@@ -14,6 +14,7 @@ const TITLE_KEYS: Record<string, string> = {
   '/queues':        'layout.titles.queues',
   '/logs':          'layout.titles.logs',
   '/settings':      'layout.titles.settings',
+  '/change-password': 'auth.changePw.title',
 };
 
 export default function AppLayout() {

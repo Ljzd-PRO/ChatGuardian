@@ -9,6 +9,7 @@ import closeCircleBold from '@iconify/icons-solar/close-circle-bold';
 import cpuBoltBold from '@iconify/icons-solar/cpu-bolt-bold';
 import documentTextBold from '@iconify/icons-solar/document-text-bold';
 import hamburgerMenuBold from '@iconify/icons-solar/hamburger-menu-bold';
+import lockPasswordBold from '@iconify/icons-solar/lock-password-bold';
 import listCheckBold from '@iconify/icons-solar/list-check-bold';
 import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
 import settingsBold from '@iconify/icons-solar/settings-bold';
@@ -28,6 +29,7 @@ const NAV_ITEMS: { path: string; labelKey: string; icon: IconifyIcon }[] = [
   { path: '/queues',       labelKey: 'layout.nav.queues',        icon: listCheckBold },
   { path: '/logs',         labelKey: 'layout.nav.logs',          icon: documentTextBold },
   { path: '/settings',     labelKey: 'layout.nav.settings',      icon: settingsBold },
+  { path: '/change-password', labelKey: 'auth.changePw.title',   icon: lockPasswordBold },
 ];
 
 interface SidebarProps {

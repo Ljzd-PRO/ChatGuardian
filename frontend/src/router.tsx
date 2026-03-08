@@ -1,5 +1,7 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout';
+import AuthGuard from './components/auth/AuthGuard';
+import SetupGuard from './components/auth/SetupGuard';
 import DashboardPage      from './pages/DashboardPage';
 import RulesPage          from './pages/RulesPage';
 import TriggerStatsPage   from './pages/TriggerStatsPage';
@@ -10,11 +12,30 @@ import NotificationsPage  from './pages/NotificationsPage';
 import QueuesPage         from './pages/QueuesPage';
 import LogsPage           from './pages/LogsPage';
 import SettingsPage       from './pages/SettingsPage';
+import LoginPage          from './pages/LoginPage';
+import SetupWizardPage    from './pages/SetupWizardPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
 
 export const router = createBrowserRouter([
   {
+    path: '/login',
+    element: <LoginPage />,
+  },
+  {
+    path: '/setup',
+    element: (
+      <SetupGuard>
+        <SetupWizardPage />
+      </SetupGuard>
+    ),
+  },
+  {
     path: '/',
-    element: <AppLayout />,
+    element: (
+      <AuthGuard>
+        <AppLayout />
+      </AuthGuard>
+    ),
     children: [
       { index: true,              element: <DashboardPage /> },
       { path: 'rules',            element: <RulesPage /> },
@@ -26,6 +47,11 @@ export const router = createBrowserRouter([
       { path: 'queues',           element: <QueuesPage /> },
       { path: 'logs',             element: <LogsPage /> },
       { path: 'settings',         element: <SettingsPage /> },
+      { path: 'change-password',  element: <ChangePasswordPage /> },
     ],
+  },
+  {
+    path: '*',
+    element: <Navigate to="/" replace />,
   },
 ], { basename: '/app' });
