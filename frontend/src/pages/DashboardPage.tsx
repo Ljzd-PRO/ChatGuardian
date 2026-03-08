@@ -6,6 +6,7 @@ import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
 import pulse2Bold from '@iconify/icons-solar/pulse-2-bold';
 import shieldCheckBold from '@iconify/icons-solar/shield-check-bold';
 import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
+import dangerTriangleBold from '@iconify/icons-solar/danger-triangle-bold';
 import { useTranslation } from 'react-i18next';
 import TriggerChart from '../components/charts/TriggerChart';
 import { fetchDashboard } from '../api/dashboard';
@@ -13,9 +14,11 @@ import { fetchAdapters } from '../api/adapters';
 import { fetchRuleStats } from '../api/stats';
 import { ICON_SIZES } from '../constants/iconSizes';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../components/layout/ProtectedApp';
 
 export default function DashboardPage() {
   const { t } = useTranslation();
+  const { status } = useAuth();
   const { data: dash, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: fetchDashboard,
@@ -94,6 +97,25 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {status?.using_default_credentials && (
+        <Card className="border border-warning-200 bg-warning-50">
+          <CardBody className="flex items-start gap-4">
+            <div className="rounded-full bg-warning-100 p-2 text-warning-600">
+              <Icon icon={dangerTriangleBold} fontSize={ICON_SIZES.dashboard} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-warning-800">{t('dashboard.defaultCredentialsTitle')}</p>
+              <p className="text-sm text-warning-700">
+                {t('dashboard.defaultCredentialsDesc', {
+                  usernameEnv: 'CHAT_GUARDIAN_ADMIN_USERNAME',
+                  passwordEnv: 'CHAT_GUARDIAN_ADMIN_PASSWORD',
+                })}
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
       {/* Stats row */}
       <dl className="grid w-full grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map(({ title, value, icon, color, href }, idx) => (

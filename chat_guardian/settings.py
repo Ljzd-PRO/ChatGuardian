@@ -18,6 +18,8 @@ class _EnvConfig(BaseSettings):
     database_url: str = "sqlite:///./db.sqlite"
     app_name: str | None = None
     environment: str | None = None
+    admin_username: str = "admin"
+    admin_password: str = "admin"
 
 
 class Settings(BaseModel):
@@ -165,5 +167,8 @@ class Settings(BaseModel):
     virtual_adapter_script_path: Optional[str] = None
 
 
-_env_overrides = _EnvConfig().model_dump(exclude_none=True)
+_env_config = _EnvConfig()
+_env_overrides = _env_config.model_dump(exclude_none=True)
 settings = Settings(**_env_overrides)
+admin_username: str = _env_config.admin_username
+admin_password: str = _env_config.admin_password

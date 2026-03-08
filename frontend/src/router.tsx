@@ -1,5 +1,5 @@
 import { createBrowserRouter } from 'react-router-dom';
-import AppLayout from './components/layout/AppLayout';
+import ProtectedApp from './components/layout/ProtectedApp';
 import DashboardPage      from './pages/DashboardPage';
 import RulesPage          from './pages/RulesPage';
 import TriggerStatsPage   from './pages/TriggerStatsPage';
@@ -10,11 +10,13 @@ import NotificationsPage  from './pages/NotificationsPage';
 import QueuesPage         from './pages/QueuesPage';
 import LogsPage           from './pages/LogsPage';
 import SettingsPage       from './pages/SettingsPage';
+import LoginPage          from './pages/LoginPage';
 
 export const router = createBrowserRouter([
+  { path: '/login', element: <LoginPage /> },
   {
     path: '/',
-    element: <AppLayout />,
+    element: <ProtectedApp />,
     children: [
       { index: true,              element: <DashboardPage /> },
       { path: 'rules',            element: <RulesPage /> },
