@@ -700,6 +700,16 @@ class AdminCredentialRepository:
             return False
         return _verify_password(password, stored_hash)
 
+    def is_default_credentials(self) -> bool:
+        """检查当前凭据是否仍为默认的 admin/admin。"""
+        record = self.get_credentials()
+        if not record:
+            return False
+        username, password_hash = record
+        if username != "admin":
+            return False
+        return _verify_password("admin", password_hash)
+
     def set_credentials(self, username: str, password: str) -> None:
         """创建或更新管理员凭据。"""
         if self._db is None:

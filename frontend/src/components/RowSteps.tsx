@@ -1,5 +1,3 @@
-"use client";
-
 import type { ComponentProps } from 'react';
 import type { ButtonProps } from '@heroui/react';
 
@@ -12,7 +10,7 @@ export type RowStepProps = {
   className?: string;
 };
 
-export interface RowStepsProps extends React.HTMLAttributes<HTMLButtonElement> {
+export interface RowStepsProps extends React.HTMLAttributes<HTMLDivElement> {
   steps?: RowStepProps[];
   color?: ButtonProps['color'];
   currentStep?: number;
@@ -43,7 +41,7 @@ function CheckIcon(props: ComponentProps<'svg'>) {
   );
 }
 
-const RowSteps = React.forwardRef<HTMLButtonElement, RowStepsProps>(
+const RowSteps = React.forwardRef<HTMLDivElement, RowStepsProps>(
   (
     {
       color = 'primary',
@@ -54,7 +52,6 @@ const RowSteps = React.forwardRef<HTMLButtonElement, RowStepsProps>(
       hideProgressBars = false,
       stepClassName,
       className,
-      ...props
     },
     ref,
   ) => {
@@ -119,7 +116,7 @@ const RowSteps = React.forwardRef<HTMLButtonElement, RowStepsProps>(
     }, [color, className]);
 
     return (
-      <nav aria-label="Progress" className="-my-4 max-w-full overflow-x-auto py-4">
+      <nav aria-label="Progress" className="-my-4 max-w-full overflow-x-auto py-4" ref={ref}>
         <ol className={cn('flex flex-row flex-nowrap gap-x-3', colors, className)}>
           {steps?.map((step, stepIdx) => {
             const status = currentStep === stepIdx ? 'active' : currentStep < stepIdx ? 'inactive' : 'complete';
@@ -128,14 +125,12 @@ const RowSteps = React.forwardRef<HTMLButtonElement, RowStepsProps>(
               <li key={stepIdx} className="relative flex w-full min-w-[160px] items-center pr-12">
                 <button
                   key={stepIdx}
-                  ref={ref}
                   aria-current={status === 'active' ? 'step' : undefined}
                   className={cn(
                     'group rounded-large flex w-full cursor-pointer flex-row items-center justify-center gap-x-3 py-2.5',
                     stepClassName,
                   )}
                   onClick={() => setCurrentStep(stepIdx)}
-                  {...props}
                 >
                   <div className="h-full relative flex items-center">
                     <LazyMotion features={domAnimation}>

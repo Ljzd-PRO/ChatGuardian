@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { fetchAuthStatus, fetchSetupStatus, logout as apiLogout } from '../../api/auth';
-import type { AuthStatus } from '../../api/auth';
+import type { AuthStatus, SetupStatus } from '../../api/auth';
 import { clearAuthToken, getAuthToken } from '../../api/client';
 import AppLayout from './AppLayout';
 
@@ -29,10 +29,10 @@ export default function ProtectedApp() {
   const location = useLocation();
   const { t } = useTranslation();
 
-  const setupQuery = useQuery({
+  const setupQuery = useQuery<SetupStatus>({
     queryKey: ['setup-status'],
     queryFn: fetchSetupStatus,
-    refetchInterval: 30_000,
+    refetchInterval: query => (query.state.data?.setup_required ? 5_000 : false),
   });
 
   const statusQuery = useQuery({
@@ -76,6 +76,20 @@ export default function ProtectedApp() {
       navigate('/login', { replace: true });
     }
   };
+
+  if (setupQuery.isError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-default-50 px-4">
+        <Card shadow="sm" className="max-w-md w-full">
+          <CardBody className="flex items-center justify-center">
+            <span className="text-default-700">
+              Failed to load application state. Please try again.
+            </span>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
 
   if (setupQuery.isLoading) {
     return (

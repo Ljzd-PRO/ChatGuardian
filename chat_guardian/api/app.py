@@ -39,7 +39,6 @@ from chat_guardian.repositories import (
     MemoryRepository,
     RuleRepository,
     SettingsRepository,
-    _verify_password,
 )
 from chat_guardian.rule_authoring import (
     ExternalPromptRuleGenerationBackend,
@@ -211,14 +210,9 @@ class AppContainer:
         creds = self.credential_repository.get_credentials()
         self.credentials_configured = creds is not None
         self.admin_username = creds[0] if creds else None
-        if creds:
-            # 判定是否仍在使用默认凭据（admin/admin）
-            _, encoded = creds
-            self.using_default_credentials = self.admin_username == "admin" and _verify_password(
-                "admin", encoded
-            )
-        else:
-            self.using_default_credentials = False
+        self.using_default_credentials = (
+            self.credentials_configured and self.credential_repository.is_default_credentials()
+        )
 
     async def handle_adapter_event(self, event: ChatEvent) -> None:
         """Adapter 统一消息入口：先处理 self-memory，再进入检测触发流程。"""
@@ -234,7 +228,6 @@ def create_app() -> FastAPI:
 
     if container.admin_username:
         logger.info("🔐 Admin username: {}", container.admin_username)
-        logger.info("🔑 Admin password: {}", container.admin_password)
     else:
         logger.warning("🔒 No admin credentials configured. Initial setup required.")
     if container.using_default_credentials:
@@ -251,7 +244,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    PUBLIC_PATH_PREFIXES = ("/app/assets", "/assets")
+    PUBLIC_PATH_PREFIXES = ("/app", "/assets")
     PUBLIC_PATHS = {
         "/",
         "/auth/login",
@@ -268,11 +261,7 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def auth_middleware(request: Request, call_next):
         path = request.url.path
-        if (
-            path in PUBLIC_PATHS
-            or any(path.startswith(prefix) for prefix in PUBLIC_PATH_PREFIXES)
-            or (not container.credentials_configured and path in {"/auth/setup", "/auth/setup-status"})
-        ):
+        if path in PUBLIC_PATHS or any(path.startswith(prefix) for prefix in PUBLIC_PATH_PREFIXES):
             return await call_next(request)
 
         auth_header = request.headers.get("Authorization")
@@ -339,12 +328,12 @@ def create_app() -> FastAPI:
                 raise HTTPException(status_code=401, detail="Unauthorized")
 
         container.credential_repository.set_credentials(username, password)
-        container.token_manager = TokenManager()
+        new_token_manager = TokenManager()
+        token = new_token_manager.issue(username)
+        container.token_manager = new_token_manager
         container.credentials_configured = True
         container.admin_username = username
-        container.using_default_credentials = username == "admin" and password == "admin"
-
-        token = container.token_manager.issue(username)
+        container.using_default_credentials = container.credential_repository.is_default_credentials()
         return {
             "token": token,
             "username": username,

@@ -18,6 +18,7 @@ import shieldBold from '@iconify/icons-solar/shield-bold';
 import cpuBoltBold from '@iconify/icons-solar/cpu-bolt-bold';
 import linkBold from '@iconify/icons-solar/link-bold';
 import thermometerBold from '@iconify/icons-solar/thermometer-bold';
+import clockCircleBold from '@iconify/icons-solar/clock-circle-bold';
 import layersBold from '@iconify/icons-solar/layers-bold';
 import playBold from '@iconify/icons-solar/play-bold';
 import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
@@ -60,6 +61,7 @@ export default function SetupPage() {
   });
 
   const [currentStep, setCurrentStep] = useState(0);
+  const [justCreatedAccount, setJustCreatedAccount] = useState(false);
   const [accountForm, setAccountForm] = useState({ username: '', password: '', confirm: '' });
   const [accountError, setAccountError] = useState<string | null>(null);
 
@@ -111,12 +113,12 @@ export default function SetupPage() {
   }, [settingsQuery.data]);
 
   useEffect(() => {
-    if (setupStatus.data?.setup_required === false && hasToken) {
+    if (setupStatus.data?.setup_required === false && hasToken && currentStep === STEP_ACCOUNT && !justCreatedAccount) {
       navigate('/', { replace: true });
-    } else if (setupStatus.data?.setup_required === false) {
+    } else if (setupStatus.data?.setup_required === false && !hasToken) {
       navigate('/login', { replace: true });
     }
-  }, [hasToken, navigate, setupStatus.data?.setup_required]);
+  }, [currentStep, hasToken, justCreatedAccount, navigate, setupStatus.data?.setup_required]);
 
   const accountMutation = useMutation({
     mutationFn: () => setupAccount({ username: accountForm.username, password: accountForm.password }),
@@ -125,6 +127,7 @@ export default function SetupPage() {
       setToken(res.token);
       qc.invalidateQueries({ queryKey: ['setup-status'] });
       setupStatus.refetch();
+      setJustCreatedAccount(true);
       setCurrentStep(STEP_LLM);
     },
     onError: err => {
@@ -252,7 +255,7 @@ export default function SetupPage() {
                   onPress={() => {
                     setAccountError(null);
                     if (!accountForm.username || !accountForm.password) {
-                      setAccountError(t('auth.invalidCredentials'));
+                      setAccountError(t('setup.account.required'));
                       return;
                     }
                     if (accountForm.password !== accountForm.confirm) {
@@ -306,6 +309,13 @@ export default function SetupPage() {
                   startContent={<Icon icon={thermometerBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={String(llmForm.llm_langchain_temperature ?? 0)}
                   onValueChange={v => setLlmForm(f => ({ ...f, llm_langchain_temperature: Number(v) }))}
+                />
+                <Input
+                  label={t('llm.timeout')}
+                  type="number"
+                  startContent={<Icon icon={clockCircleBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
+                  value={String(llmForm.llm_timeout_seconds ?? 30)}
+                  onValueChange={v => setLlmForm(f => ({ ...f, llm_timeout_seconds: Number(v) }))}
                 />
                 <Input
                   label={t('llm.maxParallelBatches')}
@@ -520,7 +530,13 @@ export default function SetupPage() {
               </Card>
 
               <div className="flex justify-between">
-                <Button variant="light" onPress={() => navigate('/', { replace: true })}>
+                <Button
+                  variant="light"
+                  onPress={() => {
+                    setJustCreatedAccount(false);
+                    navigate('/', { replace: true });
+                  }}
+                >
                   {t('setup.finishLater')}
                 </Button>
                 <Button
@@ -529,7 +545,10 @@ export default function SetupPage() {
                   isLoading={settingsMutation.isPending}
                   onPress={() => {
                     settingsMutation.mutate(notificationForm, {
-                      onSuccess: () => navigate('/', { replace: true }),
+                      onSuccess: () => {
+                        setJustCreatedAccount(false);
+                        navigate('/', { replace: true });
+                      },
                     });
                   }}
                 >

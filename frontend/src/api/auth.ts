@@ -36,7 +36,7 @@ export const logout = () => apiFetch<{ status: string }>('/auth/logout', { metho
 export const fetchSetupStatus = () => apiFetch<SetupStatus>('/auth/setup-status');
 
 export const setupAccount = (payload: LoginPayload) =>
-  apiFetch<LoginResponse & { setup_required: boolean }>('/auth/setup', {
+  apiFetch<{ token: string; username: string; setup_required: boolean }>('/auth/setup', {
     method: 'POST',
     body: JSON.stringify(payload),
   });

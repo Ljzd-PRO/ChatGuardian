@@ -96,6 +96,7 @@ const resources = {
           hintDesc:
             'The admin account protects access to ChatGuardian. Create a strong password and keep it safe.',
           mismatch: 'Passwords do not match.',
+          required: 'Username and password are required.',
           submit: 'Create account and continue',
         },
         llm: {
@@ -428,6 +429,7 @@ const resources = {
           hintTitle: '为什么需要账号？',
           hintDesc: '管理员账号用于保护控制台，请设置强密码并妥善保存。',
           mismatch: '两次输入的密码不一致。',
+          required: '请填写用户名和密码。',
           submit: '创建账号并继续',
         },
         llm: {
@@ -757,6 +759,7 @@ const resources = {
           hintTitle: '為什麼需要帳號？',
           hintDesc: '管理員帳號用於保護控制台，請設定強密碼並妥善保存。',
           mismatch: '兩次輸入的密碼不一致。',
+          required: '請填寫使用者名稱與密碼。',
           submit: '建立帳號並繼續',
         },
         llm: {
@@ -1087,6 +1090,7 @@ const resources = {
           hintTitle: 'なぜアカウントが必要ですか？',
           hintDesc: '管理者アカウントはコンソールを保護します。強力なパスワードを設定してください。',
           mismatch: 'パスワードが一致しません。',
+          required: 'ユーザー名とパスワードを入力してください。',
           submit: 'アカウントを作成して続行',
         },
         llm: {
@@ -1398,6 +1402,7 @@ const resources = {
           hintTitle: '왜 계정이 필요한가요?',
           hintDesc: '관리자 계정은 콘솔을 보호합니다. 강력한 비밀번호를 설정하세요.',
           mismatch: '비밀번호가 일치하지 않습니다.',
+          required: '사용자명과 비밀번호를 입력해주세요.',
           submit: '계정을 생성하고 계속',
         },
         llm: {
@@ -1709,6 +1714,7 @@ const resources = {
           hintTitle: 'Pourquoi un compte ?',
           hintDesc: 'Le compte administrateur protège l’accès à la console. Choisissez un mot de passe robuste.',
           mismatch: 'Les mots de passe ne correspondent pas.',
+          required: "Nom d'utilisateur et mot de passe sont requis.",
           submit: 'Créer le compte et continuer',
         },
         llm: {
@@ -2020,6 +2026,7 @@ const resources = {
           hintTitle: 'Warum ein Konto?',
           hintDesc: 'Das Administratorkonto schützt den Zugriff auf die Konsole. Verwende ein starkes Passwort.',
           mismatch: 'Passwörter stimmen nicht überein.',
+          required: 'Benutzername und Passwort sind erforderlich.',
           submit: 'Konto erstellen und fortfahren',
         },
         llm: {
@@ -2331,6 +2338,7 @@ const resources = {
           hintTitle: 'Зачем нужна учетная запись?',
           hintDesc: 'Администраторская учетная запись защищает доступ к консоли. Используйте надежный пароль.',
           mismatch: 'Пароли не совпадают.',
+          required: 'Введите имя пользователя и пароль.',
           submit: 'Создать учетную запись и продолжить',
         },
         llm: {
