@@ -53,9 +53,9 @@ export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
           color={isDark ? 'secondary' : 'warning'}
           onPress={toggle}
           aria-label={t('common.toggleDark')}
-          >
-            <Icon icon={isDark ? moonBold : sun2Bold} fontSize={20} />
-          </Button>
+        >
+          <Icon icon={isDark ? moonBold : sun2Bold} fontSize={20} />
+        </Button>
         <Button
           size="md"
           variant="flat"
