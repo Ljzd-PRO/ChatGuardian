@@ -42,10 +42,8 @@ export default function LoginPage() {
     setError(null);
     try {
       await mutation.mutateAsync();
-    } catch (e) {
-      if (!error) {
-        setError(t('auth.invalidCredentials'));
-      }
+    } catch {
+      // onError will handle error state
     }
   };
 

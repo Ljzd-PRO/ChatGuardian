@@ -246,7 +246,7 @@ def create_app() -> FastAPI:
         if path in PUBLIC_PATHS or any(path.startswith(prefix) for prefix in PUBLIC_PATH_PREFIXES):
             return await call_next(request)
 
-        auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
+        auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.lower().startswith("bearer "):
             return JSONResponse({"detail": "Unauthorized"}, status_code=401)
 
