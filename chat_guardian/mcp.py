@@ -8,7 +8,6 @@ from typing import Any, AsyncIterator, Iterable
 
 from fastmcp import FastMCP
 from fastmcp.client.transports import FastMCPTransport
-from loguru import logger
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import RuleGenerateRequest, SuggestResponse
