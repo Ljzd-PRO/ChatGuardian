@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import os
 import secrets
-import uuid
 from collections import deque
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
