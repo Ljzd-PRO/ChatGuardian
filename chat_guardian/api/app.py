@@ -58,7 +58,7 @@ ENV_ONLY_KEYS = frozenset({"database_url", "app_name", "environment"})
 
 
 class TokenManager:
-    """简单的内存令牌管理器，用于签发与验证访问令牌。"""
+    """Simple in-memory token manager for issuing and validating access tokens."""
 
     def __init__(self):
         self._tokens: dict[str, tuple[str, datetime]] = {}
@@ -214,10 +214,10 @@ def create_app() -> FastAPI:
     app = FastAPI(title="ChatGuardian API", version="0.1.0", lifespan=_app_lifespan)
     app.state.container = container
 
-    logger.info("🔐 管理员账号: {}", container.admin_username)
+    logger.info("🔐 Admin username: {}", container.admin_username)
     if container.using_default_credentials:
         logger.warning(
-            "⚠️ 当前使用默认凭证，请在 .env 设置 CHAT_GUARDIAN_ADMIN_USERNAME / CHAT_GUARDIAN_ADMIN_PASSWORD 以提高安全性"
+            "⚠️ Default credentials in use. Set CHAT_GUARDIAN_ADMIN_USERNAME / CHAT_GUARDIAN_ADMIN_PASSWORD in .env to improve security."
         )
 
     # CORS: allow all origins in development; restrict in production via settings
