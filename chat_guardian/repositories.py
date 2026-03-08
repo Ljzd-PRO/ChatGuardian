@@ -649,6 +649,8 @@ class SettingsRepository:
 class AdminCredentialRepository:
     """管理员凭据仓库，使用 PBKDF2-SHA256 进行密码哈希存储。"""
 
+    # OWASP 2023 推荐 PBKDF2-SHA256 至少 600,000 次迭代；
+    # 此处使用 260,000 次作为安全与性能之间的折中。
     _ITERATIONS = 260_000
 
     def __init__(self, database_url: str | None = None):

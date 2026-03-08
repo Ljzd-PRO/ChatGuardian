@@ -30,7 +30,8 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   if (res.status === 401) {
     clearToken();
     // Redirect to login if we get a 401 and we're not on an auth page
-    if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/setup')) {
+    const p = window.location.pathname;
+    if (p !== '/app/login' && p !== '/app/setup' && !p.startsWith('/app/login/') && !p.startsWith('/app/setup/')) {
       window.location.href = '/app/login';
     }
     throw new Error('Unauthorized');

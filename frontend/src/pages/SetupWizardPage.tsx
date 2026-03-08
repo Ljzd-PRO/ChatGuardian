@@ -160,7 +160,7 @@ function AccountStep({ done, onDone }: { done: boolean; onDone: (u: string, p: s
     if (!username.trim()) { setError(t('setup.accountUsernameRequired')); return; }
     if (!password.trim()) { setError(t('setup.accountPasswordRequired')); return; }
     if (password !== confirm) { setError(t('setup.accountPasswordMismatch')); return; }
-    if (password.length < 6) { setError(t('setup.accountPasswordTooShort')); return; }
+    if (password.length < 8) { setError(t('setup.accountPasswordTooShort')); return; }
     setLoading(true);
     try {
       await onDone(username.trim(), password);

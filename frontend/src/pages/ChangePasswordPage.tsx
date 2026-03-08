@@ -29,7 +29,7 @@ export default function ChangePasswordPage() {
     if (!oldPassword.trim()) { setError(t('auth.changePw.oldRequired')); return; }
     if (!newPassword.trim()) { setError(t('setup.accountPasswordRequired')); return; }
     if (newPassword !== confirm) { setError(t('setup.accountPasswordMismatch')); return; }
-    if (newPassword.length < 6) { setError(t('setup.accountPasswordTooShort')); return; }
+    if (newPassword.length < 8) { setError(t('setup.accountPasswordTooShort')); return; }
 
     setLoading(true);
     try {
