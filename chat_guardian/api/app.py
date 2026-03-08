@@ -210,7 +210,7 @@ class AppContainer:
         self.token_manager = TokenManager()
 
     def _apply_admin_credentials(self) -> bool:
-        """确保管理员凭证按环境变量配置写入仓储，并返回是否使用默认值。"""
+        """Ensure admin credentials follow env config and report if defaults are used."""
         username = admin_env.admin_username
         password = admin_env.admin_password
 
@@ -224,12 +224,11 @@ class AppContainer:
         try:
             from loguru import logger
 
-            logger.info(f"🛡️ 管理员账号: {username}")
-            logger.info("🔑 管理员密码: {}", password)
+            logger.info(f"🛡️ Admin username: {username}")
             if is_default:
                 logger.warning(
-                    "当前管理员凭证为默认值，请在 .env 中设置 "
-                    "CHAT_GUARDIAN_ADMIN_USERNAME / CHAT_GUARDIAN_ADMIN_PASSWORD 以修改。"
+                    "Default admin credentials detected. "
+                    "Set CHAT_GUARDIAN_ADMIN_USERNAME / CHAT_GUARDIAN_ADMIN_PASSWORD in .env to change them."
                 )
         except Exception:
             # 记录日志失败不影响凭证写入

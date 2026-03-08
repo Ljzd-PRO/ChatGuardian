@@ -25,7 +25,7 @@ DEFAULT_ADMIN_PASSWORD = "admin"
 
 
 class AdminEnvConfig(BaseSettings):
-    """管理员账号密码仅通过环境变量配置。"""
+    """Admin username/password are configured via environment variables only."""
 
     model_config = SettingsConfigDict(env_prefix="CHAT_GUARDIAN_", env_file=".env", extra="ignore")
 
