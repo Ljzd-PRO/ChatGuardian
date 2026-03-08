@@ -141,14 +141,12 @@ class ChatEvent(BaseModel):
         chat_id: 会话 ID。
         message: `ChatMessage` 实例。
         platform: 消息平台标识（例如 nonebot、telegram）。
-        is_from_self: 是否为当前用户/机器人自身发送的消息。
     """
 
     chat_type: ChatType
     chat_id: str
     message: ChatMessage
     platform: str
-    is_from_self: bool = False
 
 
 class RuleParameterSpec(BaseModel):

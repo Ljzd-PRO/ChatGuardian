@@ -18,13 +18,11 @@ class DetectRequest(BaseModel):
     Attributes:
         platform: 消息平台。
         chat_type: 聊天类型。
-        is_from_self: 是否为自身消息。
         message: 消息负载。
     """
 
     platform: str
     chat_type: str
-    is_from_self: bool = False
     message: dict[str, Any]
 
 

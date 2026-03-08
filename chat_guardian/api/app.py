@@ -55,7 +55,7 @@ from chat_guardian.services import (
     ContextWindowService,
     DetectionEngine,
     ExternalHookDispatcher,
-    SelfMessageMemoryService,
+    UserMemoryService,
     SuggestionService,
 )
 from chat_guardian.settings import settings, Settings
@@ -179,8 +179,8 @@ class AppContainer:
         )
 
         self.suggestion_service = SuggestionService(self.memory_repository, self.feedback_repository)
-        self.self_message_service = SelfMessageMemoryService(self.llm_client, self.memory_repository,
-                                                             self.context_service)
+        self.user_memory_service = UserMemoryService(self.llm_client, self.memory_repository,
+                                self.context_service)
         notifiers = build_notifiers_from_settings()
 
         self.detection_engine = DetectionEngine(
@@ -197,8 +197,8 @@ class AppContainer:
             adapter.register_handler(self.handle_adapter_event)
 
     async def handle_adapter_event(self, event: ChatEvent) -> None:
-        """Adapter 统一消息入口：先处理 self-memory，再进入检测触发流程。"""
-        await self.self_message_service.process_if_self_message(event)
+        """Adapter 统一消息入口：先处理用户画像，再进入检测触发流程。"""
+        await self.user_memory_service.process_user_memory(event)
         await self.detection_engine.ingest_event(event)
 
 

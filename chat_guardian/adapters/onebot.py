@@ -126,18 +126,15 @@ class OneBotAdapter(Adapter):
             message_type = str(event.get("message_type", "group"))
             chat_type = ChatType.GROUP if message_type == "group" else ChatType.PRIVATE
             chat_id = str(event.get("group_id") or event.get("user_id") or message.chat_id)
-            self_id = str(event.get("self_id", ""))
-            is_from_self = bool(self_id) and message.sender_id == self_id
 
             chat_event = ChatEvent(
                 chat_type=chat_type,
                 chat_id=chat_id,
                 message=message,
                 platform=self.name,
-                is_from_self=is_from_self,
             )
             logger.debug(
-                f"✓ OneBot 事件已转换 | msg_id={message.message_id} | sender={message.sender_id} | from_self={is_from_self}")
+                f"✓ OneBot 事件已转换 | msg_id={message.message_id} | sender={message.sender_id}")
             return chat_event
         except Exception as e:
             logger.error(f"❌ OneBot 事件转换异常: {e}")

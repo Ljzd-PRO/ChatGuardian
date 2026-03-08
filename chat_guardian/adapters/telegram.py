@@ -121,19 +121,16 @@ class TelegramAdapter(Adapter):
                 chat_type = ChatType.PRIVATE
 
             chat_id = str(message.chat.id)
-            bot_id = str(self._app.bot.id) if self._app is not None else ""
-            is_from_self = bool(bot_id) and chat_message.sender_id == bot_id
 
             chat_event = ChatEvent(
                 chat_type=chat_type,
                 chat_id=chat_id,
                 message=chat_message,
                 platform=self.name,
-                is_from_self=is_from_self,
             )
             logger.debug(
                 f"✓ Telegram 事件已转换 | msg_id={chat_message.message_id} "
-                f"| sender={chat_message.sender_id} | from_self={is_from_self}"
+                f"| sender={chat_message.sender_id}"
             )
             return chat_event
         except Exception as e:

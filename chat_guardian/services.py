@@ -989,7 +989,6 @@ class DetectionEngine:
             chat_id=chat_id,
             message=anchor_message,
             platform=platform,
-            is_from_self=False,
         )
         context_messages = await self.context_service.build_context(event)
         logger.debug(f"  ✓ 构建上下文 | 上下文消息数={len(context_messages)}")
@@ -1068,8 +1067,8 @@ class DetectionEngine:
         state.timeout_task = asyncio.create_task(_run())
 
 
-class SelfMessageMemoryService:
-    """当用户/机器人自身发言时，识别并累积更新用户行为画像的服务。"""
+class UserMemoryService:
+    """基于配置的用户 ID 列表更新用户画像的服务。"""
 
     def __init__(self, llm_client: LangChainLLMClient, memory_repository: MemoryRepository,
                  context_service: ContextWindowService):
@@ -1077,18 +1076,22 @@ class SelfMessageMemoryService:
         self.memory_repository = memory_repository
         self.context_service = context_service
 
-    async def process_if_self_message(self, event: ChatEvent) -> int:
-        """如果事件来自自身，调用 LLM 提取参与数据并累积到用户画像。
+    async def process_user_memory(self, event: ChatEvent) -> int:
+        """按配置的用户 ID 列表提取并累积用户画像。
 
         Returns:
             更新的画像数量（0 表示未更新，1 表示已更新）。
         """
-        if not event.is_from_self:
-            logger.debug(f"ℹ️ 非自身消息，跳过内存处理 | 发送者={event.message.sender_id}")
+        user_id = event.message.sender_id
+        configured_targets = {str(uid).strip() for uid in settings.memory_target_user_ids if str(uid).strip()}
+        if not configured_targets:
+            logger.debug("ℹ️ 用户画像未启用，memory_target_user_ids 为空")
+            return 0
+        if user_id not in configured_targets:
+            logger.debug(f"ℹ️ 非画像目标用户，跳过处理 | 发送者={user_id}")
             return 0
 
-        user_id = event.message.sender_id
-        logger.debug(f"💾 自身消息检测 | 发送者={user_id} | 消息ID={event.message.message_id}")
+        logger.debug(f"💾 用户画像检测 | 发送者={user_id} | 消息ID={event.message.message_id}")
 
         context_messages = await self.context_service.build_context(event)
         logger.debug(f"  ✓ 构建上下文 | 消息数={len(context_messages)}")

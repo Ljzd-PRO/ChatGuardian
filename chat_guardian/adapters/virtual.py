@@ -31,7 +31,6 @@ class VirtualScriptedMessage:
     sender_name: str | None = None
     delay_seconds: float = 0.1
     chat_type: ChatType = ChatType.GROUP
-    is_from_self: bool = False
 
 
 def load_virtual_scripted_messages(script_path: str) -> list[VirtualScriptedMessage]:
@@ -73,7 +72,6 @@ def load_virtual_scripted_messages(script_path: str) -> list[VirtualScriptedMess
                 text=text,
                 delay_seconds=float(item.get("delay_seconds", 0.1)),
                 chat_type=chat_type,
-                is_from_self=bool(item.get("is_from_self", False)),
             )
         )
     return messages
@@ -144,7 +142,6 @@ class VirtualAdapter(Adapter):
                 chat_id=chat_id,
                 message=message,
                 platform=self.name,
-                is_from_self=False,
             )
             await asyncio.gather(*(handler(event) for handler in self._handlers), return_exceptions=True)
 
@@ -167,6 +164,5 @@ class VirtualAdapter(Adapter):
                 chat_id=item.chat_id,
                 message=message,
                 platform=self.name,
-                is_from_self=item.is_from_self,
             )
             await asyncio.gather(*(handler(event) for handler in self._handlers), return_exceptions=True)
