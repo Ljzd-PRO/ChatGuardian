@@ -4,9 +4,11 @@ import hamburgerMenuBold from '@iconify/icons-solar/hamburger-menu-bold';
 import moonBold from '@iconify/icons-solar/moon-bold';
 import sun2Bold from '@iconify/icons-solar/sun-2-bold';
 import earthBold from '@iconify/icons-solar/earth-bold';
+import arrowRightBold from '@iconify/icons-solar/arrow-right-bold';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
 import { supportedLanguages } from '../../i18n';
+import { useAuth } from './ProtectedApp';
 
 interface TopNavbarProps {
   onMenuClick: () => void;
@@ -16,6 +18,7 @@ interface TopNavbarProps {
 export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
   const { t, i18n } = useTranslation();
   const { isDark, toggle } = useTheme();
+  const { logout } = useAuth();
   const resolved = i18n.resolvedLanguage ?? i18n.language;
   const currentLang = supportedLanguages.some(l => l.code === resolved) ? resolved : 'en';
 
@@ -52,6 +55,15 @@ export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
           aria-label={t('common.toggleDark')}
         >
           <Icon icon={isDark ? moonBold : sun2Bold} fontSize={20} />
+        </Button>
+        <Button
+          size="md"
+          variant="flat"
+          color="danger"
+          startContent={<Icon icon={arrowRightBold} fontSize={18} className="rotate-180" />}
+          onPress={logout}
+        >
+          {t('auth.logout')}
         </Button>
       </div>
     </header>

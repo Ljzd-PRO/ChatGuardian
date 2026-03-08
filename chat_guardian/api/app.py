@@ -7,14 +7,16 @@ FastAPI 应用与路由定义。
 from __future__ import annotations
 
 import os
+import secrets
 from collections import deque
 from contextlib import asynccontextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 
-from fastapi import Body, FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from loguru import logger
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import (
@@ -50,9 +52,35 @@ from chat_guardian.services import (
     SelfMessageMemoryService,
     SuggestionService,
 )
-from chat_guardian.settings import settings, Settings
+from chat_guardian.settings import admin_password, admin_username, settings, Settings
 
 ENV_ONLY_KEYS = frozenset({"database_url", "app_name", "environment"})
+
+
+class TokenManager:
+    """Simple in-memory token manager for issuing and validating access tokens."""
+
+    def __init__(self):
+        self._tokens: dict[str, tuple[str, datetime]] = {}
+
+    def issue(self, username: str, ttl_hours: int = 24) -> str:
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=ttl_hours)
+        self._tokens[token] = (username, expires_at)
+        return token
+
+    def validate(self, token: str) -> str | None:
+        record = self._tokens.get(token)
+        if not record:
+            return None
+        username, expires_at = record
+        if expires_at < datetime.now(timezone.utc):
+            self._tokens.pop(token, None)
+            return None
+        return username
+
+    def revoke(self, token: str) -> None:
+        self._tokens.pop(token, None)
 
 
 @asynccontextmanager
@@ -167,6 +195,13 @@ class AppContainer:
         for adapter in self.adapter_manager.adapters:
             adapter.register_handler(self.handle_adapter_event)
 
+        self.token_manager = TokenManager()
+        self.admin_username = admin_username
+        self.admin_password = admin_password
+        self.using_default_credentials = (
+            self.admin_username == "admin" and self.admin_password == "admin"
+        )
+
     async def handle_adapter_event(self, event: ChatEvent) -> None:
         """Adapter 统一消息入口：先处理 self-memory，再进入检测触发流程。"""
         await self.self_message_service.process_if_self_message(event)
@@ -179,6 +214,12 @@ def create_app() -> FastAPI:
     app = FastAPI(title="ChatGuardian API", version="0.1.0", lifespan=_app_lifespan)
     app.state.container = container
 
+    logger.info("🔐 Admin username: {}", container.admin_username)
+    if container.using_default_credentials:
+        logger.warning(
+            "⚠️ Default credentials in use. Set CHAT_GUARDIAN_ADMIN_USERNAME / CHAT_GUARDIAN_ADMIN_PASSWORD in .env to improve security."
+        )
+
     # CORS: allow all origins in development; restrict in production via settings
     cors_origins = ["*"] if settings.environment != "prod" else []
     app.add_middleware(
@@ -188,9 +229,38 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    PUBLIC_PATH_PREFIXES = ("/app/assets", "/assets")
+    PUBLIC_PATHS = {
+        "/",
+        "/auth/login",
+        "/health",
+        "/llm/health",
+        "/app",
+        "/app/",
+    }
+    # '/' serves a redirect to the frontend entry, so it must remain public.
+
+    @app.middleware("http")
+    async def auth_middleware(request: Request, call_next):
+        path = request.url.path
+        if path in PUBLIC_PATHS or any(path.startswith(prefix) for prefix in PUBLIC_PATH_PREFIXES):
+            return await call_next(request)
+
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.lower().startswith("bearer "):
+            return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+
+        token = auth_header.split(" ", 1)[1].strip()
+        username = container.token_manager.validate(token)
+        if not username:
+            return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+
+        request.state.user = username
+        return await call_next(request)
+
     @app.get("/health")
     async def health() -> dict[str, str]:
-        return {"status": "ok", "time": datetime.utcnow().isoformat()}
+        return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}
 
     @app.get("/llm/health")
     async def llm_health(do_ping: bool = True) -> dict[str, object]:
@@ -198,7 +268,7 @@ def create_app() -> FastAPI:
         scheduler_diagnostics = container.detection_engine.batch_scheduler.diagnostics()
         result: dict[str, object] = {
             "status": "ok",
-            "time": datetime.utcnow().isoformat(),
+            "time": datetime.now(timezone.utc).isoformat(),
             "llm": diagnostics,
             "scheduler": scheduler_diagnostics,
         }
@@ -214,6 +284,42 @@ def create_app() -> FastAPI:
                 result["status"] = "degraded"
 
         return result
+
+    @app.post("/auth/login")
+    async def auth_login(payload: dict = Body(...)) -> dict[str, object]:
+        username = str((payload or {}).get("username") or "").strip()
+        password = str((payload or {}).get("password") or "")
+        if not username or not password:
+            raise HTTPException(status_code=400, detail="Username and password are required.")
+
+        if username == container.admin_username and password == container.admin_password:
+            token = container.token_manager.issue(username)
+            return {
+                "token": token,
+                "username": username,
+                "using_default_credentials": container.using_default_credentials,
+            }
+
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    @app.get("/auth/status")
+    async def auth_status(request: Request) -> dict[str, object]:
+        current_user = getattr(request.state, "user", None)
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        return {
+            "authenticated": True,
+            "username": current_user,
+            "using_default_credentials": container.using_default_credentials,
+        }
+
+    @app.post("/auth/logout")
+    async def auth_logout(request: Request) -> dict[str, str]:
+        auth_header = request.headers.get("Authorization") or ""
+        if auth_header.lower().startswith("bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+            container.token_manager.revoke(token)
+        return {"status": "logged_out"}
 
     @app.post("/adapters/start")
     async def start_adapters() -> dict[str, str | list[str]]:
