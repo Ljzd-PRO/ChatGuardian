@@ -7,15 +7,18 @@ from chat_guardian.api.app import create_app
 from chat_guardian.domain import ChatMessage, ChatEvent, ChatType, MessageContent, ContentType, UserInfo
 
 
-def test_api_rule_and_detect_flow() -> None:
-    app = create_app()
-    client = TestClient(app)
-
-    # 注册并登录以获取认证令牌
+def _register_and_login(client: TestClient) -> dict[str, str]:
+    """注册并登录管理员，返回认证 headers。"""
     client.post("/api/auth/register", json={"username": "admin", "password": "pass"})
     login_resp = client.post("/api/auth/login", json={"username": "admin", "password": "pass"})
     token = login_resp.json()["token"]
-    headers = {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_api_rule_and_detect_flow() -> None:
+    app = create_app()
+    client = TestClient(app)
+    headers = _register_and_login(client)
 
     create_rule = {
         "rule_id": "rule-1",
@@ -95,12 +98,7 @@ def test_llm_health_endpoint_without_ping() -> None:
 def test_rule_list_and_delete_flow() -> None:
     app = create_app()
     client = TestClient(app)
-
-    # 注册并登录以获取认证令牌
-    client.post("/api/auth/register", json={"username": "admin", "password": "pass"})
-    login_resp = client.post("/api/auth/login", json={"username": "admin", "password": "pass"})
-    token = login_resp.json()["token"]
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = _register_and_login(client)
 
     rule_payload = {
         "rule_id": "rule-to-delete",

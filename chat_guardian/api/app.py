@@ -11,7 +11,7 @@ import os
 import secrets
 from collections import deque
 from contextlib import asynccontextmanager, suppress
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -217,14 +217,14 @@ class TokenManager:
 
     def create_token(self) -> str:
         token = secrets.token_urlsafe(32)
-        self._tokens[token] = datetime.utcnow() + self._ttl
+        self._tokens[token] = datetime.now(timezone.utc) + self._ttl
         return token
 
     def validate(self, token: str) -> bool:
         expiry = self._tokens.get(token)
         if expiry is None:
             return False
-        if datetime.utcnow() > expiry:
+        if datetime.now(timezone.utc) > expiry:
             del self._tokens[token]
             return False
         return True
