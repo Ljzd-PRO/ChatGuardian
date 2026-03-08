@@ -1747,7 +1747,7 @@ const resources = {
           loginButton: '로그인',
           logoutTooltip: '로그아웃 ({{username}})',
           loading: '로그인 중…',
-          error: '사용자 이름 또는 비밀번호가 올바르지 않습니다\.',
+          error: '사용자 이름 또는 비밀번호가 올바르지 않습니다.',
         },
       },
       setup: {
