@@ -132,13 +132,11 @@ async def _app_lifespan(app: FastAPI):
     if mcp_service and settings.mcp_http_enabled:
         transport = normalize_mcp_transport(settings.mcp_http_transport)
         try:
-            mcp_http_task = asyncio.create_task(
-                mcp_service.start_http_server(
-                    transport=transport,
-                    host=settings.mcp_http_host,
-                    port=settings.mcp_http_port,
-                    path=settings.mcp_http_path,
-                )
+            mcp_http_task = await mcp_service.start_http_server(
+                transport=transport,
+                host=settings.mcp_http_host,
+                port=settings.mcp_http_port,
+                path=settings.mcp_http_path,
             )
         except Exception as exc:  # pragma: no cover - defensive logging
             logger.warning("⚠️ 启动 MCP HTTP 传输失败: {}", exc)

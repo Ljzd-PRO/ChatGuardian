@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 from collections import deque
 from contextlib import asynccontextmanager, suppress
 from datetime import date, datetime, timezone
@@ -8,6 +9,7 @@ from typing import Any, AsyncIterator, Iterable
 
 from fastmcp import FastMCP
 from fastmcp.client.transports import FastMCPTransport
+from loguru import logger
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import RuleGenerateRequest, SuggestResponse
@@ -26,6 +28,17 @@ class OperationError(Exception):
 def normalize_mcp_transport(transport: str | None) -> str:
     """标准化 MCP 传输值，默认回落到 streamable-http。"""
     return "sse" if transport == "sse" else "streamable-http"
+
+
+def _is_loopback_host(host: str | None) -> bool:
+    """判断 host 是否为回环地址/localhost。"""
+    if not host:
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+        return ip.is_loopback
+    except ValueError:
+        return host in {"localhost"}
 
 
 class ChatGuardianOperations:
@@ -354,6 +367,37 @@ class ChatGuardianOperations:
 
         for key, value in to_save.items():
             setattr(settings, key, value)
+
+        # 处理 MCP HTTP 配置动态生效
+        mcp_keys = {
+            "mcp_http_enabled",
+            "mcp_http_transport",
+            "mcp_http_host",
+            "mcp_http_port",
+            "mcp_http_path",
+        }
+        mcp_updates = mcp_keys & update_keys
+        if mcp_updates:
+            if not _is_loopback_host(settings.mcp_http_host):
+                raise OperationError(
+                    "MCP HTTP host 仅允许回环地址（例如 127.0.0.1/localhost），请调整后重试。",
+                    status_code=400,
+                )
+            mcp_service = getattr(self.container, "mcp_service", None)
+            if mcp_service:
+                await mcp_service.stop_http_server()
+                if settings.mcp_http_enabled:
+                    try:
+                        await mcp_service.start_http_server(
+                            transport=settings.mcp_http_transport,
+                            host=settings.mcp_http_host,
+                            port=settings.mcp_http_port,
+                            path=settings.mcp_http_path,
+                        )
+                    except Exception as exc:
+                        raise OperationError(
+                            f"Failed to start MCP HTTP server: {exc}", status_code=500
+                        ) from exc
 
         if adapter_updates and new_adapters is not None:
             try:
@@ -790,21 +834,43 @@ class ChatGuardianMCPService:
         host: str | None = None,
         port: int | None = None,
         path: str | None = None,
-    ) -> None:
-        """在后台启动 HTTP/SSE 服务器。"""
+    ) -> asyncio.Task | None:
+        """在后台启动 HTTP/SSE 服务器，并返回底层任务。"""
         if self._http_task and not self._http_task.done():
-            return
+            return self._http_task
+        if not _is_loopback_host(host):
+            raise ValueError("MCP HTTP host must be loopback (127.0.0.1/localhost).")
 
         async def _run():
-            await self.server.run_http_async(
-                transport=normalize_mcp_transport(transport),
-                host=host,
-                port=port,
-                path=path,
-                show_banner=False,
-            )
+            try:
+                await self.server.run_http_async(
+                    transport=normalize_mcp_transport(transport),
+                    host=host,
+                    port=port,
+                    path=path,
+                    show_banner=False,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception(
+                    "HTTP/SSE 服务器运行失败 (transport={}, host={}, port={}, path={})",
+                    transport,
+                    host,
+                    port,
+                    path,
+                )
+                raise
+
+        def _on_done(task: asyncio.Task) -> None:
+            with suppress(asyncio.CancelledError):
+                exc = task.exception()
+                if exc is not None:
+                    logger.exception("HTTP/SSE 服务器后台任务异常终止: {}", exc)
 
         self._http_task = asyncio.create_task(_run())
+        self._http_task.add_done_callback(_on_done)
+        return self._http_task
 
     async def stop_http_server(self) -> None:
         """停止后台 HTTP/SSE 服务器任务。"""
@@ -816,7 +882,13 @@ class ChatGuardianMCPService:
 
     async def call_tool(self, name: str, arguments: dict[str, Any] | None = None) -> Any:
         """直接调用工具（适用于内部协程场景）。"""
-        return await self.server.call_tool(name, arguments or {})
+        args = arguments or {}
+        if hasattr(self.server, "call_tool"):
+            return await self.server.call_tool(name, args)
+        # FastMCP 2.x 使用内部 _call_tool_middleware
+        return await self.server._call_tool_middleware(  # type: ignore[attr-defined]
+            key=name, arguments=args
+        )
 
     @asynccontextmanager
     async def in_process_session(self, **session_kwargs: Any) -> AsyncIterator[Any]:
