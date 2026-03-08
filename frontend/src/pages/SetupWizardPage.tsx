@@ -25,7 +25,7 @@ import checkCircleBold from '@iconify/icons-solar/check-circle-bold';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuthActions, useAuthStatus } from '../hooks/useAuth';
+import { useAuthStatus } from '../hooks/useAuth';
 import {
   fetchSettings,
   updateSettings,
@@ -63,7 +63,6 @@ function WizardContent() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { register: registerMut } = useAuthActions();
   const settingsQuery = useQuery({ queryKey: ['settings'], queryFn: fetchSettings });
   const notificationsQuery = useQuery({ queryKey: ['notifications_config'], queryFn: fetchNotificationsConfig });
 
@@ -160,20 +159,8 @@ function WizardContent() {
     };
 
     if (currentStep.key === 'account') {
-      if (!accountForm.username || !accountForm.password || accountForm.password !== accountForm.confirm) {
-        setError(t('setup.validation.account'));
-        return;
-      }
-      registerMut.mutate(
-        { username: accountForm.username, password: accountForm.password },
-        {
-          onSuccess: async () => {
-            await qc.invalidateQueries({ queryKey: ['auth_status'] });
-            proceed();
-          },
-          onError: err => setError((err as Error).message),
-        },
-      );
+      await qc.invalidateQueries({ queryKey: ['auth_status'] });
+      proceed();
       return;
     }
 
@@ -543,7 +530,7 @@ function WizardContent() {
               <Button
                 color="primary"
                 endContent={<Icon icon={arrowRightBold} fontSize={18} />}
-                isLoading={registerMut.isPending || llmSave.isPending || adapterSave.isPending || notifSave.isPending || ruleSave.isPending}
+                isLoading={llmSave.isPending || adapterSave.isPending || notifSave.isPending || ruleSave.isPending}
                 onPress={next}
               >
                 {isLast ? t('setup.finish') : t('setup.continue')}

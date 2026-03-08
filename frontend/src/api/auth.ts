@@ -23,8 +23,4 @@ export const login = (payload: AuthPayload) => apiFetch<AuthResponse>('/api/auth
   method: 'POST',
   body: JSON.stringify(payload),
 });
-export const register = (payload: AuthPayload) => apiFetch<AuthResponse>('/api/auth/register', {
-  method: 'POST',
-  body: JSON.stringify(payload),
-});
 export const logout = () => apiFetch<{ status: string }>('/api/auth/logout', { method: 'POST' });

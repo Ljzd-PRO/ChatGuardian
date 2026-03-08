@@ -1,6 +1,7 @@
 import {
   createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Icon } from '@iconify/react';
 import dangerTriangleBold from '@iconify/icons-solar/danger-triangle-bold';
 import checkCircleBold from '@iconify/icons-solar/check-circle-bold';
@@ -46,6 +47,7 @@ function colorIcon(color: ToastColor | undefined) {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const idRef = useRef(0);
+  const { t } = useTranslation();
 
   const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
     const id = ++idRef.current;
@@ -80,7 +82,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             </div>
             <button
               type="button"
-              aria-label="Dismiss"
+              aria-label={t('common.dismiss')}
               onClick={() => dismiss(toast.id)}
               className="rounded-full p-1 text-default-500 hover:text-default-800 transition-colors"
             >

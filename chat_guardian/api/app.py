@@ -319,7 +319,7 @@ def create_app() -> FastAPI:
             setup_required=not has_admin,
             authenticated=username is not None,
             username=username,
-            using_default_credentials=container.using_default_admin_credentials,
+            using_default_credentials=bool(username) and container.using_default_admin_credentials,
         )
 
     @app.post("/api/auth/register", response_model=AuthResponse)

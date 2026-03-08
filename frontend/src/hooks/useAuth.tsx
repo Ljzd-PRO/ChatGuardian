@@ -3,7 +3,7 @@ import {
 } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  fetchAuthStatus, login as loginApi, register as registerApi, logout as logoutApi, type AuthPayload,
+  fetchAuthStatus, login as loginApi, logout as logoutApi, type AuthPayload,
 } from '../api/auth';
 import { getStoredToken, setStoredToken } from '../api/client';
 
@@ -54,15 +54,6 @@ export function useAuthActions() {
     },
   });
 
-  const register = useMutation({
-    mutationFn: async (payload: AuthPayload) => {
-      const res = await registerApi(payload);
-      setToken(res.token);
-      qc.invalidateQueries({ queryKey: ['auth_status'] });
-      return res;
-    },
-  });
-
   const logout = useMutation({
     mutationFn: async () => {
       try {
@@ -74,5 +65,5 @@ export function useAuthActions() {
     },
   });
 
-  return { login, register, logout };
+  return { login, logout };
 }
