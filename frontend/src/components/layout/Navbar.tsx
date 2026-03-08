@@ -71,7 +71,7 @@ export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
               variant="flat"
               color="default"
               onPress={handleLogout}
-              aria-label="Logout"
+              aria-label={t('auth.login.logoutTooltip', { username })}
             >
               <Icon icon={logoutBold} fontSize={20} />
             </Button>
