@@ -65,9 +65,12 @@ export function useAuthActions() {
 
   const logout = useMutation({
     mutationFn: async () => {
-      await logoutApi();
-      setToken(null);
-      qc.invalidateQueries({ queryKey: ['auth_status'] });
+      try {
+        await logoutApi();
+      } finally {
+        setToken(null);
+        qc.invalidateQueries({ queryKey: ['auth_status'] });
+      }
     },
   });
 
