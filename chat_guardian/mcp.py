@@ -18,7 +18,7 @@ from chat_guardian.settings import Settings, settings
 
 
 class OperationError(Exception):
-    """业务逻辑异常，携带 HTTP 语义的状态码。"""
+    """Business logic error that carries an HTTP-style status code."""
 
     def __init__(self, message: str, status_code: int = 400):
         super().__init__(message)
@@ -26,12 +26,12 @@ class OperationError(Exception):
 
 
 def normalize_mcp_transport(transport: str | None) -> str:
-    """标准化 MCP 传输值，默认回落到 streamable-http。"""
+    """Normalize MCP transport value, defaulting to streamable-http."""
     return "sse" if transport == "sse" else "streamable-http"
 
 
 def _is_loopback_host(host: str | None) -> bool:
-    """判断 host 是否为回环地址/localhost。"""
+    """Return True if host is loopback or localhost."""
     if not host:
         return True
     try:
@@ -42,7 +42,7 @@ def _is_loopback_host(host: str | None) -> bool:
 
 
 class ChatGuardianOperations:
-    """封装 API 与 MCP 共享的业务逻辑，便于复用与单元测试。"""
+    """Shared API/MCP business logic for reuse and testing."""
 
     def __init__(
         self,
@@ -380,7 +380,7 @@ class ChatGuardianOperations:
         if mcp_updates:
             if not _is_loopback_host(settings.mcp_http_host):
                 raise OperationError(
-                    "MCP HTTP host 仅允许回环地址（例如 127.0.0.1/localhost），请调整后重试。",
+                    "MCP HTTP host must be loopback only (e.g., 127.0.0.1/localhost).",
                     status_code=400,
                 )
             mcp_service = getattr(self.container, "mcp_service", None)
@@ -835,7 +835,7 @@ class ChatGuardianMCPService:
         port: int | None = None,
         path: str | None = None,
     ) -> asyncio.Task | None:
-        """在后台启动 HTTP/SSE 服务器，并返回底层任务。"""
+        """Start HTTP/SSE server in the background and return the task."""
         if self._http_task and not self._http_task.done():
             return self._http_task
         if not _is_loopback_host(host):
@@ -854,7 +854,7 @@ class ChatGuardianMCPService:
                 raise
             except Exception:
                 logger.exception(
-                    "HTTP/SSE 服务器运行失败 (transport={}, host={}, port={}, path={})",
+                    "HTTP/SSE server failed to start (transport={}, host={}, port={}, path={})",
                     transport,
                     host,
                     port,
@@ -866,14 +866,14 @@ class ChatGuardianMCPService:
             with suppress(asyncio.CancelledError):
                 exc = task.exception()
                 if exc is not None:
-                    logger.exception("HTTP/SSE 服务器后台任务异常终止: {}", exc)
+                    logger.exception("HTTP/SSE server task exited with exception: {}", exc)
 
         self._http_task = asyncio.create_task(_run())
         self._http_task.add_done_callback(_on_done)
         return self._http_task
 
     async def stop_http_server(self) -> None:
-        """停止后台 HTTP/SSE 服务器任务。"""
+        """Stop the background HTTP/SSE server task."""
         if self._http_task:
             self._http_task.cancel()
             with suppress(asyncio.CancelledError):

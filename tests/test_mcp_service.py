@@ -81,4 +81,3 @@ async def test_tool_rules_generate_uses_stub(mcp_service: ChatGuardianMCPService
 async def test_start_http_server_rejects_non_loopback(mcp_service: ChatGuardianMCPService):
     with pytest.raises(ValueError):
         await mcp_service.start_http_server(host="0.0.0.0")
-from fastmcp.server.context import Context
