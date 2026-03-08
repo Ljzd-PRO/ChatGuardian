@@ -11,6 +11,12 @@ def test_api_rule_and_detect_flow() -> None:
     app = create_app()
     client = TestClient(app)
 
+    # 注册并登录以获取认证令牌
+    client.post("/api/auth/register", json={"username": "admin", "password": "pass"})
+    login_resp = client.post("/api/auth/login", json={"username": "admin", "password": "pass"})
+    token = login_resp.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
     create_rule = {
         "rule_id": "rule-1",
         "name": "Topic monitor",
@@ -21,7 +27,7 @@ def test_api_rule_and_detect_flow() -> None:
         "enabled": False,
         "parameters": [{"key": "tag", "description": "topic tag", "required": False}],
     }
-    response = client.post("/rules", json=create_rule)
+    response = client.post("/rules", json=create_rule, headers=headers)
     assert response.status_code == 200
 
     detect_payload = {
@@ -90,6 +96,12 @@ def test_rule_list_and_delete_flow() -> None:
     app = create_app()
     client = TestClient(app)
 
+    # 注册并登录以获取认证令牌
+    client.post("/api/auth/register", json={"username": "admin", "password": "pass"})
+    login_resp = client.post("/api/auth/login", json={"username": "admin", "password": "pass"})
+    token = login_resp.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
     rule_payload = {
         "rule_id": "rule-to-delete",
         "name": "Rule to delete",
@@ -101,20 +113,20 @@ def test_rule_list_and_delete_flow() -> None:
         "parameters": [],
     }
 
-    create_resp = client.post("/rules", json=rule_payload)
+    create_resp = client.post("/rules", json=rule_payload, headers=headers)
     assert create_resp.status_code == 200
 
-    list_resp = client.get("/rules/list")
+    list_resp = client.get("/rules/list", headers=headers)
     assert list_resp.status_code == 200
     rules = list_resp.json()
     assert any(item["rule_id"] == "rule-to-delete" for item in rules)
 
-    delete_resp = client.post("/rules/delete/rule-to-delete")
+    delete_resp = client.post("/rules/delete/rule-to-delete", headers=headers)
     assert delete_resp.status_code == 200
     delete_data = delete_resp.json()
     assert delete_data["deleted"] is True
 
-    list_after_resp = client.get("/rules/list")
+    list_after_resp = client.get("/rules/list", headers=headers)
     assert list_after_resp.status_code == 200
     rules_after = list_after_resp.json()
     assert all(item["rule_id"] != "rule-to-delete" for item in rules_after)

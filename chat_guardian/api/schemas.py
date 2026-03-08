@@ -65,3 +65,25 @@ class SuggestResponse(BaseModel):
     """
 
     suggestions: list[str]
+
+
+class LoginRequest(BaseModel):
+    """登录请求模型。"""
+
+    username: str
+    password: str
+
+
+class RegisterRequest(BaseModel):
+    """管理员注册请求模型。"""
+
+    username: str
+    password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    """修改密码请求模型。"""
+
+    username: str
+    old_password: str
+    new_password: str
