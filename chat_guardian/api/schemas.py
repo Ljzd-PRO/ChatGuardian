@@ -85,3 +85,4 @@ class AuthStatusResponse(BaseModel):
     setup_required: bool
     authenticated: bool
     username: str | None = None
+    using_default_credentials: bool = False

@@ -20,6 +20,19 @@ class _EnvConfig(BaseSettings):
     environment: str | None = None
 
 
+DEFAULT_ADMIN_USERNAME = "admin"
+DEFAULT_ADMIN_PASSWORD = "admin"
+
+
+class AdminEnvConfig(BaseSettings):
+    """管理员账号密码仅通过环境变量配置。"""
+
+    model_config = SettingsConfigDict(env_prefix="CHAT_GUARDIAN_", env_file=".env", extra="ignore")
+
+    admin_username: str = DEFAULT_ADMIN_USERNAME
+    admin_password: str = DEFAULT_ADMIN_PASSWORD
+
+
 class Settings(BaseModel):
     """
     全局配置类。
@@ -166,4 +179,5 @@ class Settings(BaseModel):
 
 
 _env_overrides = _EnvConfig().model_dump(exclude_none=True)
+admin_env = AdminEnvConfig()
 settings = Settings(**_env_overrides)

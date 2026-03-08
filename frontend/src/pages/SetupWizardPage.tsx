@@ -46,7 +46,6 @@ const STEPS: { key: WizardStepKey; titleKey: string; descKey: string; icon: Icon
 
 export default function SetupWizardPage() {
   const { data: auth } = useAuthStatus();
-  const navigate = useNavigate();
   const { t } = useTranslation();
 
   if (!auth) {

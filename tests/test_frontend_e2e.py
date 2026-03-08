@@ -60,7 +60,12 @@ def live_server():
         "--port", str(port),
         "--log-level", "warning",
     ]
-    env = {**os.environ, "CHAT_GUARDIAN_DATABASE_URL": "sqlite:///:memory:"}
+    env = {
+        **os.environ,
+        "CHAT_GUARDIAN_DATABASE_URL": "sqlite:///:memory:",
+        "CHAT_GUARDIAN_ADMIN_USERNAME": "e2e",
+        "CHAT_GUARDIAN_ADMIN_PASSWORD": "password",
+    }
     proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     assert _wait_for_port("127.0.0.1", port), "Backend failed to start within 15 s"
     yield f"http://127.0.0.1:{port}"
@@ -76,9 +81,9 @@ def browser_context(live_server):  # noqa: F811
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
-        # bootstrap admin credentials for E2E
+        # authenticate using env-provided admin credentials for E2E
         resp = requests.post(
-            f"{live_server}/api/auth/register",
+            f"{live_server}/api/auth/login",
             json={"username": "e2e", "password": "password"},
             timeout=5,
         )

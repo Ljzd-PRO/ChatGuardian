@@ -80,6 +80,9 @@ copy .env.example .env
 
 - `CHAT_GUARDIAN_APP_NAME`：项目名称（只读）
 - `CHAT_GUARDIAN_ENVIRONMENT`：运行环境（dev/prod，仅影响只读逻辑如 CORS）
+- 管理员登录凭证通过环境变量配置（默认 `admin` / `admin`，启动时会在终端输出当前账号密码，强烈建议修改）：
+  - `CHAT_GUARDIAN_ADMIN_USERNAME`
+  - `CHAT_GUARDIAN_ADMIN_PASSWORD`
 
 4. 启动服务
 

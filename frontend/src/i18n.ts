@@ -116,6 +116,8 @@ const resources = {
         todayLabel: 'Today',
         liveChip: 'Live',
         viewAll: 'View all',
+        defaultCredentialsTitle: 'Default admin credentials in use',
+        defaultCredentialsDesc: 'Current admin username/password are defaults. Set {{usernameEnv}} and {{passwordEnv}} in your .env file to change them.',
       },
       rules: {
         loading: 'Loading rules…',
@@ -440,6 +442,8 @@ const resources = {
           todayLabel: '今日',
           liveChip: '实时',
           viewAll: '查看全部',
+          defaultCredentialsTitle: '当前使用默认管理员账号密码',
+          defaultCredentialsDesc: '当前管理员账号/密码为默认值，请在 .env 中设置 {{usernameEnv}} 和 {{passwordEnv}} 进行修改。',
         },
       rules: {
         loading: '正在加载规则…',
@@ -761,6 +765,8 @@ const resources = {
           todayLabel: '今日',
           liveChip: '即時',
           viewAll: '查看全部',
+          defaultCredentialsTitle: '目前使用預設的管理員帳號密碼',
+          defaultCredentialsDesc: '目前的管理員帳號/密碼為預設值，請在 .env 中設定 {{usernameEnv}} 與 {{passwordEnv}} 以修改。',
         },
       rules: {
         loading: '正在載入規則…',
@@ -1082,6 +1088,8 @@ const resources = {
           todayLabel: '今日',
           liveChip: 'ライブ',
           viewAll: 'すべて表示',
+          defaultCredentialsTitle: 'デフォルトの管理者情報を使用しています',
+          defaultCredentialsDesc: '.env で {{usernameEnv}} と {{passwordEnv}} を設定し、管理者の資格情報を変更してください。',
         },
       rules: {
         loading: 'ルールを読み込み中…',
@@ -1384,6 +1392,8 @@ const resources = {
         todayLabel: '오늘',
         liveChip: '실시간',
         viewAll: '전체 보기',
+        defaultCredentialsTitle: '기본 관리자 자격 증명이 사용 중입니다',
+        defaultCredentialsDesc: '.env에서 {{usernameEnv}} 및 {{passwordEnv}} 값을 설정해 관리자 자격 증명을 변경하세요.',
       },
       rules: {
         loading: '규칙을 불러오는 중…',
@@ -1686,6 +1696,8 @@ const resources = {
         todayLabel: 'Aujourd’hui',
         liveChip: 'En direct',
         viewAll: 'Tout afficher',
+        defaultCredentialsTitle: 'Identifiants administrateur par défaut utilisés',
+        defaultCredentialsDesc: 'Les identifiants admin sont ceux par défaut. Définissez {{usernameEnv}} et {{passwordEnv}} dans votre fichier .env pour les changer.',
       },
       rules: {
         loading: 'Chargement des règles…',
@@ -1988,6 +2000,8 @@ const resources = {
         todayLabel: 'Heute',
         liveChip: 'Live',
         viewAll: 'Alles anzeigen',
+        defaultCredentialsTitle: 'Standard-Admin-Zugangsdaten werden verwendet',
+        defaultCredentialsDesc: 'Aktuell werden Standard-Admin-Zugangsdaten genutzt. Setzen Sie {{usernameEnv}} und {{passwordEnv}} in Ihrer .env, um sie zu ändern.',
       },
       rules: {
         loading: 'Regeln werden geladen…',
@@ -2290,6 +2304,8 @@ const resources = {
         todayLabel: 'Сегодня',
         liveChip: 'Онлайн',
         viewAll: 'Показать все',
+        defaultCredentialsTitle: 'Используются учетные данные по умолчанию',
+        defaultCredentialsDesc: 'Сейчас используются стандартные админ-логин и пароль. Укажите {{usernameEnv}} и {{passwordEnv}} в файле .env, чтобы изменить их.',
       },
       rules: {
         loading: 'Загрузка правил…',

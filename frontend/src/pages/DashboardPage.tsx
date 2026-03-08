@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Card, CardBody, CardHeader, Chip, Spinner, cn } from '@heroui/react';
 import { Icon, type IconifyIcon } from '@iconify/react';
@@ -6,6 +7,7 @@ import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
 import pulse2Bold from '@iconify/icons-solar/pulse-2-bold';
 import shieldCheckBold from '@iconify/icons-solar/shield-check-bold';
 import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
+import dangerTriangleBold from '@iconify/icons-solar/danger-triangle-bold';
 import { useTranslation } from 'react-i18next';
 import TriggerChart from '../components/charts/TriggerChart';
 import { fetchDashboard } from '../api/dashboard';
@@ -13,6 +15,8 @@ import { fetchAdapters } from '../api/adapters';
 import { fetchRuleStats } from '../api/stats';
 import { ICON_SIZES } from '../constants/iconSizes';
 import { Link } from 'react-router-dom';
+import { useAuthStatus } from '../hooks/useAuth';
+import { useToast } from '../components/ToastProvider';
 
 export default function DashboardPage() {
   const { t } = useTranslation();
@@ -21,6 +25,9 @@ export default function DashboardPage() {
     queryFn: fetchDashboard,
     refetchInterval: 30_000,
   });
+  const { data: authStatus } = useAuthStatus();
+  const { addToast } = useToast();
+  const [defaultToastShown, setDefaultToastShown] = useState(false);
 
   const { data: adapters } = useQuery({
     queryKey: ['adapters'],
@@ -44,6 +51,23 @@ export default function DashboardPage() {
         .sort((a, b) => b.trigger_time.localeCompare(a.trigger_time))
         .slice(0, 10)
     : [];
+
+  const usingDefaultCredentials = authStatus?.using_default_credentials;
+
+  useEffect(() => {
+    if (usingDefaultCredentials && !defaultToastShown) {
+      addToast({
+        title: t('dashboard.defaultCredentialsTitle'),
+        description: t('dashboard.defaultCredentialsDesc', {
+          usernameEnv: 'CHAT_GUARDIAN_ADMIN_USERNAME',
+          passwordEnv: 'CHAT_GUARDIAN_ADMIN_PASSWORD',
+        }),
+        color: 'warning',
+        duration: 9000,
+      });
+      setDefaultToastShown(true);
+    }
+  }, [addToast, defaultToastShown, t, usingDefaultCredentials]);
 
   type StatCard = {
     title: string;
@@ -94,6 +118,25 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {usingDefaultCredentials && (
+        <Card className="border border-warning-200 bg-warning-50">
+          <CardBody className="flex items-start gap-4">
+            <div className="rounded-full bg-warning-100 p-2 text-warning-600">
+              <Icon icon={dangerTriangleBold} fontSize={22} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-warning-800">{t('dashboard.defaultCredentialsTitle')}</p>
+              <p className="text-sm text-warning-700">
+                {t('dashboard.defaultCredentialsDesc', {
+                  usernameEnv: 'CHAT_GUARDIAN_ADMIN_USERNAME',
+                  passwordEnv: 'CHAT_GUARDIAN_ADMIN_PASSWORD',
+                })}
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
       {/* Stats row */}
       <dl className="grid w-full grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map(({ title, value, icon, color, href }, idx) => (

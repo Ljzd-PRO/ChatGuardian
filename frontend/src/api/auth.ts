@@ -4,6 +4,7 @@ export interface AuthStatus {
   setup_required: boolean;
   authenticated: boolean;
   username: string | null;
+  using_default_credentials: boolean;
 }
 
 export interface AuthPayload {

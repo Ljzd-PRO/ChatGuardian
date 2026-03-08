@@ -55,7 +55,13 @@ from chat_guardian.services import (
     SelfMessageMemoryService,
     SuggestionService,
 )
-from chat_guardian.settings import settings, Settings
+from chat_guardian.settings import (
+    settings,
+    Settings,
+    admin_env,
+    DEFAULT_ADMIN_USERNAME,
+    DEFAULT_ADMIN_PASSWORD,
+)
 
 ENV_ONLY_KEYS = frozenset({"database_url", "app_name", "environment"})
 
@@ -169,6 +175,7 @@ class AppContainer:
         self.memory_repository = MemoryRepository(database_url=settings.database_url)
         self.detection_result_repository = DetectionResultRepository(database_url=settings.database_url)
         self.admin_credential_repository = AdminCredentialRepository(database_url=settings.database_url)
+        self.using_default_admin_credentials = self._apply_admin_credentials()
 
         self.llm_client = build_llm_client()
         self.context_service = ContextWindowService(self.chat_history_store)
@@ -201,6 +208,34 @@ class AppContainer:
             adapter.register_handler(self.handle_adapter_event)
 
         self.token_manager = TokenManager()
+
+    def _apply_admin_credentials(self) -> bool:
+        """确保管理员凭证按环境变量配置写入仓储，并返回是否使用默认值。"""
+        username = admin_env.admin_username
+        password = admin_env.admin_password
+
+        self.admin_credential_repository.set_credentials(username, password)
+
+        is_default = (
+            username == DEFAULT_ADMIN_USERNAME
+            and password == DEFAULT_ADMIN_PASSWORD
+        )
+
+        try:
+            from loguru import logger
+
+            logger.info(f"🛡️ 管理员账号: {username}")
+            logger.info("🔑 管理员密码: {}", password)
+            if is_default:
+                logger.warning(
+                    "当前管理员凭证为默认值，请在 .env 中设置 "
+                    "CHAT_GUARDIAN_ADMIN_USERNAME / CHAT_GUARDIAN_ADMIN_PASSWORD 以修改。"
+                )
+        except Exception:
+            # 记录日志失败不影响凭证写入
+            pass
+
+        return is_default
 
     async def handle_adapter_event(self, event: ChatEvent) -> None:
         """Adapter 统一消息入口：先处理 self-memory，再进入检测触发流程。"""
@@ -285,18 +320,17 @@ def create_app() -> FastAPI:
             setup_required=not has_admin,
             authenticated=username is not None,
             username=username,
+            using_default_credentials=container.using_default_admin_credentials,
         )
 
     @app.post("/api/auth/register", response_model=AuthResponse)
     async def auth_register(payload: AuthRequest):
-        if container.admin_credential_repository.has_admin():
-            raise HTTPException(status_code=400, detail="Admin already exists")
-        container.admin_credential_repository.set_credentials(payload.username, payload.password)
-        token, expires_at = container.token_manager.issue(payload.username)
-        return AuthResponse(
-            token=token,
-            expires_at=expires_at,
-            username=payload.username,
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Admin credentials are managed via environment variables. "
+                "Set CHAT_GUARDIAN_ADMIN_USERNAME and CHAT_GUARDIAN_ADMIN_PASSWORD in your .env file."
+            ),
         )
 
     @app.post("/api/auth/login", response_model=AuthResponse)
