@@ -6,15 +6,17 @@ FastAPI 应用与路由定义。
 
 from __future__ import annotations
 
+import asyncio
 import os
 from collections import deque
-from contextlib import asynccontextmanager
-from datetime import date, datetime
+from contextlib import asynccontextmanager, suppress
+from datetime import datetime
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from loguru import logger
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import (
@@ -29,6 +31,7 @@ from chat_guardian.domain import (
 from chat_guardian.notifiers import (
     build_notifiers_from_settings,
 )
+from chat_guardian.mcp import ChatGuardianMCPService, ChatGuardianOperations, OperationError
 from chat_guardian.repositories import (
     ChatHistoryStore,
     DetectionResultRepository,
@@ -62,6 +65,8 @@ async def _app_lifespan(app: FastAPI):
     import threading
     from loguru import logger
     container = app.state.container
+    mcp_service = getattr(container, "mcp_service", None)
+    mcp_http_task: asyncio.Task | None = None
 
     # 安装信号处理器以记录用户主动停止程序的操作（仅在主线程中有效）
     _prev_sigint = signal.getsignal(signal.SIGINT)
@@ -92,6 +97,23 @@ async def _app_lifespan(app: FastAPI):
         adapter_names = [adapter.name for adapter in container.adapter_manager.adapters]
         logger.info(f"🚀 应用启动，自动启动 adapters: {adapter_names}")
         await container.adapter_manager.start_all()
+    if mcp_service and settings.mcp_http_enabled:
+        transport = (
+            settings.mcp_http_transport
+            if settings.mcp_http_transport in {"sse", "streamable-http"}
+            else "streamable-http"
+        )
+        try:
+            mcp_http_task = asyncio.create_task(
+                mcp_service.start_http_server(
+                    transport=transport,
+                    host=settings.mcp_http_host,
+                    port=settings.mcp_http_port,
+                    path=settings.mcp_http_path,
+                )
+            )
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.warning("⚠️ 启动 MCP HTTP 传输失败: {}", exc)
     try:
         yield
     finally:
@@ -101,6 +123,12 @@ async def _app_lifespan(app: FastAPI):
         else:
             logger.info("🛑 应用关闭，停止所有 adapters")
         await container.adapter_manager.stop_all()
+        if mcp_service:
+            await mcp_service.stop_http_server()
+        if mcp_http_task:
+            mcp_http_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await mcp_http_task
         logger.info("✅ 应用程序已成功停止")
 
         if _is_main_thread:
@@ -176,6 +204,7 @@ class AppContainer:
 def create_app() -> FastAPI:
     """创建并返回 FastAPI 应用实例。应用启动时自动启动所有 enabled adapters。"""
     container = AppContainer()
+    operations = ChatGuardianOperations(container=container, env_only_keys=ENV_ONLY_KEYS)
     app = FastAPI(title="ChatGuardian API", version="0.1.0", lifespan=_app_lifespan)
     app.state.container = container
 
@@ -188,244 +217,275 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    def _to_http_error(exc: OperationError) -> HTTPException:
+        """将内部 OperationError 转换为 HTTPException。"""
+        return HTTPException(status_code=exc.status_code, detail=str(exc))
+
+    PUBLIC_PATH_PREFIXES = ("/app/assets", "/assets")
+    PUBLIC_PATHS = {
+        "/",
+        "/auth/login",
+        "/health",
+        "/llm/health",
+        "/app",
+        "/app/",
+    }
+    # '/' serves a redirect to the frontend entry, so it must remain public.
+
     @app.get("/health")
     async def health() -> dict[str, str]:
         return {"status": "ok", "time": datetime.utcnow().isoformat()}
+        """
+        健康检查接口，确认 API 进程是否正常运行。
+
+        Returns:
+            dict[str, str]: 字段说明：
+                - ``status``：固定返回 ``"ok"`` 表示服务存活。
+                - ``time``：当前 UTC 时间的 ISO8601 字符串，便于探测端确认时间。
+        """
+        return await operations.health()
 
     @app.get("/llm/health")
     async def llm_health(do_ping: bool = True) -> dict[str, object]:
-        diagnostics = container.llm_client.diagnostics()
-        scheduler_diagnostics = container.detection_engine.batch_scheduler.diagnostics()
-        result: dict[str, object] = {
-            "status": "ok",
-            "time": datetime.utcnow().isoformat(),
-            "llm": diagnostics,
-            "scheduler": scheduler_diagnostics,
-        }
+        """
+        返回 LLM 与批处理调度器的诊断信息。
 
-        if do_ping:
-            ping_ok, ping_error, latency_ms = await container.llm_client.ping()
-            result["ping"] = {
-                "ok": ping_ok,
-                "latency_ms": round(latency_ms, 2),
-                "error": ping_error,
-            }
-            if not ping_ok:
-                result["status"] = "degraded"
+        Args:
+            do_ping: 是否执行一次最小化的 LLM ping 探活。
 
-        return result
+        Returns:
+            dict[str, object]: 字段说明：
+                - ``status``：``"ok"`` 或 ``"degraded"``（当 ping 失败时）。
+                - ``time``：当前 UTC 时间 ISO8601 字符串。
+                - ``llm``：``LLMClient.diagnostics()`` 返回的诊断字典。
+                - ``scheduler``：批处理调度器诊断信息。
+                - ``ping``：当 ``do_ping`` 为 True 时包含：
+                    - ``ok``：布尔值，ping 是否成功。
+                    - ``latency_ms``：往返耗时毫秒。
+                    - ``error``：异常信息字符串或 ``None``。
+        """
+        return await operations.llm_health(do_ping=do_ping)
 
     @app.post("/adapters/start")
     async def start_adapters() -> dict[str, str | list[str]]:
-        await container.adapter_manager.start_all()
-        return {
-            "status": "started",
-            "enabled_adapters": [adapter.name for adapter in container.adapter_manager.adapters],
-        }
+        """
+        启动所有已启用的 adapter。
+
+        Returns:
+            dict[str, str | list[str]]: 字段说明：
+                - ``status``：固定返回 ``"started"``。
+                - ``enabled_adapters``：已启用的 adapter 名称列表。
+        """
+        return await operations.start_adapters()
 
     @app.post("/adapters/stop")
     async def stop_adapters() -> dict[str, str | list[str]]:
-        await container.adapter_manager.stop_all()
-        return {
-            "status": "stopped",
-            "enabled_adapters": [adapter.name for adapter in container.adapter_manager.adapters],
-        }
+        """
+        停止所有已启用的 adapter。
+
+        Returns:
+            dict[str, str | list[str]]: 字段说明：
+                - ``status``：固定返回 ``"stopped"``。
+                - ``enabled_adapters``：已启用的 adapter 名称列表。
+        """
+        return await operations.stop_adapters()
 
     @app.post("/rules", response_model=DetectionRule)
     async def upsert_rule(payload: DetectionRule) -> DetectionRule:
-        saved = await container.rule_repository.upsert(payload)
-        return saved
+        """
+        创建或更新检测规则。
+
+        Args:
+            payload: `DetectionRule` 对象，包含规则定义。
+
+        Returns:
+            DetectionRule: 保存后的规则（包含生成的 ``rule_id`` 等字段）。
+        """
+        return await operations.upsert_rule(payload)
 
     @app.get("/rules/list", response_model=list[DetectionRule])
     async def list_rules() -> list[DetectionRule]:
-        rules = await container.rule_repository.list_all()
-        return rules
+        """
+        列出所有规则。
+
+        Returns:
+            list[DetectionRule]: 规则列表。
+        """
+        return await operations.list_rules()
 
     @app.post("/rules/delete/{rule_id}")
     async def delete_rule(rule_id: str) -> dict[str, str | bool]:
-        deleted = await container.rule_repository.delete(rule_id)
-        if not deleted:
-            raise HTTPException(status_code=404, detail=f"Rule not found: {rule_id}")
-        return {"status": "deleted", "rule_id": rule_id, "deleted": True}
+        """
+        删除指定规则。
+
+        Args:
+            rule_id: 规则标识。
+
+        Returns:
+            dict[str, str | bool]: 字段说明：
+                - ``status``：固定返回 ``"deleted"``。
+                - ``rule_id``：被删除的规则 ID。
+                - ``deleted``：布尔值，恒为 True。
+
+        Raises:
+            HTTPException: 404 当规则不存在。
+        """
+        try:
+            return await operations.delete_rule(rule_id)
+        except OperationError as exc:
+            raise _to_http_error(exc) from exc
 
     @app.post("/feedback")
     async def submit_feedback(payload: Feedback) -> dict[str, str]:
-        await container.feedback_repository.add(payload)
-        return {"status": "accepted"}
+        """
+        提交检测结果的反馈。
+
+        Args:
+            payload: `Feedback` 对象，包含评分与备注。
+
+        Returns:
+            dict[str, str]: 字段说明：
+                - ``status``：固定返回 ``"accepted"``。
+        """
+        return await operations.submit_feedback(payload)
 
     @app.get("/suggestions/new-rules/{user_id}", response_model=SuggestResponse)
     async def suggest_new_rules(user_id: str) -> SuggestResponse:
-        suggestions = await container.suggestion_service.suggest_new_rules(user_id)
-        return SuggestResponse(suggestions=suggestions)
+        """
+        基于用户记忆生成新的规则建议。
+
+        Args:
+            user_id: 目标用户 ID。
+
+        Returns:
+            SuggestResponse: 包含 ``suggestions`` 列表（每条为字符串）。
+        """
+        return await operations.suggest_new_rules(user_id)
 
     @app.get("/suggestions/rule-improvements/{rule_id}", response_model=SuggestResponse)
     async def suggest_rule_improvements(rule_id: str) -> SuggestResponse:
-        suggestions = await container.suggestion_service.suggest_rule_improvements(rule_id)
-        return SuggestResponse(suggestions=suggestions)
+        """
+        针对指定规则生成改进建议。
+
+        Args:
+            rule_id: 规则 ID。
+
+        Returns:
+            SuggestResponse: 包含 ``suggestions`` 列表。
+        """
+        return await operations.suggest_rule_improvements(rule_id)
 
     @app.post("/rule-generation", response_model=DetectionRule)
     async def generate_rule(payload: RuleGenerateRequest) -> DetectionRule:
-        try:
-            generated = await container.rule_authoring_service.generate_rule(
-                utterance=payload.utterance,
-                use_external=payload.use_external,
-                override_system_prompt=payload.override_system_prompt,
-            )
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        """
+        根据用户输入的一句话生成结构化检测规则。
 
-        return generated
+        Args:
+            payload: `RuleGenerateRequest`，包含 ``utterance``（描述文本）、``use_external``（是否调用外部端点）、
+                ``override_system_prompt``（可选的系统提示词覆盖）。
+
+        Returns:
+            DetectionRule: 生成的规则。
+
+        Raises:
+            HTTPException: 400 当输入无法生成合法规则时。
+        """
+        try:
+            return await operations.generate_rule(payload)
+        except OperationError as exc:
+            raise _to_http_error(exc) from exc
 
     @app.post("/mcp/tools/generate-rule", response_model=DetectionRule)
     async def mcp_generate_rule(payload: RuleGenerateRequest) -> DetectionRule:
+        """
+        MCP 入口的规则生成，逻辑等同于 ``POST /rule-generation``。
+
+        Args:
+            payload: `RuleGenerateRequest`。
+
+        Returns:
+            DetectionRule: 生成的规则。
+        """
         return await generate_rule(payload)
 
     @app.get("/api/rule_stats")
     async def get_rule_stats():
-        stats = {}
-        for rule_id, results in container.detection_result_repository.results_by_rule.items():
-            rule = await container.rule_repository.get(rule_id)
-            if not rule:
-                continue
+        """
+        汇总规则触发统计数据，仅包含已触发的结果。
 
-            # Only include triggered results for the stats dashboard
-            triggered_results = [r for r in results if r.decision.triggered]
-            if not triggered_results:
-                continue
-
-            records = []
-            for r in triggered_results:
-                records.append({
-                    "id": r.result_id,
-                    "result_id": r.result_id,
-                    "event_id": r.event_id,
-                    "rule_id": r.rule_id,
-                    "adapter": r.adapter,
-                    "chat_type": r.chat_type,
-                    "chat_id": r.chat_id,
-                    "message_id": r.message_id,
-                    "trigger_time": r.generated_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    "confidence": round(r.decision.confidence, 2),
-                    "result": "Triggered (Suppressed)" if r.trigger_suppressed else "Triggered",
-                    "trigger_suppressed": r.trigger_suppressed,
-                    "suppression_reason": r.suppression_reason,
-                    "rule_name": rule.name,
-                    "messages": [
-                        {"sender": m.sender_name or m.sender_id, "content": str(m)}
-                        for m in r.context_messages
-                    ],
-                    "extracted_params": r.decision.extracted_params,
-                    "reason": r.decision.reason,
-                })
-
-            stats[rule.name] = {
-                "count": len(triggered_results),
-                "description": rule.description,
-                "records": sorted(records, key=lambda x: x["trigger_time"], reverse=True)
-            }
-
-        return {"stats": "ok", "data": stats}
+        Returns:
+            dict: 字段说明：
+                - ``stats``：固定返回 ``"ok"``。
+                - ``data``：以规则名为键的统计字典，包含：
+                    - ``count``：触发次数。
+                    - ``description``：规则描述。
+                    - ``records``：按时间倒序的触发记录列表，每条含 ``result_id``、``event_id``、
+                      ``rule_id``、``adapter``、``chat_type``、``chat_id``、``message_id``、
+                      ``trigger_time``、``confidence``、``result``、``trigger_suppressed``、
+                      ``suppression_reason``、``rule_name``、``messages``、``extracted_params``、``reason``。
+        """
+        return await operations.get_rule_stats()
 
     @app.get("/api/queues")
     async def get_queues():
-        store = container.chat_history_store
+        """
+        获取待处理与历史消息队列的扁平化视图。
 
-        def _flatten_bucket(tree):
-            rows: list[dict[str, str]] = []
-            for adapter, by_type in tree.items():
-                for chat_type, by_chat in by_type.items():
-                    for chat_id, messages in by_chat.items():
-                        for message in messages:
-                            rows.append(
-                                {
-                                    "adapter": adapter,
-                                    "platform": adapter,
-                                    "chat_type": chat_type,
-                                    "chat_id": chat_id,
-                                    "message_id": message.message_id,
-                                    "sender_name": message.sender_name or message.sender_id,
-                                    "content": str(message),
-                                    "timestamp": message.timestamp.isoformat(),
-                                }
-                            )
-            return rows
-
-        return {
-            "pending": _flatten_bucket(store.pending),
-            "history": _flatten_bucket(store.history),
-        }
+        Returns:
+            dict: 字段说明：
+                - ``pending``：待处理消息列表，每条包含平台、chat_type/chat_id、message_id、sender_name、content、timestamp。
+                - ``history``：历史消息列表，字段与 ``pending`` 相同。
+        """
+        return await operations.get_queues()
 
     @app.delete("/api/queues/history")
     async def delete_history_messages(payload=Body(default={"items": []})):
-        store = container.chat_history_store
-        clear_all = bool(payload.get("clear_all"))
-        if clear_all:
-            cleared = await store.clear_history()
-            return {"cleared": cleared}
+        """
+        删除历史消息，可按条目或清空全部。
 
-        items_raw = payload.get("items") or []
-        items: list[tuple[str, str, str, str]] = []
-        for item in items_raw:
-            platform = (item or {}).get("platform") or (item or {}).get("adapter")
-            chat_type = (item or {}).get("chat_type")
-            chat_id = (item or {}).get("chat_id")
-            message_id = (item or {}).get("message_id")
-            if not all([platform, chat_type, chat_id, message_id]):
-                continue
-            items.append((str(platform), str(chat_type), str(chat_id), str(message_id)))
-        deleted = await store.delete_history_messages(items)
-        return {"deleted": deleted}
+        Request Body:
+            clear_all: 可选，True 时清空全部历史。
+            items: 可选，待删除消息的列表，元素包含 ``platform``/``adapter``、``chat_type``、``chat_id``、``message_id``。
+
+        Returns:
+            dict: 当 ``clear_all`` 为 True 返回 ``{"cleared": <count>}``，否则返回 ``{"deleted": <count>}``。
+        """
+        return await operations.delete_history_messages(payload=payload)
 
     @app.get("/api/adapters/status")
     async def get_adapters_status():
-        return [
-            {
-                "name": adapter.name,
-                "running": True  # Need to check if there's a task or similar, mock running for now.
-            } for adapter in container.adapter_manager.adapters
-        ]
+        """
+        查询所有 adapter 的运行状态。
+
+        Returns:
+            list[dict]: 每个元素包含：
+                - ``name``：adapter 名称。
+                - ``running``：当前是否运行。
+        """
+        return await operations.get_adapters_status()
 
     # ── Dashboard ────────────────────────────────────────────────────────────
 
     @app.get("/api/dashboard")
     async def get_dashboard():
-        rules = await container.rule_repository.list_all()
-        total_rules = len(rules)
-        enabled_rules = sum(1 for r in rules if r.enabled)
+        """
+        获取仪表盘概览数据。
 
-        today = date.today()
-        triggers_today = 0
-        for results in container.detection_result_repository.results_by_rule.values():
-            for r in results:
-                if r.decision.triggered and r.generated_at.date() == today:
-                    triggers_today += 1
-
-        messages_today = sum(
-            1 for r in container.detection_result_repository.results if r.generated_at.date() == today
-        )
-        total_results = sum(
-            len(v) for v in container.detection_result_repository.results_by_rule.values()
-        )
-        triggered_total = sum(
-            sum(1 for r in v if r.decision.triggered)
-            for v in container.detection_result_repository.results_by_rule.values()
-        )
-        trigger_rate = round(triggered_total / total_results, 4) if total_results else 0.0
-
-        llm_diag = container.llm_client.diagnostics()
-
-        return {
-            "total_rules": total_rules,
-            "enabled_rules": enabled_rules,
-            "triggers_today": triggers_today,
-            "trigger_rate": trigger_rate,
-            "messages_today": messages_today,
-            "llm_status": llm_diag,
-        }
+        Returns:
+            dict: 字段说明：
+                - ``total_rules``：规则总数。
+                - ``enabled_rules``：启用的规则数。
+                - ``triggers_today``：今日触发次数。
+                - ``trigger_rate``：累计触发占比。
+                - ``messages_today``：今日处理的消息数。
+                - ``llm_status``：LLM 诊断信息。
+        """
+        return await operations.get_dashboard()
 
     # ── Logs ─────────────────────────────────────────────────────────────────
 
     _log_buffer: deque[dict] = deque(maxlen=500)
+    operations.log_buffer = _log_buffer
 
     try:
         from loguru import logger as _loguru_logger
@@ -446,153 +506,115 @@ def create_app() -> FastAPI:
 
     @app.get("/api/logs")
     async def get_logs(limit: int = 100):
-        return list(reversed(list(_log_buffer)[-limit:]))
+        """
+        拉取最近的运行日志。
+
+        Args:
+            limit: 最多返回的日志条数，默认 100。
+
+        Returns:
+            list[dict]: 每条包含 ``timestamp``、``level``、``message``。
+        """
+        return await operations.get_logs(limit=limit)
 
     @app.delete("/api/logs")
     async def clear_logs():
-        cleared = len(_log_buffer)
-        _log_buffer.clear()
-        return {"cleared": cleared}
+        """
+        清空内存日志缓冲区。
+
+        Returns:
+            dict[str, int]: 字段 ``cleared`` 表示删除的条数。
+        """
+        return await operations.clear_logs()
 
     # ── User Profiles ─────────────────────────────────────────────────────────
 
     @app.get("/api/user_profiles")
     async def list_user_profiles():
-        return list(container.memory_repository.profiles.values())
+        """
+        列出所有用户画像。
+
+        Returns:
+            list: 用户画像列表（`UserProfile` dict 格式）。
+        """
+        return await operations.list_user_profiles()
 
     @app.get("/api/user_profiles/{user_id}")
     async def get_user_profile(user_id: str):
-        profile = await container.memory_repository.get_profile(user_id)
-        if not profile:
-            raise HTTPException(status_code=404, detail=f"User not found: {user_id}")
-        return profile
+        """
+        获取指定用户的画像。
+
+        Args:
+            user_id: 用户 ID。
+
+        Returns:
+            dict: 用户画像。
+
+        Raises:
+            HTTPException: 404 当用户不存在。
+        """
+        try:
+            return await operations.get_user_profile(user_id)
+        except OperationError as exc:
+            raise _to_http_error(exc) from exc
 
     # ── Settings ──────────────────────────────────────────────────────────────
-
-    SETTINGS_ALLOWLIST = set(Settings.model_fields.keys()) - ENV_ONLY_KEYS
-
-    # 注意：这里仅排除 database_url。
-    # GET /api/settings 需要向前端展示 app_name/environment 等只读信息，
-    # 而 ENV_ONLY_KEYS/SETTINGS_ALLOWLIST 主要用于限制哪些字段可以通过 POST 更新。
-    # 因此本函数刻意没有使用 ENV_ONLY_KEYS，以避免误隐藏这些只读展示字段。
-    def _settings_subset() -> dict[str, object]:
-        return settings.model_dump(exclude={"database_url"})
 
     @app.get("/api/settings")
     async def get_settings_api() -> dict:
         """返回当前所有可配置项（不含 database_url）。"""
-        return _settings_subset()
+        return await operations.get_settings()
 
     @app.post("/api/settings")
     async def update_settings_api(payload: dict) -> dict:
         """批量更新配置项，保存到数据库并立即生效。database_url 不可通过此接口修改。"""
-        updates = {k: v for k, v in payload.items() if k in SETTINGS_ALLOWLIST}
-        disallowed = set(payload.keys()) - set(SETTINGS_ALLOWLIST)
-        if disallowed:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unknown or disallowed setting(s): {', '.join(sorted(disallowed))}",
-            )
-
-        # Build full settings object for validation while keeping database_url from env
-        current = settings.model_dump()
-        current.update(updates)
-        current["database_url"] = settings.database_url
-
         try:
-            validated = Settings.model_validate(current)
-        except Exception as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-        adapter_related_keys = {
-            "enabled_adapters",
-            "onebot_host",
-            "onebot_port",
-            "onebot_access_token",
-            "telegram_bot_token",
-            "telegram_polling_timeout",
-            "telegram_drop_pending_updates",
-            "wechat_endpoint",
-            "feishu_app_id",
-            "virtual_adapter_chat_count",
-            "virtual_adapter_members_per_chat",
-            "virtual_adapter_messages_per_chat",
-            "virtual_adapter_interval_min_seconds",
-            "virtual_adapter_interval_max_seconds",
-            "virtual_adapter_script_path",
-        }
-        update_keys = set(updates.keys())
-        adapter_updates = adapter_related_keys & update_keys
-        new_adapters = None
-        if adapter_updates:
-            try:
-                new_adapters = build_adapters_from_settings(validated)
-            except Exception as exc:
-                raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-        validated_dict = validated.model_dump(exclude={"database_url"})
-        # Persist only the allowlisted keys that were provided
-        to_save = {k: validated_dict[k] for k in updates.keys()}
-        container.settings_repository.save(to_save)
-
-        for key, value in to_save.items():
-            setattr(settings, key, value)
-
-        if adapter_updates and new_adapters is not None:
-            try:
-                await container.adapter_manager.stop_all()
-            except Exception as exc:
-                raise HTTPException(status_code=500, detail=f"Failed to stop existing adapters: {exc}") from exc
-            try:
-                container.adapter_manager = AdapterManager(new_adapters)
-                for adapter in container.adapter_manager.adapters:
-                    adapter.register_handler(container.handle_adapter_event)
-                # Adapters are intentionally left stopped here; users start them from the control panel.
-            except Exception as exc:
-                raise HTTPException(status_code=500, detail=f"Failed to rebuild adapters: {exc}") from exc
-
-        return {"status": "saved", "settings": _settings_subset()}
+            return await operations.update_settings(payload)
+        except OperationError as exc:
+            raise _to_http_error(exc) from exc
 
     # ── Notifications config ──────────────────────────────────────────────────
 
     @app.get("/api/notifications/config")
     async def get_notifications_config():
-        s = settings
-        return {
-            "email": {
-                "enabled": s.email_notifier_enabled,
-                "smtp_host": s.smtp_host,
-                "smtp_port": s.smtp_port,
-                "smtp_username": s.smtp_username,
-                "smtp_password": s.smtp_password,
-                "smtp_sender": s.smtp_sender,
-                "to_email": s.email_notifier_to_email,
-            },
-            "bark": {
-                "enabled": s.bark_notifier_enabled,
-                "device_key": s.bark_device_key,
-                "device_keys": s.bark_device_keys,
-                "server_url": s.bark_server_url,
-                "group": s.bark_group,
-                "level": s.bark_level,
-            },
-        }
+        """
+        获取通知配置（邮件与 Bark）。
+
+        Returns:
+            dict: 字段 ``email`` 与 ``bark``，各自包含启用状态与配置字段。
+        """
+        return operations.get_notifications_config()
 
     # ── LLM config ────────────────────────────────────────────────────────────
 
     @app.get("/api/llm/config")
     async def get_llm_config():
-        s = settings
-        return {
-            "backend": s.llm_langchain_backend,
-            "model": s.llm_langchain_model,
-            "api_base": s.llm_langchain_api_base,
-            "temperature": s.llm_langchain_temperature,
-            "timeout_seconds": s.llm_timeout_seconds,
-            "max_parallel_batches": s.llm_max_parallel_batches,
-            "rules_per_batch": s.llm_rules_per_batch,
-            "ollama_base_url": s.llm_ollama_base_url,
-        }
+        """
+        返回当前 LLM 配置摘要。
+
+        Returns:
+            dict: 字段说明：
+                - ``backend``：LangChain 后端类型。
+                - ``model``：模型名称。
+                - ``api_base``：API 基础地址。
+                - ``temperature``：采样温度。
+                - ``timeout_seconds``：超时时间。
+                - ``max_parallel_batches``：最大并行批次数。
+                - ``rules_per_batch``：每批处理规则数。
+                - ``ollama_base_url``：Ollama 基础地址。
+        """
+        return operations.get_llm_config()
+
+    container.operations = operations
+    container.mcp_service = ChatGuardianMCPService(container=container, operations=operations)
+    app.state.mcp_service = container.mcp_service
+    if settings.mcp_http_enabled:
+        logger.info(
+            "🌐 MCP HTTP 传输已启用，将在启动时监听 {}:{}{}",
+            settings.mcp_http_host,
+            settings.mcp_http_port,
+            settings.mcp_http_path,
+        )
 
     # ── Static frontend ───────────────────────────────────────────────────────
 
@@ -606,14 +628,17 @@ def create_app() -> FastAPI:
 
         @app.get("/app/{full_path:path}")
         async def serve_frontend(full_path: str):
+            """返回构建后的前端页面（任意子路径）。"""
             return FileResponse(os.path.join(_frontend_dist, "index.html"))
 
         @app.get("/app")
         async def serve_frontend_root():
+            """返回前端入口页面。"""
             return FileResponse(os.path.join(_frontend_dist, "index.html"))
 
         @app.get("/", include_in_schema=False)
         async def redirect_to_frontend():
+            """根路径重定向到 /app。"""
             return RedirectResponse(url="/app")
 
     return app
