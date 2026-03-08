@@ -215,6 +215,7 @@ def create_app() -> FastAPI:
     app.state.container = container
 
     logger.info("🔐 Admin username: {}", container.admin_username)
+    logger.info("🔑 Admin password: {}", container.admin_password)
     if container.using_default_credentials:
         logger.warning(
             "⚠️ Default credentials in use. Set CHAT_GUARDIAN_ADMIN_USERNAME / CHAT_GUARDIAN_ADMIN_PASSWORD in .env to improve security."
