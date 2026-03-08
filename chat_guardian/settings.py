@@ -85,7 +85,7 @@ class Settings(BaseModel):
         virtual_adapter_interval_max_seconds: 虚拟 adapter 消息最大间隔（秒）。
         virtual_adapter_script_path: 虚拟 adapter 脚本路径。
         mcp_http_enabled: 是否在启动时开启 MCP HTTP/SSE 服务。
-        mcp_http_transport: MCP HTTP 传输类型（sse 或 streamable-http）。
+        mcp_http_transport: MCP HTTP 传输类型（sse 持久推送，streamable-http 兼容长轮询/流式）。
         mcp_http_host: MCP HTTP 监听地址。
         mcp_http_port: MCP HTTP 监听端口。
         mcp_http_path: MCP HTTP 路径。

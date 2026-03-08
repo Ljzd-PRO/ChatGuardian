@@ -32,7 +32,12 @@ from chat_guardian.domain import (
 from chat_guardian.notifiers import (
     build_notifiers_from_settings,
 )
-from chat_guardian.mcp import ChatGuardianMCPService, ChatGuardianOperations, OperationError
+from chat_guardian.mcp import (
+    ChatGuardianMCPService,
+    ChatGuardianOperations,
+    OperationError,
+    normalize_mcp_transport,
+)
 from chat_guardian.repositories import (
     ChatHistoryStore,
     DetectionResultRepository,
@@ -125,11 +130,7 @@ async def _app_lifespan(app: FastAPI):
         logger.info(f"🚀 应用启动，自动启动 adapters: {adapter_names}")
         await container.adapter_manager.start_all()
     if mcp_service and settings.mcp_http_enabled:
-        transport = (
-            settings.mcp_http_transport
-            if settings.mcp_http_transport in {"sse", "streamable-http"}
-            else "streamable-http"
-        )
+        transport = normalize_mcp_transport(settings.mcp_http_transport)
         try:
             mcp_http_task = asyncio.create_task(
                 mcp_service.start_http_server(
@@ -537,7 +538,7 @@ def create_app() -> FastAPI:
                     - ``description``：规则描述。
                     - ``records``：按时间倒序的触发记录列表，每条含 ``result_id``、``event_id``、
                       ``rule_id``、``adapter``、``chat_type``、``chat_id``、``message_id``、
-                      ``trigger_time``、``confidence``、``result``、``trigger_suppressed``、
+                      ``trigger_time``（ISO8601）、``confidence``、``result``、``trigger_suppressed``、
                       ``suppression_reason``、``rule_name``、``messages``、``extracted_params``、``reason``。
         """
         return await operations.get_rule_stats()
