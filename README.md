@@ -105,16 +105,6 @@ poetry run uvicorn chat_guardian.api.app:create_app --factory --reload --host 0.
 
 - `http://127.0.0.1:8000/gradio`
 
-3. （可选）独立启动 Gradio 面板
-
-```bash
-poetry run chat-guardian-ui
-```
-
-- 独立地址：`http://127.0.0.1:7860`
-
-> 该界面用于临时联调，当前支持：`/health`、`/llm/health`、`/adapters/start`、`/adapters/stop`、`/rules`、`/rule-generation`。
-
 ## Docker 运行
 
 ```bash
