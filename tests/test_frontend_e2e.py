@@ -21,6 +21,7 @@ import sys
 import time
 
 import pytest
+import requests
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -75,7 +76,17 @@ def browser_context(live_server):  # noqa: F811
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
+        # bootstrap admin credentials for E2E
+        resp = requests.post(
+            f"{live_server}/api/auth/register",
+            json={"username": "e2e", "password": "password"},
+            timeout=5,
+        )
+        resp.raise_for_status()
+        token = resp.json()["token"]
+
         ctx = browser.new_context(viewport={"width": 1280, "height": 800})
+        ctx.add_init_script(f"window.localStorage.setItem('cg_auth_token', '{token}');")
         yield ctx, live_server
         ctx.close()
         browser.close()

@@ -7,7 +7,11 @@ Repository 实现：内存缓存 + SQLAlchemy 持久化。
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
 import json
+import secrets
 from collections import defaultdict, deque
 from datetime import datetime
 from typing import Any
@@ -72,6 +76,18 @@ class _SettingRecord(_Base):
 
     key: Mapped[str] = mapped_column(String(128), primary_key=True)
     value: Mapped[str] = mapped_column(Text)
+
+
+class _AdminCredentialRecord(_Base):
+    __tablename__ = "admin_credentials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(256))
+    salt: Mapped[str] = mapped_column(String(64))
+    iterations: Mapped[int] = mapped_column(Integer, default=260000)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    updated_at: Mapped[datetime] = mapped_column(DateTime)
 
 
 class _RepositoryDatabase:
@@ -634,3 +650,78 @@ class SettingsRepository:
                 else:
                     row.value = serialized
             session.commit()
+
+
+class AdminCredentialRepository:
+    """管理员账号凭证存储（仅一条记录）。"""
+
+    ITERATIONS = 260_000
+
+    def __init__(self, database_url: str | None = None):
+        self._db = _get_db_manager(database_url)
+
+    @staticmethod
+    def _encode(data: bytes) -> str:
+        return base64.b64encode(data).decode("utf-8")
+
+    @staticmethod
+    def _decode(data: str) -> bytes:
+        return base64.b64decode(data.encode("utf-8"))
+
+    def _hash_password(self, password: str, salt: bytes, iterations: int | None = None) -> str:
+        iter_count = iterations or self.ITERATIONS
+        digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iter_count)
+        return self._encode(digest)
+
+    def _load_record(self) -> _AdminCredentialRecord | None:
+        if self._db is None:
+            return None
+        with self._db.session_factory() as session:
+            return session.scalar(select(_AdminCredentialRecord).limit(1))
+
+    def has_admin(self) -> bool:
+        """数据库是否已存在管理员账号。"""
+        return self._load_record() is not None
+
+    def set_credentials(self, username: str, password: str) -> None:
+        """创建/替换管理员凭证。"""
+        if self._db is None:
+            return
+
+        salt = secrets.token_bytes(16)
+        hashed = self._hash_password(password, salt)
+        now = datetime.utcnow()
+
+        with self._db.session_factory() as session:
+            existing = session.scalar(select(_AdminCredentialRecord).limit(1))
+            if existing is None:
+                session.add(
+                    _AdminCredentialRecord(
+                        username=username,
+                        password_hash=hashed,
+                        salt=self._encode(salt),
+                        iterations=self.ITERATIONS,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
+            else:
+                existing.username = username
+                existing.password_hash = hashed
+                existing.salt = self._encode(salt)
+                existing.iterations = self.ITERATIONS
+                existing.updated_at = now
+            session.commit()
+
+    def verify(self, username: str, password: str) -> bool:
+        """验证用户名密码是否匹配。"""
+        record = self._load_record()
+        if record is None or record.username != username:
+            return False
+        expected = record.password_hash
+        calculated = self._hash_password(password, self._decode(record.salt), record.iterations)
+        return hmac.compare_digest(expected, calculated)
+
+    def username(self) -> str | None:
+        record = self._load_record()
+        return record.username if record else None
