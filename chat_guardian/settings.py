@@ -4,7 +4,7 @@
 此模块定义 `Settings` 配置类。`database_url`、`app_name`、`environment` 通过环境变量（前缀
 `CHAT_GUARDIAN_`）读取，其余配置项通过 SQLAlchemy SQLite 数据库保存与读取，并可通过前端 API 修改。
 """
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -84,6 +84,11 @@ class Settings(BaseModel):
         virtual_adapter_interval_min_seconds: 虚拟 adapter 消息最小间隔（秒）。
         virtual_adapter_interval_max_seconds: 虚拟 adapter 消息最大间隔（秒）。
         virtual_adapter_script_path: 虚拟 adapter 脚本路径。
+        mcp_http_enabled: 是否在启动时开启 MCP HTTP/SSE 服务。
+        mcp_http_transport: MCP HTTP 传输类型（sse 或 streamable-http）。
+        mcp_http_host: MCP HTTP 监听地址。
+        mcp_http_port: MCP HTTP 监听端口。
+        mcp_http_path: MCP HTTP 路径。
     """
 
     model_config = ConfigDict(extra="ignore", validate_assignment=True)
@@ -165,6 +170,13 @@ class Settings(BaseModel):
     virtual_adapter_interval_min_seconds: float = 0.1
     virtual_adapter_interval_max_seconds: float = 0.6
     virtual_adapter_script_path: Optional[str] = None
+
+    # MCP 服务配置
+    mcp_http_enabled: bool = False
+    mcp_http_transport: Literal["sse", "streamable-http"] = "streamable-http"
+    mcp_http_host: str = "127.0.0.1"
+    mcp_http_port: int = 8765
+    mcp_http_path: str = "/mcp"
 
 
 _env_config = _EnvConfig()
