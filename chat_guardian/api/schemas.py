@@ -7,6 +7,7 @@ API 层请求与响应的 Pydantic 模型定义。
 from __future__ import annotations
 
 from typing import Any
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -67,3 +68,20 @@ class SuggestResponse(BaseModel):
     """
 
     suggestions: list[str]
+
+
+class AuthRequest(BaseModel):
+    username: str
+    password: str
+
+
+class AuthResponse(BaseModel):
+    token: str
+    expires_at: datetime
+    username: str
+
+
+class AuthStatusResponse(BaseModel):
+    setup_required: bool
+    authenticated: bool
+    username: str | None = None

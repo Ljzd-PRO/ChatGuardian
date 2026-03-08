@@ -9,9 +9,10 @@ from __future__ import annotations
 import os
 from collections import deque
 from contextlib import asynccontextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+import secrets
 
-from fastapi import Body, FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -20,6 +21,9 @@ from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import (
     RuleGenerateRequest,
     SuggestResponse,
+    AuthRequest,
+    AuthResponse,
+    AuthStatusResponse,
 )
 from chat_guardian.domain import (
     ChatEvent,
@@ -36,6 +40,7 @@ from chat_guardian.repositories import (
     MemoryRepository,
     RuleRepository,
     SettingsRepository,
+    AdminCredentialRepository,
 )
 from chat_guardian.rule_authoring import (
     ExternalPromptRuleGenerationBackend,
@@ -53,6 +58,33 @@ from chat_guardian.services import (
 from chat_guardian.settings import settings, Settings
 
 ENV_ONLY_KEYS = frozenset({"database_url", "app_name", "environment"})
+
+
+class TokenManager:
+    """简单的内存 Token 管理器（进程内存，适用于单实例部署）。"""
+
+    def __init__(self, ttl_hours: int = 24):
+        self.ttl = timedelta(hours=ttl_hours)
+        self._tokens: dict[str, tuple[str, datetime]] = {}
+
+    def issue(self, username: str) -> tuple[str, datetime]:
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.utcnow() + self.ttl
+        self._tokens[token] = (username, expires_at)
+        return token, expires_at
+
+    def validate(self, token: str) -> str | None:
+        info = self._tokens.get(token)
+        if info is None:
+            return None
+        username, expires_at = info
+        if datetime.utcnow() > expires_at:
+            self._tokens.pop(token, None)
+            return None
+        return username
+
+    def revoke(self, token: str) -> None:
+        self._tokens.pop(token, None)
 
 
 @asynccontextmanager
@@ -136,6 +168,7 @@ class AppContainer:
         self.feedback_repository = FeedbackRepository(database_url=settings.database_url)
         self.memory_repository = MemoryRepository(database_url=settings.database_url)
         self.detection_result_repository = DetectionResultRepository(database_url=settings.database_url)
+        self.admin_credential_repository = AdminCredentialRepository(database_url=settings.database_url)
 
         self.llm_client = build_llm_client()
         self.context_service = ContextWindowService(self.chat_history_store)
@@ -167,6 +200,8 @@ class AppContainer:
         for adapter in self.adapter_manager.adapters:
             adapter.register_handler(self.handle_adapter_event)
 
+        self.token_manager = TokenManager()
+
     async def handle_adapter_event(self, event: ChatEvent) -> None:
         """Adapter 统一消息入口：先处理 self-memory，再进入检测触发流程。"""
         await self.self_message_service.process_if_self_message(event)
@@ -187,6 +222,101 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    _public_paths = {
+        "/",
+        "/health",
+        "/favicon.ico",
+        "/api/auth/login",
+        "/api/auth/register",
+        "/api/auth/status",
+    }
+
+    def _extract_token(auth_header: str | None) -> str:
+        if not auth_header:
+            raise HTTPException(status_code=401, detail="Missing Authorization header")
+        if not auth_header.lower().startswith("bearer "):
+            raise HTTPException(status_code=401, detail="Invalid Authorization header")
+        token = auth_header.split(" ", 1)[1].strip()
+        if not token:
+            raise HTTPException(status_code=401, detail="Invalid Authorization header")
+        return token
+
+    @app.middleware("http")
+    async def _auth_middleware(request, call_next):
+        # 静态资源或前端路由直接放行
+        path = request.url.path
+        if path.startswith("/app") or path.startswith("/assets"):
+            return await call_next(request)
+        if path in _public_paths:
+            return await call_next(request)
+        if not container.admin_credential_repository.has_admin():
+            # 初次引导模式允许无鉴权访问，便于前端完成账号创建
+            return await call_next(request)
+
+        token_header = request.headers.get("Authorization")
+        try:
+            token = _extract_token(token_header)
+        except HTTPException as exc:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+        username = container.token_manager.validate(token)
+        if username is None:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=401, content={"detail": "Invalid or expired token"})
+        request.state.user = username
+        return await call_next(request)
+
+    # ── Auth ────────────────────────────────────────────────────────────────────
+
+    @app.get("/api/auth/status", response_model=AuthStatusResponse)
+    async def auth_status(authorization: str | None = Header(None)):
+        token = None
+        username = None
+        if authorization:
+            try:
+                token = _extract_token(authorization)
+                username = container.token_manager.validate(token)
+            except HTTPException:
+                username = None
+        has_admin = container.admin_credential_repository.has_admin()
+        return AuthStatusResponse(
+            setup_required=not has_admin,
+            authenticated=username is not None,
+            username=username,
+        )
+
+    @app.post("/api/auth/register", response_model=AuthResponse)
+    async def auth_register(payload: AuthRequest):
+        if container.admin_credential_repository.has_admin():
+            raise HTTPException(status_code=400, detail="Admin already exists")
+        container.admin_credential_repository.set_credentials(payload.username, payload.password)
+        token, expires_at = container.token_manager.issue(payload.username)
+        return AuthResponse(
+            token=token,
+            expires_at=expires_at,
+            username=payload.username,
+        )
+
+    @app.post("/api/auth/login", response_model=AuthResponse)
+    async def auth_login(payload: AuthRequest):
+        if not container.admin_credential_repository.has_admin():
+            raise HTTPException(status_code=400, detail="Setup required")
+        if not container.admin_credential_repository.verify(payload.username, payload.password):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        token, expires_at = container.token_manager.issue(payload.username)
+        return AuthResponse(
+            token=token,
+            expires_at=expires_at,
+            username=payload.username,
+        )
+
+    @app.post("/api/auth/logout")
+    async def auth_logout(authorization: str | None = Header(None)):
+        token = _extract_token(authorization)
+        container.token_manager.revoke(token)
+        return {"status": "ok"}
 
     @app.get("/health")
     async def health() -> dict[str, str]:

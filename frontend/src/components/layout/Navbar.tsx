@@ -4,9 +4,11 @@ import hamburgerMenuBold from '@iconify/icons-solar/hamburger-menu-bold';
 import moonBold from '@iconify/icons-solar/moon-bold';
 import sun2Bold from '@iconify/icons-solar/sun-2-bold';
 import earthBold from '@iconify/icons-solar/earth-bold';
+import logout2Bold from '@iconify/icons-solar/logout-2-bold';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
 import { supportedLanguages } from '../../i18n';
+import { useAuthActions } from '../../hooks/useAuth';
 
 interface TopNavbarProps {
   onMenuClick: () => void;
@@ -18,6 +20,7 @@ export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
   const { isDark, toggle } = useTheme();
   const resolved = i18n.resolvedLanguage ?? i18n.language;
   const currentLang = supportedLanguages.some(l => l.code === resolved) ? resolved : 'en';
+  const { logout } = useAuthActions();
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur border-b border-divider">
@@ -52,6 +55,15 @@ export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
           aria-label={t('common.toggleDark')}
         >
           <Icon icon={isDark ? moonBold : sun2Bold} fontSize={20} />
+        </Button>
+        <Button
+          size="md"
+          variant="flat"
+          color="primary"
+          startContent={<Icon icon={logout2Bold} fontSize={18} />}
+          onPress={() => logout.mutate()}
+        >
+          {t('auth.logout')}
         </Button>
       </div>
     </header>
