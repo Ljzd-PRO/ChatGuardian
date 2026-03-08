@@ -49,10 +49,6 @@ export default function SetupWizardPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  useEffect(() => {
-    if (auth && !auth.setup_required) navigate('/', { replace: true });
-  }, [auth, navigate]);
-
   if (!auth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
