@@ -32,12 +32,14 @@ from chat_guardian.notifiers import (
     build_notifiers_from_settings,
 )
 from chat_guardian.repositories import (
+    AdminCredentialRepository,
     ChatHistoryStore,
     DetectionResultRepository,
     FeedbackRepository,
     MemoryRepository,
     RuleRepository,
     SettingsRepository,
+    _verify_password,
 )
 from chat_guardian.rule_authoring import (
     ExternalPromptRuleGenerationBackend,
@@ -52,7 +54,7 @@ from chat_guardian.services import (
     SelfMessageMemoryService,
     SuggestionService,
 )
-from chat_guardian.settings import admin_password, admin_username, settings, Settings
+from chat_guardian.settings import admin_password_env, admin_username_env, settings, Settings
 
 ENV_ONLY_KEYS = frozenset({"database_url", "app_name", "environment"})
 
@@ -164,6 +166,7 @@ class AppContainer:
         self.feedback_repository = FeedbackRepository(database_url=settings.database_url)
         self.memory_repository = MemoryRepository(database_url=settings.database_url)
         self.detection_result_repository = DetectionResultRepository(database_url=settings.database_url)
+        self.credential_repository = AdminCredentialRepository(database_url=settings.database_url)
 
         self.llm_client = build_llm_client()
         self.context_service = ContextWindowService(self.chat_history_store)
@@ -196,11 +199,26 @@ class AppContainer:
             adapter.register_handler(self.handle_adapter_event)
 
         self.token_manager = TokenManager()
-        self.admin_username = admin_username
-        self.admin_password = admin_password
-        self.using_default_credentials = (
-            self.admin_username == "admin" and self.admin_password == "admin"
-        )
+
+        if (
+            not self.credential_repository.is_configured()
+            and admin_username_env
+            and admin_password_env
+        ):
+            # 如果提供了环境变量，则在首次启动时写入数据库作为初始账号密码。
+            self.credential_repository.set_credentials(admin_username_env, admin_password_env)
+
+        creds = self.credential_repository.get_credentials()
+        self.credentials_configured = creds is not None
+        self.admin_username = creds[0] if creds else None
+        if creds:
+            # 判定是否仍在使用默认凭据（admin/admin）
+            _, encoded = creds
+            self.using_default_credentials = self.admin_username == "admin" and _verify_password(
+                "admin", encoded
+            )
+        else:
+            self.using_default_credentials = False
 
     async def handle_adapter_event(self, event: ChatEvent) -> None:
         """Adapter 统一消息入口：先处理 self-memory，再进入检测触发流程。"""
@@ -214,10 +232,13 @@ def create_app() -> FastAPI:
     app = FastAPI(title="ChatGuardian API", version="0.1.0", lifespan=_app_lifespan)
     app.state.container = container
 
-    logger.info("🔐 Admin username: {}", container.admin_username)
+    if container.admin_username:
+        logger.info("🔐 Admin username: {}", container.admin_username)
+    else:
+        logger.warning("🔒 No admin credentials configured. Initial setup required.")
     if container.using_default_credentials:
         logger.warning(
-            "⚠️ Default credentials in use. Set CHAT_GUARDIAN_ADMIN_USERNAME / CHAT_GUARDIAN_ADMIN_PASSWORD in .env to improve security."
+            "⚠️ Default credentials in use. Please update the administrator username/password for better security."
         )
 
     # CORS: allow all origins in development; restrict in production via settings
@@ -233,17 +254,24 @@ def create_app() -> FastAPI:
     PUBLIC_PATHS = {
         "/",
         "/auth/login",
+        "/auth/setup-status",
+        "/auth/setup",
         "/health",
         "/llm/health",
         "/app",
         "/app/",
+        "/app/vite.svg",
     }
     # '/' serves a redirect to the frontend entry, so it must remain public.
 
     @app.middleware("http")
     async def auth_middleware(request: Request, call_next):
         path = request.url.path
-        if path in PUBLIC_PATHS or any(path.startswith(prefix) for prefix in PUBLIC_PATH_PREFIXES):
+        if (
+            path in PUBLIC_PATHS
+            or any(path.startswith(prefix) for prefix in PUBLIC_PATH_PREFIXES)
+            or (not container.credentials_configured and path in {"/auth/setup", "/auth/setup-status"})
+        ):
             return await call_next(request)
 
         auth_header = request.headers.get("Authorization")
@@ -285,6 +313,43 @@ def create_app() -> FastAPI:
 
         return result
 
+    @app.get("/auth/setup-status")
+    async def auth_setup_status() -> dict[str, object]:
+        return {
+            "setup_required": not container.credentials_configured,
+            "using_default_credentials": container.using_default_credentials,
+        }
+
+    @app.post("/auth/setup")
+    async def auth_setup(request: Request, payload: dict = Body(...)) -> dict[str, object]:
+        username = str((payload or {}).get("username") or "").strip()
+        password = str((payload or {}).get("password") or "")
+        if not username or not password:
+            raise HTTPException(status_code=400, detail="Username and password are required.")
+
+        # 已配置账号时，需要登录态才能修改；首次配置可直接设置。
+        if container.credentials_configured:
+            auth_header = request.headers.get("Authorization") if request else None
+            if not auth_header or not auth_header.lower().startswith("bearer "):
+                raise HTTPException(status_code=401, detail="Unauthorized")
+            token = auth_header.split(" ", 1)[1].strip()
+            current_user = container.token_manager.validate(token)
+            if not current_user:
+                raise HTTPException(status_code=401, detail="Unauthorized")
+
+        container.credential_repository.set_credentials(username, password)
+        container.token_manager = TokenManager()
+        container.credentials_configured = True
+        container.admin_username = username
+        container.using_default_credentials = username == "admin" and password == "admin"
+
+        token = container.token_manager.issue(username)
+        return {
+            "token": token,
+            "username": username,
+            "setup_required": False,
+        }
+
     @app.post("/auth/login")
     async def auth_login(payload: dict = Body(...)) -> dict[str, object]:
         username = str((payload or {}).get("username") or "").strip()
@@ -292,7 +357,10 @@ def create_app() -> FastAPI:
         if not username or not password:
             raise HTTPException(status_code=400, detail="Username and password are required.")
 
-        if username == container.admin_username and password == container.admin_password:
+        if not container.credentials_configured:
+            raise HTTPException(status_code=400, detail="Setup required")
+
+        if container.credential_repository.verify(username, password):
             token = container.token_manager.issue(username)
             return {
                 "token": token,
@@ -311,6 +379,7 @@ def create_app() -> FastAPI:
             "authenticated": True,
             "username": current_user,
             "using_default_credentials": container.using_default_credentials,
+            "setup_required": not container.credentials_configured,
         }
 
     @app.post("/auth/logout")
@@ -712,6 +781,9 @@ def create_app() -> FastAPI:
 
         @app.get("/app/{full_path:path}")
         async def serve_frontend(full_path: str):
+            candidate = os.path.abspath(os.path.join(_frontend_dist, full_path))
+            if candidate.startswith(_frontend_dist) and os.path.isfile(candidate):
+                return FileResponse(candidate)
             return FileResponse(os.path.join(_frontend_dist, "index.html"))
 
         @app.get("/app")

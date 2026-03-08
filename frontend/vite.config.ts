@@ -8,6 +8,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': 'http://localhost:8000',
+      '/auth': 'http://localhost:8000',
       '/rules': 'http://localhost:8000',
       '/adapters': 'http://localhost:8000',
       '/llm': 'http://localhost:8000',

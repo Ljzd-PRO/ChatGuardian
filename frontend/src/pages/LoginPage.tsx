@@ -6,9 +6,9 @@ import userBold from '@iconify/icons-solar/user-bold';
 import arrowRightBold from '@iconify/icons-solar/arrow-right-bold';
 import shieldBold from '@iconify/icons-solar/shield-bold';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { login } from '../api/auth';
+import { fetchSetupStatus, login } from '../api/auth';
 import { clearAuthToken, getAuthToken, setAuthToken } from '../api/client';
 
 export default function LoginPage() {
@@ -19,6 +19,8 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fromPath = (location.state as { from?: string } | undefined)?.from ?? '/';
+
+  const setupStatus = useQuery({ queryKey: ['setup-status'], queryFn: fetchSetupStatus });
 
   const mutation = useMutation({
     mutationFn: () => login(form),
@@ -38,12 +40,20 @@ export default function LoginPage() {
     }
   }, [navigate]);
 
+  useEffect(() => {
+    if (setupStatus.data?.setup_required) {
+      navigate('/setup', { replace: true });
+    }
+  }, [navigate, setupStatus.data?.setup_required]);
+
   const handleSubmit = async () => {
     setError(null);
     try {
       await mutation.mutateAsync();
-    } catch {
-      // onError will handle error state
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('Setup required')) {
+        navigate('/setup', { replace: true });
+      }
     }
   };
 
@@ -60,7 +70,7 @@ export default function LoginPage() {
             <p className="text-sm text-white/70">{t('auth.loginSubtitle')}</p>
           </div>
         </CardHeader>
-        <CardBody className="space-y-4">
+        <CardBody className="space-y-5">
           <Input
             aria-label={t('auth.username')}
             label={t('auth.username')}
@@ -72,6 +82,11 @@ export default function LoginPage() {
             onValueChange={v => setForm(f => ({ ...f, username: v }))}
             isRequired
             autoFocus
+            classNames={{
+              label: 'text-default-200',
+              input: 'text-white',
+              inputWrapper: 'bg-white/5 border-white/15',
+            }}
           />
           <Input
             aria-label={t('auth.password')}
@@ -84,6 +99,11 @@ export default function LoginPage() {
             value={form.password}
             onValueChange={v => setForm(f => ({ ...f, password: v }))}
             isRequired
+            classNames={{
+              label: 'text-default-200',
+              input: 'text-white',
+              inputWrapper: 'bg-white/5 border-white/15',
+            }}
           />
           {error && <p className="text-danger text-sm">{error}</p>}
           <Button
@@ -97,12 +117,7 @@ export default function LoginPage() {
           >
             {t('auth.login')}
           </Button>
-          <p className="text-xs text-default-500 text-center">
-            {t('auth.securityHint', {
-              usernameEnv: 'CHAT_GUARDIAN_ADMIN_USERNAME',
-              passwordEnv: 'CHAT_GUARDIAN_ADMIN_PASSWORD',
-            })}
-          </p>
+          <p className="text-xs text-default-400 text-center">{t('auth.noAccountHint')}</p>
         </CardBody>
       </Card>
     </div>

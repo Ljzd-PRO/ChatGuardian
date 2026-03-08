@@ -1,4 +1,8 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/';
+const runtimeOrigin =
+  typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.DEV ? 'http://localhost:8000' : runtimeOrigin || '/');
 export const AUTH_TOKEN_KEY = 'cg_auth_token';
 const storageAvailable = typeof localStorage !== 'undefined';
 

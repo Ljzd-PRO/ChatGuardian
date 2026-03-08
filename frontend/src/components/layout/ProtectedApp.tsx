@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createContext, useContext, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { fetchAuthStatus, logout as apiLogout } from '../../api/auth';
+import { fetchAuthStatus, fetchSetupStatus, logout as apiLogout } from '../../api/auth';
 import type { AuthStatus } from '../../api/auth';
 import { clearAuthToken, getAuthToken } from '../../api/client';
 import AppLayout from './AppLayout';
@@ -29,18 +29,28 @@ export default function ProtectedApp() {
   const location = useLocation();
   const { t } = useTranslation();
 
+  const setupQuery = useQuery({
+    queryKey: ['setup-status'],
+    queryFn: fetchSetupStatus,
+    refetchInterval: 30_000,
+  });
+
   const statusQuery = useQuery({
     queryKey: ['auth-status'],
     queryFn: fetchAuthStatus,
-    enabled: !!token,
+    enabled: !!token && setupQuery.data?.setup_required === false,
     retry: 1,
   });
 
   useEffect(() => {
-    if (!token) {
+    if (setupQuery.data?.setup_required && location.pathname !== '/setup') {
+      navigate('/setup', { replace: true });
+      return;
+    }
+    if (!token && setupQuery.data?.setup_required === false) {
       navigate('/login', { replace: true, state: { from: location.pathname } });
     }
-  }, [location.pathname, navigate, token]);
+  }, [location.pathname, navigate, setupQuery.data?.setup_required, token]);
 
   useEffect(() => {
     if (statusQuery.data && !statusQuery.data.authenticated) {
@@ -66,6 +76,22 @@ export default function ProtectedApp() {
       navigate('/login', { replace: true });
     }
   };
+
+  if (setupQuery.isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-default-50 px-4">
+        <Card shadow="sm" className="max-w-md w-full">
+          <CardBody className="flex items-center justify-center gap-3">
+            <Spinner label={t('common.loading')} />
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
+
+  if (setupQuery.data?.setup_required) {
+    return null;
+  }
 
   if (!token || statusQuery.isFetching || !statusQuery.data) {
     return (

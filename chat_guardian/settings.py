@@ -18,8 +18,9 @@ class _EnvConfig(BaseSettings):
     database_url: str = "sqlite:///./db.sqlite"
     app_name: str | None = None
     environment: str | None = None
-    admin_username: str = "admin"
-    admin_password: str = "admin"
+    # 首次启动时默认不配置管理员账号与密码；如需预配置，可通过环境变量注入。
+    admin_username: str | None = None
+    admin_password: str | None = None
 
 
 class Settings(BaseModel):
@@ -170,5 +171,5 @@ class Settings(BaseModel):
 _env_config = _EnvConfig()
 _env_overrides = _env_config.model_dump(exclude_none=True)
 settings = Settings(**_env_overrides)
-admin_username: str = _env_config.admin_username
-admin_password: str = _env_config.admin_password
+admin_username_env: str | None = _env_config.admin_username
+admin_password_env: str | None = _env_config.admin_password

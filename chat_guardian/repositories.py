@@ -7,7 +7,9 @@ Repository 实现：内存缓存 + SQLAlchemy 持久化。
 
 from __future__ import annotations
 
+import hashlib
 import json
+import secrets
 from collections import defaultdict, deque
 from datetime import datetime
 from typing import Any
@@ -74,6 +76,15 @@ class _SettingRecord(_Base):
     value: Mapped[str] = mapped_column(Text)
 
 
+class _AdminCredentialRecord(_Base):
+    __tablename__ = "admin_credentials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(128), index=True)
+    password_hash: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class _RepositoryDatabase:
     def __init__(self, database_url: str):
         normalized_url = normalize_database_url(database_url)
@@ -105,6 +116,27 @@ def _get_db_manager(database_url: str | None) -> _RepositoryDatabase | None:
         manager = _RepositoryDatabase(normalized_key)
         _DB_MANAGERS[normalized_key] = manager
     return manager
+
+
+def _hash_password(password: str, iterations: int = 260_000) -> str:
+    salt = secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
+    return f"pbkdf2_sha256${iterations}${salt.hex()}${dk.hex()}"
+
+
+def _verify_password(password: str, encoded: str) -> bool:
+    try:
+        scheme, iter_str, salt_hex, hash_hex = encoded.split("$", 3)
+        if scheme != "pbkdf2_sha256":
+            return False
+        iterations = int(iter_str)
+        salt = bytes.fromhex(salt_hex)
+        expected = bytes.fromhex(hash_hex)
+    except Exception:
+        return False
+
+    computed = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
+    return secrets.compare_digest(computed, expected)
 
 
 class ChatHistoryStore:
@@ -633,4 +665,58 @@ class SettingsRepository:
                     session.add(_SettingRecord(key=key, value=serialized))
                 else:
                     row.value = serialized
+            session.commit()
+
+
+class AdminCredentialRepository:
+    """管理员凭据存储在数据库中，仅支持单一管理员账号。"""
+
+    def __init__(self, database_url: str | None = None):
+        self._db = _get_db_manager(database_url)
+
+    def is_configured(self) -> bool:
+        if self._db is None:
+            return False
+        with self._db.session_factory() as session:
+            exists = session.scalar(select(_AdminCredentialRecord.id).limit(1))
+        return exists is not None
+
+    def get_credentials(self) -> tuple[str, str] | None:
+        """返回 (username, password_hash)；未配置时返回 None。"""
+        if self._db is None:
+            return None
+        with self._db.session_factory() as session:
+            row = session.scalar(select(_AdminCredentialRecord).limit(1))
+        if row is None:
+            return None
+        return row.username, row.password_hash
+
+    def verify(self, username: str, password: str) -> bool:
+        record = self.get_credentials()
+        if not record:
+            return False
+        stored_username, stored_hash = record
+        if stored_username != username:
+            return False
+        return _verify_password(password, stored_hash)
+
+    def set_credentials(self, username: str, password: str) -> None:
+        """创建或更新管理员凭据。"""
+        if self._db is None:
+            return
+        encoded = _hash_password(password)
+        with self._db.session_factory() as session:
+            row = session.scalar(select(_AdminCredentialRecord).limit(1))
+            if row is None:
+                session.add(
+                    _AdminCredentialRecord(
+                        username=username,
+                        password_hash=encoded,
+                        updated_at=datetime.utcnow(),
+                    )
+                )
+            else:
+                row.username = username
+                row.password_hash = encoded
+                row.updated_at = datetime.utcnow()
             session.commit()

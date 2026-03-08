@@ -80,6 +80,33 @@ const resources = {
         invalidCredentials: 'Invalid username or password.',
         securityHint:
           'Default credentials are admin/admin. Set {{usernameEnv}} and {{passwordEnv}} in .env to change.',
+        noAccountHint: 'No admin account yet? Start with the setup guide to create one.',
+      },
+      setup: {
+        title: 'Welcome to ChatGuardian',
+        subtitle: 'Complete the initial setup to secure and configure your console.',
+        optionalHint: 'Only the admin account step is required. Others can be skipped for now.',
+        skip: 'Skip for now',
+        finishLater: 'Finish later',
+        complete: 'Finish setup',
+        account: {
+          title: 'Admin account',
+          confirm: 'Confirm password',
+          hintTitle: 'Why do I need an account?',
+          hintDesc:
+            'The admin account protects access to ChatGuardian. Create a strong password and keep it safe.',
+          mismatch: 'Passwords do not match.',
+          submit: 'Create account and continue',
+        },
+        llm: {
+          title: 'Model configuration',
+        },
+        adapters: {
+          title: 'Adapter configuration',
+        },
+        notifications: {
+          title: 'Notification configuration',
+        },
       },
       dashboard: {
         loading: 'Loading dashboard…',
@@ -386,6 +413,32 @@ const resources = {
         logout: '退出登录',
         invalidCredentials: '账号或密码错误。',
         securityHint: '默认账号密码为 admin/admin，请在 .env 设置 {{usernameEnv}} 与 {{passwordEnv}} 修改。',
+        noAccountHint: '还没有管理员账号？请先完成首次使用引导。',
+      },
+      setup: {
+        title: '欢迎使用 ChatGuardian',
+        subtitle: '完成首次引导以创建管理员账号并配置关键选项。',
+        optionalHint: '仅管理员账号步骤为必填，其余可暂时跳过。',
+        skip: '暂时跳过',
+        finishLater: '稍后再完成',
+        complete: '完成引导',
+        account: {
+          title: '管理员账号',
+          confirm: '确认密码',
+          hintTitle: '为什么需要账号？',
+          hintDesc: '管理员账号用于保护控制台，请设置强密码并妥善保存。',
+          mismatch: '两次输入的密码不一致。',
+          submit: '创建账号并继续',
+        },
+        llm: {
+          title: '模型配置',
+        },
+        adapters: {
+          title: '适配器配置',
+        },
+        notifications: {
+          title: '通知配置',
+        },
       },
       dashboard: {
         loading: '正在加载仪表盘…',
@@ -689,6 +742,32 @@ const resources = {
         logout: '登出',
         invalidCredentials: '帳號或密碼錯誤。',
         securityHint: '預設帳密為 admin/admin，請在 .env 設定 {{usernameEnv}} 與 {{passwordEnv}} 修改。',
+        noAccountHint: '還沒有管理員帳號？請先完成首次使用引導。',
+      },
+      setup: {
+        title: '歡迎使用 ChatGuardian',
+        subtitle: '完成首次啟動引導以建立管理員帳號並設定關鍵選項。',
+        optionalHint: '僅管理員帳號步驟為必填，其餘可稍後再填。',
+        skip: '暫時跳過',
+        finishLater: '稍後再完成',
+        complete: '完成引導',
+        account: {
+          title: '管理員帳號',
+          confirm: '確認密碼',
+          hintTitle: '為什麼需要帳號？',
+          hintDesc: '管理員帳號用於保護控制台，請設定強密碼並妥善保存。',
+          mismatch: '兩次輸入的密碼不一致。',
+          submit: '建立帳號並繼續',
+        },
+        llm: {
+          title: '模型設定',
+        },
+        adapters: {
+          title: '適配器設定',
+        },
+        notifications: {
+          title: '通知設定',
+        },
       },
       dashboard: {
         loading: '正在載入儀表板…',
@@ -993,6 +1072,32 @@ const resources = {
         invalidCredentials: 'ユーザー名またはパスワードが正しくありません。',
         securityHint:
           '初期認証情報は admin/admin です。.env で {{usernameEnv}} と {{passwordEnv}} を設定してください。',
+        noAccountHint: '管理者アカウントがまだありませんか？セットアップガイドから始めてください。',
+      },
+      setup: {
+        title: 'ChatGuardian へようこそ',
+        subtitle: '初期セットアップを完了して管理者アカウントを作成し、主要設定を行います。',
+        optionalHint: '管理者アカウントのみ必須です。その他のステップは後でも構いません。',
+        skip: '今はスキップ',
+        finishLater: '後で完了する',
+        complete: 'セットアップを完了',
+        account: {
+          title: '管理者アカウント',
+          confirm: 'パスワード確認',
+          hintTitle: 'なぜアカウントが必要ですか？',
+          hintDesc: '管理者アカウントはコンソールを保護します。強力なパスワードを設定してください。',
+          mismatch: 'パスワードが一致しません。',
+          submit: 'アカウントを作成して続行',
+        },
+        llm: {
+          title: 'モデル設定',
+        },
+        adapters: {
+          title: 'アダプター設定',
+        },
+        notifications: {
+          title: '通知設定',
+        },
       },
       dashboard: {
         loading: 'ダッシュボードを読み込み中…',
@@ -1278,6 +1383,32 @@ const resources = {
         invalidCredentials: '사용자명 또는 비밀번호가 올바르지 않습니다.',
         securityHint:
           '기본 자격 증명은 admin/admin 입니다. .env에서 {{usernameEnv}} 와 {{passwordEnv}} 값을 설정하세요.',
+        noAccountHint: '관리자 계정이 없나요? 먼저 설정 가이드를 진행하세요.',
+      },
+      setup: {
+        title: 'ChatGuardian에 오신 것을 환영합니다',
+        subtitle: '초기 설정을 완료하여 관리자 계정을 만들고 주요 옵션을 구성하세요.',
+        optionalHint: '관리자 계정 단계만 필수이며, 나머지는 건너뛸 수 있습니다.',
+        skip: '나중에 설정',
+        finishLater: '나중에 완료',
+        complete: '설정 완료',
+        account: {
+          title: '관리자 계정',
+          confirm: '비밀번호 확인',
+          hintTitle: '왜 계정이 필요한가요?',
+          hintDesc: '관리자 계정은 콘솔을 보호합니다. 강력한 비밀번호를 설정하세요.',
+          mismatch: '비밀번호가 일치하지 않습니다.',
+          submit: '계정을 생성하고 계속',
+        },
+        llm: {
+          title: '모델 설정',
+        },
+        adapters: {
+          title: '어댑터 설정',
+        },
+        notifications: {
+          title: '알림 설정',
+        },
       },
       dashboard: {
         loading: '대시보드를 불러오는 중…',
@@ -1563,6 +1694,32 @@ const resources = {
         invalidCredentials: 'Nom d’utilisateur ou mot de passe incorrect.',
         securityHint:
           'Les identifiants par défaut sont admin/admin. Définissez {{usernameEnv}} et {{passwordEnv}} dans .env pour les changer.',
+        noAccountHint: 'Pas encore de compte administrateur ? Lancez l’assistant de configuration.',
+      },
+      setup: {
+        title: 'Bienvenue sur ChatGuardian',
+        subtitle: 'Terminez la configuration initiale pour créer un compte administrateur et définir les paramètres clés.',
+        optionalHint: "Seule l'étape du compte administrateur est obligatoire. Les autres peuvent être ignorées pour l'instant.",
+        skip: 'Ignorer pour le moment',
+        finishLater: 'Terminer plus tard',
+        complete: 'Terminer la configuration',
+        account: {
+          title: 'Compte administrateur',
+          confirm: 'Confirmer le mot de passe',
+          hintTitle: 'Pourquoi un compte ?',
+          hintDesc: 'Le compte administrateur protège l’accès à la console. Choisissez un mot de passe robuste.',
+          mismatch: 'Les mots de passe ne correspondent pas.',
+          submit: 'Créer le compte et continuer',
+        },
+        llm: {
+          title: 'Configuration du modèle',
+        },
+        adapters: {
+          title: 'Configuration des adaptateurs',
+        },
+        notifications: {
+          title: 'Configuration des notifications',
+        },
       },
       dashboard: {
         loading: 'Chargement du tableau de bord…',
@@ -1848,6 +2005,32 @@ const resources = {
         invalidCredentials: 'Benutzername oder Passwort ist falsch.',
         securityHint:
           'Standard-Anmeldedaten sind admin/admin. Setzen Sie {{usernameEnv}} und {{passwordEnv}} in der .env, um sie zu ändern.',
+        noAccountHint: 'Noch kein Administratorkonto? Starte den Einrichtungsassistenten.',
+      },
+      setup: {
+        title: 'Willkommen bei ChatGuardian',
+        subtitle: 'Schließe die Ersteinrichtung ab, um ein Administratorkonto zu erstellen und wichtige Einstellungen vorzunehmen.',
+        optionalHint: 'Nur der Administratorkonto-Schritt ist erforderlich. Die anderen können vorerst übersprungen werden.',
+        skip: 'Vorerst überspringen',
+        finishLater: 'Später abschließen',
+        complete: 'Einrichtung abschließen',
+        account: {
+          title: 'Administratorkonto',
+          confirm: 'Passwort bestätigen',
+          hintTitle: 'Warum ein Konto?',
+          hintDesc: 'Das Administratorkonto schützt den Zugriff auf die Konsole. Verwende ein starkes Passwort.',
+          mismatch: 'Passwörter stimmen nicht überein.',
+          submit: 'Konto erstellen und fortfahren',
+        },
+        llm: {
+          title: 'Modellkonfiguration',
+        },
+        adapters: {
+          title: 'Adapterkonfiguration',
+        },
+        notifications: {
+          title: 'Benachrichtigungskonfiguration',
+        },
       },
       dashboard: {
         loading: 'Dashboard wird geladen…',
@@ -2133,6 +2316,32 @@ const resources = {
         invalidCredentials: 'Неверное имя пользователя или пароль.',
         securityHint:
           'Учётные данные по умолчанию: admin/admin. Установите {{usernameEnv}} и {{passwordEnv}} в файле .env, чтобы изменить их.',
+        noAccountHint: 'Еще нет аккаунта администратора? Запустите мастер настройки.',
+      },
+      setup: {
+        title: 'Добро пожаловать в ChatGuardian',
+        subtitle: 'Завершите первоначальную настройку, чтобы создать учетную запись администратора и задать ключевые параметры.',
+        optionalHint: 'Только шаг с учетной записью администратора является обязательным. Остальные можно пропустить.',
+        skip: 'Пропустить пока',
+        finishLater: 'Завершить позже',
+        complete: 'Завершить настройку',
+        account: {
+          title: 'Учетная запись администратора',
+          confirm: 'Подтвердите пароль',
+          hintTitle: 'Зачем нужна учетная запись?',
+          hintDesc: 'Администраторская учетная запись защищает доступ к консоли. Используйте надежный пароль.',
+          mismatch: 'Пароли не совпадают.',
+          submit: 'Создать учетную запись и продолжить',
+        },
+        llm: {
+          title: 'Настройка модели',
+        },
+        adapters: {
+          title: 'Настройка адаптеров',
+        },
+        notifications: {
+          title: 'Настройка уведомлений',
+        },
       },
       dashboard: {
         loading: 'Загрузка дашборда…',

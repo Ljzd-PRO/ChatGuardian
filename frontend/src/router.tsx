@@ -11,9 +11,11 @@ import QueuesPage         from './pages/QueuesPage';
 import LogsPage           from './pages/LogsPage';
 import SettingsPage       from './pages/SettingsPage';
 import LoginPage          from './pages/LoginPage';
+import SetupPage          from './pages/SetupPage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/setup', element: <SetupPage /> },
   {
     path: '/',
     element: <ProtectedApp />,
