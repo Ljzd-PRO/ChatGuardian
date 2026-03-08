@@ -1,7 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout';
 import AuthGuard from './components/auth/AuthGuard';
-import SetupGuard from './components/auth/SetupGuard';
 import DashboardPage      from './pages/DashboardPage';
 import RulesPage          from './pages/RulesPage';
 import TriggerStatsPage   from './pages/TriggerStatsPage';
@@ -23,11 +22,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/setup',
-    element: (
-      <SetupGuard>
-        <SetupWizardPage />
-      </SetupGuard>
-    ),
+    element: <SetupWizardPage />,
   },
   {
     path: '/',

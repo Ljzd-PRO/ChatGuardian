@@ -42,17 +42,25 @@ const STEP_KEYS = ['account', 'llm', 'adapters', 'notifications'] as const;
 export default function SetupWizardPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { login, refreshSetupState } = useAuth();
+  const { login, setupRequired, authenticated, refreshSetupState } = useAuth();
   const [step, setStep] = useState(0);
   const [accountDone, setAccountDone] = useState(false);
 
   const steps = STEP_KEYS.map(k => ({ title: t(`setup.steps.${k}`) }));
 
-  function handleFinish() {
-    navigate('/login', { replace: true });
+  // If setup is not required and user is already authenticated, go to dashboard
+  useEffect(() => {
+    if (!setupRequired && authenticated && !accountDone) {
+      navigate('/', { replace: true });
+    }
+  }, [setupRequired, authenticated, accountDone, navigate]);
+
+  async function handleFinish() {
+    await refreshSetupState();
+    navigate('/', { replace: true });
   }
 
-  const canGoBack = step > 0 && (step > 0);
+  const canGoBack = step > 0;
   const isLast = step === STEP_KEYS.length - 1;
 
   return (
@@ -74,7 +82,6 @@ export default function SetupWizardPage() {
                 done={accountDone}
                 onDone={async (u, p) => {
                   await register(u, p);
-                  await refreshSetupState();
                   await login(u, p);
                   setAccountDone(true);
                 }}
