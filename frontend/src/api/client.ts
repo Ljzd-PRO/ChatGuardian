@@ -1,17 +1,17 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/';
 export const AUTH_TOKEN_KEY = 'cg_auth_token';
+const storageAvailable = typeof localStorage !== 'undefined';
 
-export const getAuthToken = () =>
-  (typeof localStorage === 'undefined' ? null : localStorage.getItem(AUTH_TOKEN_KEY));
+export const getAuthToken = () => (storageAvailable ? localStorage.getItem(AUTH_TOKEN_KEY) : null);
 
 export const setAuthToken = (token: string) => {
-  if (typeof localStorage !== 'undefined') {
+  if (storageAvailable) {
     localStorage.setItem(AUTH_TOKEN_KEY, token);
   }
 };
 
 export const clearAuthToken = () => {
-  if (typeof localStorage !== 'undefined') {
+  if (storageAvailable) {
     localStorage.removeItem(AUTH_TOKEN_KEY);
   }
 };

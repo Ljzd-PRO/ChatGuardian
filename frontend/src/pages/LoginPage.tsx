@@ -40,7 +40,13 @@ export default function LoginPage() {
 
   const handleSubmit = async () => {
     setError(null);
-    await mutation.mutateAsync();
+    try {
+      await mutation.mutateAsync();
+    } catch (e) {
+      if (!error) {
+        setError(t('auth.invalidCredentials'));
+      }
+    }
   };
 
   return (

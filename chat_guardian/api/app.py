@@ -10,7 +10,7 @@ import os
 import secrets
 from collections import deque
 from contextlib import asynccontextmanager
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -65,7 +65,7 @@ class TokenManager:
 
     def issue(self, username: str, ttl_hours: int = 24) -> str:
         token = secrets.token_urlsafe(32)
-        expires_at = datetime.utcnow() + timedelta(hours=ttl_hours)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=ttl_hours)
         self._tokens[token] = (username, expires_at)
         return token
 
@@ -74,7 +74,7 @@ class TokenManager:
         if not record:
             return None
         username, expires_at = record
-        if expires_at < datetime.utcnow():
+        if expires_at < datetime.now(timezone.utc):
             self._tokens.pop(token, None)
             return None
         return username
@@ -215,7 +215,6 @@ def create_app() -> FastAPI:
     app.state.container = container
 
     logger.info("🔐 管理员账号: {}", container.admin_username)
-    logger.info("🔑 管理员密码: {}", container.admin_password)
     if container.using_default_credentials:
         logger.warning(
             "⚠️ 当前使用默认凭证，请在 .env 设置 CHAT_GUARDIAN_ADMIN_USERNAME / CHAT_GUARDIAN_ADMIN_PASSWORD 以提高安全性"
@@ -230,20 +229,21 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    PUBLIC_PATH_PREFIXES = (
+    PUBLIC_PATH_PREFIXES = ("/app/assets", "/assets")
+    PUBLIC_PATHS = {
+        "/",
         "/auth/login",
         "/health",
         "/llm/health",
         "/app",
         "/app/",
-        "/app/assets",
-        "/assets",
-    )
+    }
+    # '/' serves a redirect to the frontend entry, so it must remain public.
 
     @app.middleware("http")
     async def auth_middleware(request: Request, call_next):
         path = request.url.path
-        if path == "/" or any(path.startswith(prefix) for prefix in PUBLIC_PATH_PREFIXES):
+        if path in PUBLIC_PATHS or any(path.startswith(prefix) for prefix in PUBLIC_PATH_PREFIXES):
             return await call_next(request)
 
         auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
@@ -260,7 +260,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health() -> dict[str, str]:
-        return {"status": "ok", "time": datetime.utcnow().isoformat()}
+        return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}
 
     @app.get("/llm/health")
     async def llm_health(do_ping: bool = True) -> dict[str, object]:
@@ -268,7 +268,7 @@ def create_app() -> FastAPI:
         scheduler_diagnostics = container.detection_engine.batch_scheduler.diagnostics()
         result: dict[str, object] = {
             "status": "ok",
-            "time": datetime.utcnow().isoformat(),
+            "time": datetime.now(timezone.utc).isoformat(),
             "llm": diagnostics,
             "scheduler": scheduler_diagnostics,
         }
