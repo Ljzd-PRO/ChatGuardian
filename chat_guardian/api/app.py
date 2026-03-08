@@ -234,6 +234,7 @@ def create_app() -> FastAPI:
 
     if container.admin_username:
         logger.info("🔐 Admin username: {}", container.admin_username)
+        logger.info("🔑 Admin password: {}", container.admin_password)
     else:
         logger.warning("🔒 No admin credentials configured. Initial setup required.")
     if container.using_default_credentials:
