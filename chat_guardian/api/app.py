@@ -716,7 +716,7 @@ def create_app() -> FastAPI:
     admin_agent = AdminAgent(operations=operations)
 
     @app.post("/api/agent/chat")
-    async def agent_chat(payload: AgentChatRequest = Body(...)):
+    async def agent_chat(payload: AgentChatRequest):
         """管理智能体流式对话接口。返回 Server-Sent Events 流。"""
 
         async def event_generator():
