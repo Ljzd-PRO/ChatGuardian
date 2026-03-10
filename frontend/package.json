@@ -14,6 +14,7 @@
     "@heroui/theme": "^2.4.26",
     "@iconify/icons-solar": "^1.2.3",
     "@iconify/react": "^6.0.2",
+    "@react-stately/utils": "^3.11.0",
     "@tanstack/react-query": "^5.90.21",
     "framer-motion": "^12.35.0",
     "i18next": "^25.8.14",
