@@ -147,11 +147,13 @@ class ChatGuardianOperations:
 
     async def generate_rule(self, payload: RuleGenerateRequest) -> DetectionRule:
         try:
-            return await self.container.rule_authoring_service.generate_rule(
+            rule = await self.container.rule_authoring_service.generate_rule(
                 utterance=payload.utterance,
                 use_external=payload.use_external,
                 override_system_prompt=payload.override_system_prompt,
             )
+            # Persist the generated rule so it is visible in the rule list
+            return await self.container.rule_repository.upsert(rule)
         except ValueError as exc:
             raise OperationError(str(exc), status_code=400) from exc
 

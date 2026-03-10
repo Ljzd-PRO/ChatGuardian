@@ -27,6 +27,8 @@ import listBold from '@iconify/icons-solar/list-check-bold';
 import magnetBold from '@iconify/icons-solar/magnet-bold';
 import healthBold from '@iconify/icons-solar/health-bold';
 import eraserBold from '@iconify/icons-solar/eraser-bold';
+import clockBold from '@iconify/icons-solar/clock-circle-bold';
+import stopBold from '@iconify/icons-solar/stop-bold';
 
 import {
   streamAgentChat,
@@ -54,6 +56,7 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   toolCalls?: ToolCallInfo[];
+  elapsedMs?: number;
 }
 
 /* ─── Markdown-ish renderer (safe subset) ──────────────────────────── */
@@ -307,6 +310,17 @@ const CAPABILITY_ICONS: Record<string, typeof widgetBold> = {
   clear_system_logs: eraserBold,
 };
 
+/* ─── Elapsed time formatting ──────────────────────────────────────── */
+
+function formatElapsed(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${minutes}m ${secs.toFixed(0)}s`;
+}
+
 /* ─── Main component ───────────────────────────────────────────────── */
 
 export default function AgentChatPage() {
@@ -319,6 +333,13 @@ export default function AgentChatPage() {
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  /* Streaming state held in a mutable ref to avoid React re-render on
+     every single token.  A requestAnimationFrame loop flushes changes
+     to React state at ~60 fps, keeping the UI smooth. */
+  const pendingMsgRef = useRef<ChatMessage | null>(null);
+  const rafIdRef = useRef<number>(0);
+  const streamStartRef = useRef<number>(0);
 
   const { data: capabilities } = useQuery({
     queryKey: ['agent-capabilities'],
@@ -333,6 +354,33 @@ export default function AgentChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  /* ─── Abort on browser close / page refresh ──────────────────────── */
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      abortRef.current?.abort();
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  /* ─── Flush pending message to React state via rAF ───────────────── */
+  const scheduleFlush = useCallback(() => {
+    if (rafIdRef.current) return;
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = 0;
+      const msg = pendingMsgRef.current;
+      if (!msg) return;
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { ...msg, toolCalls: [...(msg.toolCalls ?? [])] };
+        return updated;
+      });
+    });
+  }, []);
 
   const suggestedPrompts = [
     t('agent.prompts.dashboard'),
@@ -353,6 +401,7 @@ export default function AgentChatPage() {
       setMessages(newMessages);
       setInput('');
       setIsStreaming(true);
+      streamStartRef.current = Date.now();
 
       // Prepare history for API (only role/content)
       const apiMessages: AgentMessage[] = newMessages.map((m) => ({
@@ -365,6 +414,7 @@ export default function AgentChatPage() {
         content: '',
         toolCalls: [],
       };
+      pendingMsgRef.current = assistantMsg;
 
       setMessages([...newMessages, assistantMsg]);
 
@@ -378,100 +428,114 @@ export default function AgentChatPage() {
         await streamAgentChat(
           apiMessages,
           (event: AgentEvent) => {
-            setMessages((prev) => {
-              const updated = [...prev];
-              const lastMsg = { ...updated[updated.length - 1] };
-              lastMsg.toolCalls = [...(lastMsg.toolCalls ?? [])];
+            const msg = pendingMsgRef.current;
+            if (!msg) return;
 
-              switch (event.type) {
-                case 'token':
-                  lastMsg.content += event.content ?? '';
-                  break;
+            switch (event.type) {
+              case 'token':
+                msg.content += event.content ?? '';
+                break;
 
-                case 'tool_call_start': {
-                  const tcId = event.tool_call_id ?? '';
-                  const tc: ToolCallInfo = {
-                    id: tcId,
-                    name: event.name ?? '',
-                    displayName: event.display_name ?? event.name ?? '',
-                    args: '',
-                    isLoading: true,
-                  };
-                  toolCallsMap[tcId] = tc;
-                  lastMsg.toolCalls = [
-                    ...lastMsg.toolCalls.filter((t) => t.id !== tcId),
-                    tc,
-                  ];
-                  break;
-                }
-
-                case 'tool_call_args': {
-                  const tcId = event.tool_call_id ?? '';
-                  if (toolCallsMap[tcId]) {
-                    toolCallsMap[tcId].args += event.args_delta ?? '';
-                    lastMsg.toolCalls = lastMsg.toolCalls.map((t) =>
-                      t.id === tcId ? { ...toolCallsMap[tcId] } : t,
-                    );
-                  }
-                  break;
-                }
-
-                case 'tool_result': {
-                  const tcId = event.tool_call_id ?? '';
-                  if (toolCallsMap[tcId]) {
-                    toolCallsMap[tcId].result = event.result;
-                    toolCallsMap[tcId].isLoading = false;
-                    lastMsg.toolCalls = lastMsg.toolCalls.map((t) =>
-                      t.id === tcId
-                        ? { ...toolCallsMap[tcId], result: event.result, isLoading: false }
-                        : t,
-                    );
-                  } else {
-                    lastMsg.toolCalls = [
-                      ...lastMsg.toolCalls,
-                      {
-                        id: tcId,
-                        name: event.name ?? '',
-                        displayName: event.display_name ?? event.name ?? '',
-                        args: '',
-                        result: event.result,
-                        isLoading: false,
-                      },
-                    ];
-                  }
-                  break;
-                }
-
-                case 'error':
-                  lastMsg.content += `\n\n❌ ${event.content ?? 'Unknown error'}`;
-                  break;
-
-                case 'done':
-                  break;
+              case 'tool_call_start': {
+                const tcId = event.tool_call_id ?? '';
+                const tc: ToolCallInfo = {
+                  id: tcId,
+                  name: event.name ?? '',
+                  displayName: event.display_name ?? event.name ?? '',
+                  args: '',
+                  isLoading: true,
+                };
+                toolCallsMap[tcId] = tc;
+                msg.toolCalls = [
+                  ...(msg.toolCalls ?? []).filter((t) => t.id !== tcId),
+                  tc,
+                ];
+                break;
               }
 
-              updated[updated.length - 1] = lastMsg;
-              return updated;
-            });
+              case 'tool_call_args': {
+                const tcId = event.tool_call_id ?? '';
+                if (toolCallsMap[tcId]) {
+                  toolCallsMap[tcId].args += event.args_delta ?? '';
+                  msg.toolCalls = (msg.toolCalls ?? []).map((t) =>
+                    t.id === tcId ? { ...toolCallsMap[tcId] } : t,
+                  );
+                }
+                break;
+              }
+
+              case 'tool_result': {
+                const tcId = event.tool_call_id ?? '';
+                if (toolCallsMap[tcId]) {
+                  toolCallsMap[tcId].result = event.result;
+                  toolCallsMap[tcId].isLoading = false;
+                  msg.toolCalls = (msg.toolCalls ?? []).map((t) =>
+                    t.id === tcId
+                      ? { ...toolCallsMap[tcId], result: event.result, isLoading: false }
+                      : t,
+                  );
+                } else {
+                  msg.toolCalls = [
+                    ...(msg.toolCalls ?? []),
+                    {
+                      id: tcId,
+                      name: event.name ?? '',
+                      displayName: event.display_name ?? event.name ?? '',
+                      args: '',
+                      result: event.result,
+                      isLoading: false,
+                    },
+                  ];
+                }
+                break;
+              }
+
+              case 'error':
+                msg.content += `\n\n❌ ${event.content ?? 'Unknown error'}`;
+                break;
+
+              case 'done':
+                break;
+            }
+
+            scheduleFlush();
           },
           abort.signal,
         );
       } catch (err: unknown) {
         if (err instanceof Error && err.name !== 'AbortError') {
-          setMessages((prev) => {
-            const updated = [...prev];
-            const lastMsg = { ...updated[updated.length - 1] };
-            lastMsg.content += `\n\n❌ ${err instanceof Error ? err.message : 'Unknown error'}`;
-            updated[updated.length - 1] = lastMsg;
-            return updated;
-          });
+          const msg = pendingMsgRef.current;
+          if (msg) {
+            msg.content += `\n\n❌ ${err instanceof Error ? err.message : 'Unknown error'}`;
+          }
         }
       } finally {
+        // Cancel any pending rAF and do a final flush with elapsed time
+        if (rafIdRef.current) {
+          cancelAnimationFrame(rafIdRef.current);
+          rafIdRef.current = 0;
+        }
+
+        const elapsed = Date.now() - streamStartRef.current;
+        const msg = pendingMsgRef.current;
+        if (msg) {
+          msg.elapsedMs = elapsed;
+        }
+        pendingMsgRef.current = null;
+
+        setMessages((prev) => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last && last.role === 'assistant') {
+            updated[updated.length - 1] = { ...last, ...(msg ?? {}), elapsedMs: elapsed };
+          }
+          return updated;
+        });
         setIsStreaming(false);
         abortRef.current = null;
       }
     },
-    [input, isStreaming, messages],
+    [input, isStreaming, messages, scheduleFlush],
   );
 
   const handleFormSubmit = (e: FormEvent) => {
@@ -486,10 +550,12 @@ export default function AgentChatPage() {
     }
   };
 
+  const handleStop = () => {
+    abortRef.current?.abort();
+  };
+
   const handleReset = () => {
-    if (abortRef.current) {
-      abortRef.current.abort();
-    }
+    abortRef.current?.abort();
     setMessages([]);
     setIsStreaming(false);
   };
@@ -631,44 +697,84 @@ export default function AgentChatPage() {
           </div>
         ) : (
           <div className="space-y-4 py-4">
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
+            {messages.map((msg, idx) => {
+              const isUser = msg.role === 'user';
+              const isLast = idx === messages.length - 1;
+              const showThinking =
+                !isUser &&
+                !msg.content &&
+                !msg.toolCalls?.length &&
+                isStreaming &&
+                isLast;
+
+              return (
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                    msg.role === 'user'
-                      ? 'bg-primary text-primary-foreground rounded-br-md'
-                      : 'bg-default-100 dark:bg-default-50/60 text-default-800 dark:text-default-200 rounded-bl-md'
-                  }`}
+                  key={idx}
+                  className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
                 >
-                  {msg.role === 'assistant' ? (
-                    <>
-                      {/* Tool calls */}
-                      {msg.toolCalls?.map((tc) => (
-                        <ToolCallCard key={tc.id} toolCall={tc} />
-                      ))}
-                      {/* Text content */}
-                      {msg.content ? (
-                        <div className="prose-sm">{renderMarkdown(msg.content)}</div>
+                  {/* ── Assistant avatar ── */}
+                  {!isUser && (
+                    <div className="flex-shrink-0 mr-2 mt-1">
+                      <div className="w-8 h-8 rounded-full bg-secondary/20 dark:bg-secondary/30 flex items-center justify-center">
+                        <Icon icon={cpuBold} className="text-secondary" fontSize={16} />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className={`max-w-[80%] flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+                    {/* ── Chat bubble ── */}
+                    <div
+                      className={`rounded-2xl px-4 py-3 shadow-sm ${
+                        isUser
+                          ? 'bg-primary text-primary-foreground rounded-br-md'
+                          : 'bg-content2 border border-default-200 dark:border-default-100 rounded-bl-md'
+                      }`}
+                    >
+                      {!isUser ? (
+                        <>
+                          {/* Tool calls */}
+                          {msg.toolCalls?.map((tc) => (
+                            <ToolCallCard key={tc.id} toolCall={tc} />
+                          ))}
+                          {/* Text content */}
+                          {msg.content ? (
+                            <div className="prose-sm text-foreground">{renderMarkdown(msg.content)}</div>
+                          ) : (
+                            showThinking && (
+                              <div className="flex items-center gap-2">
+                                <Spinner size="sm" />
+                                <span className="text-sm text-default-400">{t('agent.thinking')}</span>
+                              </div>
+                            )
+                          )}
+                        </>
                       ) : (
-                        !msg.toolCalls?.length &&
-                        isStreaming &&
-                        idx === messages.length - 1 && (
-                          <div className="flex items-center gap-2">
-                            <Spinner size="sm" />
-                            <span className="text-sm text-default-400">{t('agent.thinking')}</span>
-                          </div>
-                        )
+                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                       )}
-                    </>
-                  ) : (
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+
+                    {/* ── Elapsed time badge ── */}
+                    {!isUser && msg.elapsedMs != null && (!isStreaming || !isLast) && (
+                      <div className="flex items-center gap-1 mt-1.5 px-1">
+                        <Icon icon={clockBold} className="text-default-300" fontSize={12} />
+                        <span className="text-xs text-default-400">
+                          {t('agent.elapsed', { time: formatElapsed(msg.elapsedMs) })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── User avatar ── */}
+                  {isUser && (
+                    <div className="flex-shrink-0 ml-2 mt-1">
+                      <div className="w-8 h-8 rounded-full bg-primary/20 dark:bg-primary/30 flex items-center justify-center">
+                        <span className="text-primary text-xs font-bold">U</span>
+                      </div>
+                    </div>
                   )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -695,18 +801,33 @@ export default function AgentChatPage() {
             />
           </div>
           <div className="flex gap-1 pb-1">
-            <Tooltip content={t('agent.send')}>
-              <Button
-                type="submit"
-                isIconOnly
-                color="primary"
-                size="lg"
-                isDisabled={!input.trim() || isStreaming}
-                aria-label={t('agent.send')}
-              >
-                <Icon icon={paperPlaneBold} fontSize={20} />
-              </Button>
-            </Tooltip>
+            {isStreaming ? (
+              <Tooltip content={t('agent.stop')}>
+                <Button
+                  isIconOnly
+                  color="danger"
+                  variant="flat"
+                  size="lg"
+                  onPress={handleStop}
+                  aria-label={t('agent.stop')}
+                >
+                  <Icon icon={stopBold} fontSize={20} />
+                </Button>
+              </Tooltip>
+            ) : (
+              <Tooltip content={t('agent.send')}>
+                <Button
+                  type="submit"
+                  isIconOnly
+                  color="primary"
+                  size="lg"
+                  isDisabled={!input.trim()}
+                  aria-label={t('agent.send')}
+                >
+                  <Icon icon={paperPlaneBold} fontSize={20} />
+                </Button>
+              </Tooltip>
+            )}
             <Tooltip content={t('agent.reset')}>
               <Button
                 isIconOnly

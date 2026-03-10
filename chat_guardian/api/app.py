@@ -716,13 +716,21 @@ def create_app() -> FastAPI:
     admin_agent = AdminAgent(operations=operations)
 
     @app.post("/api/agent/chat")
-    async def agent_chat(payload: AgentChatRequest):
+    async def agent_chat(request: Request, payload: AgentChatRequest):
         """管理智能体流式对话接口。返回 Server-Sent Events 流。"""
 
         async def event_generator():
             try:
-                async for event in admin_agent.stream(payload.messages):
+                async for event in admin_agent.stream(
+                    payload.messages,
+                    is_disconnected=request.is_disconnected,
+                ):
+                    if await request.is_disconnected():
+                        logger.info("Client disconnected, stopping agent stream")
+                        return
                     yield f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n"
+            except asyncio.CancelledError:
+                logger.info("Agent chat stream cancelled (client disconnect)")
             except Exception as exc:
                 logger.error(f"Agent chat stream error: {exc}")
                 yield f"data: {json.dumps({'type': 'error', 'content': str(exc)}, ensure_ascii=False)}\n\n"
