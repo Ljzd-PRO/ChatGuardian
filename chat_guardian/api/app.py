@@ -73,6 +73,10 @@ from chat_guardian.settings import settings, Settings
 ENV_ONLY_KEYS = frozenset({"database_url", "app_name", "environment"})
 
 
+class AgentChatRequest(BaseModel):
+    messages: list[dict[str, str]]
+
+
 @asynccontextmanager
 async def _app_lifespan(app: FastAPI):
     """应用生命周期管理：启动时自动启动 adapters，关闭时自动停止。"""
@@ -710,9 +714,6 @@ def create_app() -> FastAPI:
     # ── Admin Agent ──────────────────────────────────────────────────────────
 
     admin_agent = AdminAgent(operations=operations)
-
-    class AgentChatRequest(BaseModel):
-        messages: list[dict[str, str]]
 
     @app.post("/api/agent/chat")
     async def agent_chat(payload: AgentChatRequest):

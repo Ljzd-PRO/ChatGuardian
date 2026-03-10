@@ -145,3 +145,31 @@ def test_rule_list_and_delete_flow() -> None:
     assert list_after_resp.status_code == 200
     rules_after = list_after_resp.json()
     assert all(item["rule_id"] != "rule-to-delete" for item in rules_after)
+
+
+def test_agent_chat_accepts_json_body(monkeypatch) -> None:
+    events: list[list[dict[str, str]]] = []
+
+    class StubAdminAgent:
+        def __init__(self, operations):
+            pass
+
+        async def stream(self, messages):
+            events.append(messages)
+            yield {"type": "done"}
+
+    monkeypatch.setattr("chat_guardian.api.app.AdminAgent", StubAdminAgent)
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _register_and_login(client)
+
+    resp = client.post(
+        "/api/agent/chat",
+        json={"messages": [{"role": "user", "content": "hello"}]},
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.headers["content-type"].startswith("text/event-stream")
+    assert any("done" in line for line in resp.text.splitlines())
+    assert events and events[0][0]["content"] == "hello"
