@@ -1,5 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useEffect } from 'react';
 import Sidebar, { useSidebar } from './Sidebar';
 import TopNavbar from './Navbar';
 
@@ -10,6 +11,7 @@ const TITLE_KEYS: Record<string, string> = {
   '/users':         'layout.titles.users',
   '/adapters':      'layout.titles.adapters',
   '/llm':           'layout.titles.llm',
+  '/agent':         'layout.titles.agent',
   '/notifications': 'layout.titles.notifications',
   '/queues':        'layout.titles.queues',
   '/logs':          'layout.titles.logs',
@@ -23,6 +25,12 @@ export default function AppLayout() {
   const { t } = useTranslation();
   const titleKey = TITLE_KEYS[pathname] ?? 'common.appName';
   const title = t(titleKey);
+
+  // Dynamic document title
+  useEffect(() => {
+    const appName = t('common.appName');
+    document.title = title === appName ? appName : `${title} - ${appName}`;
+  }, [title, t]);
 
   return (
     <div className="flex min-h-screen bg-default-50">

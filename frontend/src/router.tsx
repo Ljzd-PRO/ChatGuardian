@@ -14,6 +14,7 @@ import SettingsPage       from './pages/SettingsPage';
 import LoginPage          from './pages/LoginPage';
 import SetupWizardPage    from './pages/SetupWizardPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
+import AgentChatPage      from './pages/AgentChatPage';
 
 export const router = createBrowserRouter([
   {
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
       { path: 'logs',             element: <LogsPage /> },
       { path: 'settings',         element: <SettingsPage /> },
       { path: 'change-password',  element: <ChangePasswordPage /> },
+      { path: 'agent',            element: <AgentChatPage /> },
     ],
   },
   {
