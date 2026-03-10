@@ -211,6 +211,7 @@ __marimo__/
 
 db.sqlite
 *.db
+*.sqlite
 
 # Frontend build artifacts and dependencies
 frontend/node_modules/
