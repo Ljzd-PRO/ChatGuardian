@@ -9,9 +9,25 @@ from chat_guardian.domain import ChatMessage, ChatEvent, ChatType, MessageConten
 
 def _register_and_login(client: TestClient) -> dict[str, str]:
     """注册并登录管理员，返回认证 headers。"""
-    client.post("/api/auth/register", json={"username": "admin", "password": "pass"})
-    login_resp = client.post("/api/auth/login", json={"username": "admin", "password": "pass"})
-    token = login_resp.json()["token"]
+    register_resp = client.post(
+        "/api/auth/register",
+        json={"username": "admin", "password": "pass"},
+    )
+    assert register_resp.status_code in (200, 400), (
+        f"Unexpected status from /api/auth/register: {register_resp.status_code}, "
+        f"body={register_resp.text}"
+    )
+
+    login_resp = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "pass"},
+    )
+    assert login_resp.status_code == 200, (
+        f"Login failed: status={login_resp.status_code}, body={login_resp.text}"
+    )
+    login_data = login_resp.json()
+    assert "token" in login_data, f"Login response missing token field: {login_data}"
+    token = login_data["token"]
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -82,8 +98,9 @@ def test_api_rule_and_detect_flow() -> None:
 def test_llm_health_endpoint_without_ping() -> None:
     app = create_app()
     client = TestClient(app)
+    headers = _register_and_login(client)
 
-    response = client.get("/llm/health", params={"do_ping": False})
+    response = client.get("/llm/health", params={"do_ping": False}, headers=headers)
     assert response.status_code == 200
 
     payload = response.json()

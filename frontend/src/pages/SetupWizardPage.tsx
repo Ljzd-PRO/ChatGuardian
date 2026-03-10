@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button, Card, CardBody, Input, Select, SelectItem, Switch, Spinner,
@@ -42,22 +42,40 @@ const STEP_KEYS = ['account', 'llm', 'adapters', 'notifications'] as const;
 export default function SetupWizardPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { login, setupRequired, authenticated, refreshSetupState } = useAuth();
+  const { login, loading: authLoading, setupRequired, authenticated, refreshSetupState } = useAuth();
   const [step, setStep] = useState(0);
   const [accountDone, setAccountDone] = useState(false);
 
   const steps = STEP_KEYS.map(k => ({ title: t(`setup.steps.${k}`) }));
 
-  // If setup is not required and user is already authenticated, go to dashboard
+  // Redirect to dashboard if already set up and authenticated
+  // Redirect to login if already set up but not authenticated
   useEffect(() => {
+    if (authLoading) return;
     if (!setupRequired && authenticated && !accountDone) {
       navigate('/', { replace: true });
+    } else if (!setupRequired && !authenticated) {
+      navigate('/login', { replace: true });
     }
-  }, [setupRequired, authenticated, accountDone, navigate]);
+  }, [authLoading, setupRequired, authenticated, accountDone, navigate]);
 
   async function handleFinish() {
     await refreshSetupState();
     navigate('/', { replace: true });
+  }
+
+  /** Prevent clicking steps beyond 0 until account is created */
+  function handleStepChange(idx: number) {
+    if (!accountDone && idx > 0) return;
+    setStep(idx);
+  }
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-default-50">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
   const canGoBack = step > 0;
@@ -72,7 +90,7 @@ export default function SetupWizardPage() {
         </div>
 
         <div className="flex justify-center">
-          <RowSteps currentStep={step} onStepChange={setStep} steps={steps} />
+          <RowSteps currentStep={step} onStepChange={handleStepChange} steps={steps} />
         </div>
 
         <Card className="shadow-lg">
@@ -154,7 +172,7 @@ function AccountStep({ done, onDone }: { done: boolean; onDone: (u: string, p: s
     );
   }
 
-  async function handleCreate(e: React.FormEvent) {
+  async function handleCreate(e: FormEvent) {
     e.preventDefault();
     setError('');
     if (!username.trim()) { setError(t('setup.accountUsernameRequired')); return; }

@@ -44,7 +44,7 @@ function CheckIcon(props: ComponentProps<"svg">) {
   );
 }
 
-const RowSteps = React.forwardRef<HTMLButtonElement, RowStepsProps>(
+const RowSteps = React.forwardRef<HTMLElement, RowStepsProps>(
   (
     {
       color = "primary",
@@ -119,7 +119,7 @@ const RowSteps = React.forwardRef<HTMLButtonElement, RowStepsProps>(
     }, [color, className]);
 
     return (
-      <nav aria-label="Progress" className="-my-4 max-w-fit overflow-x-auto py-4">
+      <nav ref={ref} aria-label="Progress" className="-my-4 max-w-fit overflow-x-auto py-4">
         <ol className={cn("flex flex-row flex-nowrap gap-x-3", colors, className)}>
           {steps?.map((step, stepIdx) => {
             const status =
@@ -128,8 +128,6 @@ const RowSteps = React.forwardRef<HTMLButtonElement, RowStepsProps>(
             return (
               <li key={stepIdx} className="relative flex w-full items-center pr-12">
                 <button
-                  key={stepIdx}
-                  ref={ref}
                   aria-current={status === "active" ? "step" : undefined}
                   className={cn(
                     "group rounded-large flex w-full cursor-pointer flex-row items-center justify-center gap-x-3 py-2.5",
@@ -138,7 +136,7 @@ const RowSteps = React.forwardRef<HTMLButtonElement, RowStepsProps>(
                   onClick={() => setCurrentStep(stepIdx)}
                   {...props}
                 >
-                  <div className="h-ful relative flex items-center">
+                  <div className="h-full relative flex items-center">
                     <LazyMotion features={domAnimation}>
                       <m.div animate={status} className="relative">
                         <m.div

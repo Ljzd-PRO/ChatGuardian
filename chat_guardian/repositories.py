@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import secrets
 from collections import defaultdict, deque
 from datetime import datetime
 from typing import Any
@@ -667,11 +668,11 @@ class AdminCredentialRepository:
         """验证密码是否匹配已存储的哈希。"""
         try:
             salt_hex, hash_hex = stored.split("$", 1)
+            salt = bytes.fromhex(salt_hex)
         except ValueError:
             return False
-        salt = bytes.fromhex(salt_hex)
         dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, self._ITERATIONS)
-        return dk.hex() == hash_hex
+        return secrets.compare_digest(dk.hex(), hash_hex)
 
     def is_configured(self) -> bool:
         """检查管理员凭据是否已配置。"""

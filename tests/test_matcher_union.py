@@ -270,6 +270,12 @@ def test_round_trip_via_api() -> None:
     app = create_app()
     client = TestClient(app)
 
+    # Register and login to get auth headers
+    client.post("/api/auth/register", json={"username": "admin", "password": "pass"})
+    login_resp = client.post("/api/auth/login", json={"username": "admin", "password": "pass"})
+    token = login_resp.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
     payload = {
         "rule_id": "matcher-test-rule",
         "name": "Matcher Test",
@@ -293,7 +299,7 @@ def test_round_trip_via_api() -> None:
         "parameters": [],
     }
 
-    resp = client.post("/rules", json=payload)
+    resp = client.post("/rules", json=payload, headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["matcher"]["type"] == "and"
@@ -301,7 +307,7 @@ def test_round_trip_via_api() -> None:
     assert len(data["matcher"]["matchers"][1]["matchers"]) == 2
 
     # Verify it persists correctly in list endpoint
-    list_resp = client.get("/rules/list")
+    list_resp = client.get("/rules/list", headers=headers)
     assert list_resp.status_code == 200
     found = next(
         (r for r in list_resp.json() if r["rule_id"] == "matcher-test-rule"), None

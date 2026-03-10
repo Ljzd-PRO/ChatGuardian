@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Button, Card, CardBody, CardHeader, Input } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import eyeBold from '@iconify/icons-solar/eye-bold';
@@ -20,7 +20,7 @@ export default function ChangePasswordPage() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
     setSuccess(false);

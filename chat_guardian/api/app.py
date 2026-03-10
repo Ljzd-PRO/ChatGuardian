@@ -254,20 +254,21 @@ def create_app() -> FastAPI:
         """将内部 OperationError 转换为 HTTPException。"""
         return HTTPException(status_code=exc.status_code, detail=str(exc))
 
-    PUBLIC_PATH_PREFIXES = ("/app/assets", "/assets", "/mcp")
+    PUBLIC_PATH_PREFIXES = ("/app/", "/app/assets", "/assets", "/mcp")
     PUBLIC_PATHS = {
         "/",
         "/auth/login",
         "/health",
-        "/llm/health",
         "/app",
-        "/app/",
     }
 
     @app.middleware("http")
     async def auth_middleware(request: Request, call_next):
         """Bearer Token 认证中间件，公共路径与 /api/auth/ 前缀路径放行。"""
         path = request.url.path
+        # Allow CORS preflight requests through
+        if request.method == "OPTIONS":
+            return await call_next(request)
         if path in PUBLIC_PATHS:
             return await call_next(request)
         if path.startswith("/api/auth/"):

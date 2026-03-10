@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Button, Input, Card, CardBody } from '@heroui/react';
+import { useState, type FormEvent } from 'react';
+import { Button, Input, Card, CardBody, Spinner } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import eyeBold from '@iconify/icons-solar/eye-bold';
 import eyeClosedLinear from '@iconify/icons-solar/eye-closed-linear';
@@ -7,12 +7,12 @@ import lockPasswordBold from '@iconify/icons-solar/lock-password-bold';
 import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { ICON_SIZES } from '../constants/iconSizes';
 
 export default function LoginPage() {
   const { t } = useTranslation();
-  const { login } = useAuth();
+  const { login, loading: authLoading, setupRequired, authenticated } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -20,7 +20,18 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  // Redirect to setup if credentials not yet configured
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-default-50">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+  if (setupRequired) return <Navigate to="/setup" replace />;
+  if (authenticated) return <Navigate to="/" replace />;
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
     if (!username.trim() || !password.trim()) {
