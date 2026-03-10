@@ -485,6 +485,7 @@ class AdminAgent:
                 return await is_disconnected()
             except Exception:
                 return False
+
         # 构建 LangChain 消息列表
         lc_messages: list[BaseMessage] = [SystemMessage(content=SYSTEM_PROMPT)]
         for msg in messages:

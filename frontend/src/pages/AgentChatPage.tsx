@@ -727,7 +727,7 @@ export default function AgentChatPage() {
                       className={`rounded-2xl px-4 py-3 shadow-sm ${
                         isUser
                           ? 'bg-primary text-primary-foreground rounded-br-md'
-                          : 'bg-content2 dark:bg-content2 border border-default-200 dark:border-default-100 rounded-bl-md'
+                          : 'bg-content2 border border-default-200 dark:border-default-100 rounded-bl-md'
                       }`}
                     >
                       {!isUser ? (
@@ -754,7 +754,7 @@ export default function AgentChatPage() {
                     </div>
 
                     {/* ── Elapsed time badge ── */}
-                    {!isUser && msg.elapsedMs != null && !isStreaming && (
+                    {!isUser && msg.elapsedMs != null && (!isStreaming || !isLast) && (
                       <div className="flex items-center gap-1 mt-1.5 px-1">
                         <Icon icon={clockBold} className="text-default-300" fontSize={12} />
                         <span className="text-xs text-default-400">

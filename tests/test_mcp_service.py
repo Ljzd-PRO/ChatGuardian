@@ -29,6 +29,11 @@ class _DummyRuleAuthoringService:
         )
 
 
+class _DummyRuleRepository:
+    async def upsert(self, rule: DetectionRule) -> DetectionRule:
+        return rule
+
+
 class _DummyContainer:
     def __init__(self):
         self.admin_username = "admin"
@@ -36,6 +41,7 @@ class _DummyContainer:
         self.using_default_credentials = False
         self.token_manager = _DummyTokenManager()
         self.rule_authoring_service = _DummyRuleAuthoringService()
+        self.rule_repository = _DummyRuleRepository()
 
 
 @pytest.fixture
