@@ -25,6 +25,8 @@ import cpuBold from '@iconify/icons-solar/cpu-bolt-bold';
 import plugBold from '@iconify/icons-solar/plug-circle-bold';
 import listBold from '@iconify/icons-solar/list-check-bold';
 import magnetBold from '@iconify/icons-solar/magnet-bold';
+import healthBold from '@iconify/icons-solar/health-bold';
+import eraserBold from '@iconify/icons-solar/eraser-bold';
 
 import {
   streamAgentChat,
@@ -285,16 +287,20 @@ const CAPABILITY_ICONS: Record<string, typeof widgetBold> = {
   get_queues: listBold,
   get_system_logs: documentTextBold,
   get_user_profiles: usersGroupBold,
+  get_user_profile: usersGroupBold,
   get_settings: settingsBold,
   get_notifications_config: bellBold,
   get_llm_config: cpuBold,
-  check_llm_health: cpuBold,
+  check_llm_health: healthBold,
+  check_system_health: healthBold,
   create_or_update_rule: shieldCheckBold,
   delete_rule: shieldCheckBold,
   generate_rule_from_description: magnetBold,
   start_adapters: plugBold,
   stop_adapters: plugBold,
   update_settings: settingsBold,
+  clear_message_history: eraserBold,
+  clear_system_logs: eraserBold,
 };
 
 /* ─── Main component ───────────────────────────────────────────────── */
