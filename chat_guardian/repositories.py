@@ -7,7 +7,10 @@ Repository 实现：内存缓存 + SQLAlchemy 持久化。
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
+import secrets
 from collections import defaultdict, deque
 from datetime import datetime
 from typing import Any
@@ -72,6 +75,14 @@ class _SettingRecord(_Base):
 
     key: Mapped[str] = mapped_column(String(128), primary_key=True)
     value: Mapped[str] = mapped_column(Text)
+
+
+class _AdminCredentialRecord(_Base):
+    __tablename__ = "admin_credentials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(128))
+    password_hash: Mapped[str] = mapped_column(String(512))
 
 
 class _RepositoryDatabase:
@@ -634,3 +645,74 @@ class SettingsRepository:
                 else:
                     row.value = serialized
             session.commit()
+
+
+class AdminCredentialRepository:
+    """管理员凭据仓库，使用 PBKDF2-SHA256 进行密码哈希存储。"""
+
+    # OWASP 2023 推荐 PBKDF2-SHA256 至少 600,000 次迭代；
+    # 此处使用 260,000 次作为安全与性能之间的折中。
+    _ITERATIONS = 260_000
+
+    def __init__(self, database_url: str | None = None):
+        self._db = _get_db_manager(database_url)
+
+    def _hash_password(self, password: str, salt: bytes | None = None) -> str:
+        """生成 ``salt_hex$hash_hex`` 格式的密码哈希。"""
+        if salt is None:
+            salt = os.urandom(32)
+        dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, self._ITERATIONS)
+        return f"{salt.hex()}${dk.hex()}"
+
+    def _verify_hash(self, password: str, stored: str) -> bool:
+        """验证密码是否匹配已存储的哈希。"""
+        try:
+            salt_hex, hash_hex = stored.split("$", 1)
+            salt = bytes.fromhex(salt_hex)
+        except ValueError:
+            return False
+        dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, self._ITERATIONS)
+        return secrets.compare_digest(dk.hex(), hash_hex)
+
+    def is_configured(self) -> bool:
+        """检查管理员凭据是否已配置。"""
+        if self._db is None:
+            return False
+        with self._db.session_factory() as session:
+            row = session.scalars(select(_AdminCredentialRecord).limit(1)).first()
+        return row is not None
+
+    def set_credentials(self, username: str, password: str) -> None:
+        """设置管理员凭据（upsert，仅保留一条记录）。"""
+        if self._db is None:
+            return
+        hashed = self._hash_password(password)
+        with self._db.session_factory() as session:
+            session.execute(delete(_AdminCredentialRecord))
+            session.add(_AdminCredentialRecord(username=username, password_hash=hashed))
+            session.commit()
+
+    def verify(self, username: str, password: str) -> bool:
+        """验证用户名与密码是否正确。"""
+        if self._db is None:
+            return False
+        with self._db.session_factory() as session:
+            row = session.scalars(select(_AdminCredentialRecord).limit(1)).first()
+        if row is None:
+            return False
+        return row.username == username and self._verify_hash(password, row.password_hash)
+
+    def get_username(self) -> str | None:
+        """获取已配置的管理员用户名。"""
+        if self._db is None:
+            return None
+        with self._db.session_factory() as session:
+            row = session.scalars(select(_AdminCredentialRecord).limit(1)).first()
+        return row.username if row else None
+
+    def change_password(self, username: str, old_password: str, new_password: str) -> bool:
+        """修改管理员密码，需验证旧密码。"""
+        if not self.verify(username, old_password):
+            return False
+        self.set_credentials(username, new_password)
+        return True

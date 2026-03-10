@@ -7,9 +7,34 @@ from chat_guardian.api.app import create_app
 from chat_guardian.domain import ChatMessage, ChatEvent, ChatType, MessageContent, ContentType, UserInfo
 
 
+def _register_and_login(client: TestClient) -> dict[str, str]:
+    """注册并登录管理员，返回认证 headers。"""
+    register_resp = client.post(
+        "/api/auth/register",
+        json={"username": "admin", "password": "pass"},
+    )
+    assert register_resp.status_code in (200, 400), (
+        f"Unexpected status from /api/auth/register: {register_resp.status_code}, "
+        f"body={register_resp.text}"
+    )
+
+    login_resp = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "pass"},
+    )
+    assert login_resp.status_code == 200, (
+        f"Login failed: status={login_resp.status_code}, body={login_resp.text}"
+    )
+    login_data = login_resp.json()
+    assert "token" in login_data, f"Login response missing token field: {login_data}"
+    token = login_data["token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_api_rule_and_detect_flow() -> None:
     app = create_app()
     client = TestClient(app)
+    headers = _register_and_login(client)
 
     create_rule = {
         "rule_id": "rule-1",
@@ -21,7 +46,7 @@ def test_api_rule_and_detect_flow() -> None:
         "enabled": False,
         "parameters": [{"key": "tag", "description": "topic tag", "required": False}],
     }
-    response = client.post("/rules", json=create_rule)
+    response = client.post("/rules", json=create_rule, headers=headers)
     assert response.status_code == 200
 
     detect_payload = {
@@ -73,8 +98,9 @@ def test_api_rule_and_detect_flow() -> None:
 def test_llm_health_endpoint_without_ping() -> None:
     app = create_app()
     client = TestClient(app)
+    headers = _register_and_login(client)
 
-    response = client.get("/llm/health", params={"do_ping": False})
+    response = client.get("/llm/health", params={"do_ping": False}, headers=headers)
     assert response.status_code == 200
 
     payload = response.json()
@@ -89,6 +115,7 @@ def test_llm_health_endpoint_without_ping() -> None:
 def test_rule_list_and_delete_flow() -> None:
     app = create_app()
     client = TestClient(app)
+    headers = _register_and_login(client)
 
     rule_payload = {
         "rule_id": "rule-to-delete",
@@ -101,20 +128,20 @@ def test_rule_list_and_delete_flow() -> None:
         "parameters": [],
     }
 
-    create_resp = client.post("/rules", json=rule_payload)
+    create_resp = client.post("/rules", json=rule_payload, headers=headers)
     assert create_resp.status_code == 200
 
-    list_resp = client.get("/rules/list")
+    list_resp = client.get("/rules/list", headers=headers)
     assert list_resp.status_code == 200
     rules = list_resp.json()
     assert any(item["rule_id"] == "rule-to-delete" for item in rules)
 
-    delete_resp = client.post("/rules/delete/rule-to-delete")
+    delete_resp = client.post("/rules/delete/rule-to-delete", headers=headers)
     assert delete_resp.status_code == 200
     delete_data = delete_resp.json()
     assert delete_data["deleted"] is True
 
-    list_after_resp = client.get("/rules/list")
+    list_after_resp = client.get("/rules/list", headers=headers)
     assert list_after_resp.status_code == 200
     rules_after = list_after_resp.json()
     assert all(item["rule_id"] != "rule-to-delete" for item in rules_after)

@@ -8,18 +8,24 @@ from __future__ import annotations
 
 import asyncio
 import os
+import secrets
 from collections import deque
 from contextlib import asynccontextmanager, suppress
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import (
+    ChangePasswordRequest,
+    LoginRequest,
+    RegisterRequest,
     RuleGenerateRequest,
     SuggestResponse,
 )
@@ -38,6 +44,7 @@ from chat_guardian.mcp import (
     normalize_mcp_transport,
 )
 from chat_guardian.repositories import (
+    AdminCredentialRepository,
     ChatHistoryStore,
     DetectionResultRepository,
     FeedbackRepository,
@@ -163,6 +170,7 @@ class AppContainer:
         self.feedback_repository = FeedbackRepository(database_url=settings.database_url)
         self.memory_repository = MemoryRepository(database_url=settings.database_url)
         self.detection_result_repository = DetectionResultRepository(database_url=settings.database_url)
+        self.admin_credential_repository = AdminCredentialRepository(database_url=settings.database_url)
 
         self.llm_client = build_llm_client()
         self.context_service = ContextWindowService(self.chat_history_store)
@@ -200,10 +208,36 @@ class AppContainer:
         await self.detection_engine.ingest_event(event)
 
 
+class TokenManager:
+    """简单的内存 Bearer Token 管理器，默认 24 小时过期。"""
+
+    def __init__(self, ttl_hours: int = 24):
+        self._tokens: dict[str, datetime] = {}
+        self._ttl = timedelta(hours=ttl_hours)
+
+    def create_token(self) -> str:
+        token = secrets.token_urlsafe(32)
+        self._tokens[token] = datetime.now(timezone.utc) + self._ttl
+        return token
+
+    def validate(self, token: str) -> bool:
+        expiry = self._tokens.get(token)
+        if expiry is None:
+            return False
+        if datetime.now(timezone.utc) > expiry:
+            del self._tokens[token]
+            return False
+        return True
+
+    def revoke(self, token: str) -> None:
+        self._tokens.pop(token, None)
+
+
 def create_app() -> FastAPI:
     """创建并返回 FastAPI 应用实例。应用启动时自动启动所有 enabled adapters。"""
     container = AppContainer()
     operations = ChatGuardianOperations(container=container, env_only_keys=ENV_ONLY_KEYS)
+    token_manager = TokenManager()
     app = FastAPI(title="ChatGuardian API", version="0.1.0", lifespan=_app_lifespan)
     app.state.container = container
 
@@ -220,16 +254,71 @@ def create_app() -> FastAPI:
         """将内部 OperationError 转换为 HTTPException。"""
         return HTTPException(status_code=exc.status_code, detail=str(exc))
 
-    PUBLIC_PATH_PREFIXES = ("/app/assets", "/assets")
+    PUBLIC_PATH_PREFIXES = ("/app/", "/app/assets", "/assets", "/mcp")
     PUBLIC_PATHS = {
         "/",
         "/auth/login",
         "/health",
-        "/llm/health",
         "/app",
-        "/app/",
     }
-    # '/' serves a redirect to the frontend entry, so it must remain public.
+
+    @app.middleware("http")
+    async def auth_middleware(request: Request, call_next):
+        """Bearer Token 认证中间件，公共路径与 /api/auth/ 前缀路径放行。"""
+        path = request.url.path
+        # Allow CORS preflight requests through
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        if path in PUBLIC_PATHS:
+            return await call_next(request)
+        if path.startswith("/api/auth/"):
+            return await call_next(request)
+        for prefix in PUBLIC_PATH_PREFIXES:
+            if path.startswith(prefix):
+                return await call_next(request)
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return JSONResponse(status_code=401, content={"detail": "Not authenticated"})
+        token = auth_header[7:]
+        if not token_manager.validate(token):
+            return JSONResponse(status_code=401, content={"detail": "Invalid or expired token"})
+        return await call_next(request)
+
+    # ── Auth endpoints ────────────────────────────────────────────────────────
+
+    @app.get("/api/auth/setup-required")
+    async def auth_setup_required():
+        """检查管理员凭据是否需要配置。"""
+        return {"setup_required": not container.admin_credential_repository.is_configured()}
+
+    @app.post("/api/auth/register")
+    async def auth_register(payload: RegisterRequest):
+        """一次性管理员凭据注册。"""
+        if container.admin_credential_repository.is_configured():
+            raise HTTPException(status_code=400, detail="Admin credentials already configured")
+        if not payload.username.strip() or not payload.password.strip():
+            raise HTTPException(status_code=400, detail="Username and password must not be empty")
+        container.admin_credential_repository.set_credentials(payload.username.strip(), payload.password)
+        return {"status": "ok"}
+
+    @app.post("/api/auth/login")
+    async def auth_login(payload: LoginRequest):
+        """管理员登录。"""
+        if not container.admin_credential_repository.is_configured():
+            raise HTTPException(status_code=400, detail="Admin credentials not configured")
+        if not container.admin_credential_repository.verify(payload.username, payload.password):
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+        token = token_manager.create_token()
+        return {"token": token}
+
+    @app.post("/api/auth/change-password")
+    async def auth_change_password(payload: ChangePasswordRequest):
+        """修改管理员密码。"""
+        if not container.admin_credential_repository.change_password(
+            payload.username, payload.old_password, payload.new_password
+        ):
+            raise HTTPException(status_code=400, detail="Invalid current credentials")
+        return {"status": "ok"}
 
     @app.get("/health")
     async def health() -> dict[str, str]:

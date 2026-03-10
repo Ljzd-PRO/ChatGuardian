@@ -4,9 +4,12 @@ import hamburgerMenuBold from '@iconify/icons-solar/hamburger-menu-bold';
 import moonBold from '@iconify/icons-solar/moon-bold';
 import sun2Bold from '@iconify/icons-solar/sun-2-bold';
 import earthBold from '@iconify/icons-solar/earth-bold';
+import exitBold from '@iconify/icons-solar/exit-bold';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
 import { supportedLanguages } from '../../i18n';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface TopNavbarProps {
   onMenuClick: () => void;
@@ -16,8 +19,15 @@ interface TopNavbarProps {
 export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
   const { t, i18n } = useTranslation();
   const { isDark, toggle } = useTheme();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const resolved = i18n.resolvedLanguage ?? i18n.language;
   const currentLang = supportedLanguages.some(l => l.code === resolved) ? resolved : 'en';
+
+  function handleLogout() {
+    logout();
+    navigate('/login', { replace: true });
+  }
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur border-b border-divider">
@@ -52,6 +62,16 @@ export default function TopNavbar({ onMenuClick, title }: TopNavbarProps) {
           aria-label={t('common.toggleDark')}
         >
           <Icon icon={isDark ? moonBold : sun2Bold} fontSize={20} />
+        </Button>
+        <Button
+          isIconOnly
+          size="md"
+          variant="flat"
+          color="danger"
+          onPress={handleLogout}
+          aria-label={t('auth.logout')}
+        >
+          <Icon icon={exitBold} fontSize={20} />
         </Button>
       </div>
     </header>
