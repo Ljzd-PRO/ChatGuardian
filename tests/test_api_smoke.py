@@ -150,7 +150,7 @@ def test_rule_list_and_delete_flow() -> None:
 def test_agent_chat_accepts_json_body(monkeypatch) -> None:
     events: list[list[dict[str, str]]] = []
 
-    class DummyAgent:
+    class StubAdminAgent:
         def __init__(self, operations):
             pass
 
@@ -158,7 +158,7 @@ def test_agent_chat_accepts_json_body(monkeypatch) -> None:
             events.append(messages)
             yield {"type": "done"}
 
-    monkeypatch.setattr("chat_guardian.api.app.AdminAgent", DummyAgent)
+    monkeypatch.setattr("chat_guardian.api.app.AdminAgent", StubAdminAgent)
 
     app = create_app()
     client = TestClient(app)
