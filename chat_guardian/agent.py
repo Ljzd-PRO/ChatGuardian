@@ -461,6 +461,7 @@ class AdminAgent:
     async def stream(
         self,
         messages: list[dict[str, str]],
+        is_disconnected: Any | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """流式处理用户消息，返回事件流。
 
@@ -471,7 +472,19 @@ class AdminAgent:
         - {"type": "tool_result", "tool_call_id": str, "name": str, "display_name": str, "result": Any}
         - {"type": "error", "content": str}
         - {"type": "done"}
+
+        Args:
+            messages: 对话消息列表。
+            is_disconnected: 可选的异步回调，返回 True 表示客户端已断开连接。
         """
+
+        async def _client_gone() -> bool:
+            if is_disconnected is None:
+                return False
+            try:
+                return await is_disconnected()
+            except Exception:
+                return False
         # 构建 LangChain 消息列表
         lc_messages: list[BaseMessage] = [SystemMessage(content=SYSTEM_PROMPT)]
         for msg in messages:
@@ -485,11 +498,19 @@ class AdminAgent:
         model = self._get_model()
 
         for _iteration in range(self.MAX_ITERATIONS):
+            if await _client_gone():
+                logger.info("Client disconnected, stopping agent stream")
+                return
+
             try:
                 # 流式调用模型
                 tool_calls_buffer: dict[int, dict] = {}
 
                 async for chunk in model.astream(lc_messages):
+                    if await _client_gone():
+                        logger.info("Client disconnected during streaming")
+                        return
+
                     if not isinstance(chunk, AIMessageChunk):
                         continue
 
@@ -573,6 +594,10 @@ class AdminAgent:
 
                 # 执行工具调用
                 for tc in tool_calls:
+                    if await _client_gone():
+                        logger.info("Client disconnected before tool execution")
+                        return
+
                     tool_name = tc["name"]
                     tool_fn = self._tools_by_name.get(tool_name)
                     display = TOOL_DISPLAY_NAMES.get(tool_name, {})
