@@ -48,6 +48,11 @@ export default function SetupWizardPage() {
 
   const steps = STEP_KEYS.map(k => ({ title: t(`setup.steps.${k}`) }));
 
+  // Dynamic document title
+  useEffect(() => {
+    document.title = `${t('setup.title')} - ${t('common.appName')}`;
+  }, [t]);
+
   // Redirect to dashboard if already set up and authenticated
   // Redirect to login if already set up but not authenticated
   useEffect(() => {

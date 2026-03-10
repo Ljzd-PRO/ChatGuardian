@@ -16,6 +16,7 @@ import settingsBold from '@iconify/icons-solar/settings-bold';
 import shieldCheckBold from '@iconify/icons-solar/shield-check-bold';
 import usersGroupRoundedBold from '@iconify/icons-solar/users-group-rounded-bold';
 import widget2Bold from '@iconify/icons-solar/widget-2-bold';
+import chatRoundLineBold from '@iconify/icons-solar/chat-round-line-bold-duotone';
 import { useTranslation } from 'react-i18next';
 
 const NAV_ITEMS: { path: string; labelKey: string; icon: IconifyIcon }[] = [
@@ -25,6 +26,7 @@ const NAV_ITEMS: { path: string; labelKey: string; icon: IconifyIcon }[] = [
   { path: '/users',        labelKey: 'layout.nav.users',         icon: usersGroupRoundedBold },
   { path: '/adapters',     labelKey: 'layout.nav.adapters',      icon: plugCircleBold },
   { path: '/llm',          labelKey: 'layout.nav.llm',           icon: cpuBoltBold },
+  { path: '/agent',        labelKey: 'layout.nav.agent',         icon: chatRoundLineBold },
   { path: '/notifications',labelKey: 'layout.nav.notifications', icon: bellBingBold },
   { path: '/queues',       labelKey: 'layout.nav.queues',        icon: listCheckBold },
   { path: '/logs',         labelKey: 'layout.nav.logs',          icon: documentTextBold },

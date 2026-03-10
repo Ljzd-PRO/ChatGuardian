@@ -7,6 +7,7 @@ FastAPI 应用与路由定义。
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import secrets
 from collections import deque
@@ -18,9 +19,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
+from pydantic import BaseModel
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, StreamingResponse
 
+from chat_guardian.agent import AdminAgent, TOOL_DISPLAY_NAMES
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import (
     ChangePasswordRequest,
@@ -703,6 +706,76 @@ def create_app() -> FastAPI:
             settings.mcp_http_port,
             settings.mcp_http_path,
         )
+
+    # ── Admin Agent ──────────────────────────────────────────────────────────
+
+    admin_agent = AdminAgent(operations=operations)
+
+    class AgentChatRequest(BaseModel):
+        messages: list[dict[str, str]]
+
+    @app.post("/api/agent/chat")
+    async def agent_chat(payload: AgentChatRequest):
+        """管理智能体流式对话接口。返回 Server-Sent Events 流。"""
+
+        async def event_generator():
+            try:
+                async for event in admin_agent.stream(payload.messages):
+                    yield f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n"
+            except Exception as exc:
+                logger.error(f"Agent chat stream error: {exc}")
+                yield f"data: {json.dumps({'type': 'error', 'content': str(exc)}, ensure_ascii=False)}\n\n"
+                yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    @app.get("/api/agent/capabilities")
+    async def agent_capabilities():
+        """返回管理智能体的能力列表和工具展示名称映射。"""
+        return {
+            "tool_display_names": TOOL_DISPLAY_NAMES,
+            "capabilities": [
+                {
+                    "category": "query",
+                    "items": [
+                        "get_dashboard",
+                        "get_rules_list",
+                        "get_rule_stats",
+                        "get_adapters_status",
+                        "get_queues",
+                        "get_system_logs",
+                        "get_user_profiles",
+                        "get_user_profile",
+                        "get_settings",
+                        "get_notifications_config",
+                        "get_llm_config",
+                        "check_llm_health",
+                        "check_system_health",
+                    ],
+                },
+                {
+                    "category": "management",
+                    "items": [
+                        "create_or_update_rule",
+                        "delete_rule",
+                        "generate_rule_from_description",
+                        "start_adapters",
+                        "stop_adapters",
+                        "update_settings",
+                        "clear_message_history",
+                        "clear_system_logs",
+                    ],
+                },
+            ],
+        }
 
     # ── Static frontend ───────────────────────────────────────────────────────
 

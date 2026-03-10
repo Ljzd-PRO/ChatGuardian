@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Button, Input, Card, CardBody, Spinner } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import eyeBold from '@iconify/icons-solar/eye-bold';
@@ -18,6 +18,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    document.title = `${t('auth.login.title')} - ${t('common.appName')}`;
+  }, [t]);
   const [loading, setLoading] = useState(false);
 
   // Redirect to setup if credentials not yet configured

@@ -14,6 +14,7 @@ from loguru import logger
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import RuleGenerateRequest, SuggestResponse
 from chat_guardian.domain import DetectionRule, Feedback
+from chat_guardian.services import build_llm_client
 from chat_guardian.settings import Settings, settings
 
 
@@ -411,7 +412,34 @@ class ChatGuardianOperations:
             except Exception as exc:
                 raise OperationError(f"Failed to rebuild adapters: {exc}", status_code=500) from exc
 
-        return {"status": "saved", "settings": self._settings_subset()}
+        # 处理 LLM 配置动态生效：当 LLM 相关设置变更时立即重建 LLM 客户端
+        llm_related_keys = {
+            "llm_langchain_backend",
+            "llm_langchain_model",
+            "llm_langchain_api_base",
+            "llm_langchain_api_key",
+            "llm_langchain_temperature",
+            "llm_ollama_base_url",
+            "llm_timeout_seconds",
+        }
+        llm_updates = llm_related_keys & update_keys
+        llm_rebuild_warning: str | None = None
+        if llm_updates:
+            try:
+                new_llm_client = build_llm_client()
+                self.container.llm_client = new_llm_client
+                self.container.detection_engine.llm_client = new_llm_client
+                self.container.detection_engine.batch_scheduler.llm_client = new_llm_client
+                self.container.user_memory_service.llm_client = new_llm_client
+                logger.info("🔄 LLM 客户端已根据新配置重建并立即生效")
+            except Exception as exc:
+                llm_rebuild_warning = str(exc)
+                logger.warning(f"⚠️ LLM 客户端重建失败，将继续使用旧配置: {exc}")
+
+        result: dict[str, Any] = {"status": "saved", "settings": self._settings_subset()}
+        if llm_rebuild_warning:
+            result["warning"] = f"Settings saved but LLM client rebuild failed: {llm_rebuild_warning}"
+        return result
 
     def get_notifications_config(self) -> dict[str, Any]:
         s = settings
