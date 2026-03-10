@@ -9,6 +9,8 @@
 from __future__ import annotations
 
 import json
+import re
+import uuid
 from typing import Any, AsyncIterator
 
 from langchain_core.messages import (
@@ -25,6 +27,56 @@ from langchain_openai import ChatOpenAI
 from loguru import logger
 
 from chat_guardian.settings import settings
+
+# ── 需要在 agent 工具输出中脱敏的 settings 字段 ──────────────────────────
+_SECRET_SETTINGS_KEYS = {
+    "llm_langchain_api_key",
+    "smtp_password",
+    "bark_device_key",
+    "bark_device_keys",
+    "onebot_access_token",
+    "telegram_bot_token",
+}
+
+
+def _mask_value(value: Any) -> str:
+    """将敏感值替换为掩码字符串。"""
+    if value is None or value == "" or value == []:
+        return "(not set)"
+    if isinstance(value, list):
+        return f"({len(value)} keys configured)"
+    s = str(value)
+    if len(s) <= 4:
+        return "****"
+    return s[:2] + "*" * (len(s) - 4) + s[-2:]
+
+
+def _mask_secrets_in_settings(data: dict[str, Any]) -> dict[str, Any]:
+    """对 settings 字典中的敏感字段进行脱敏。"""
+    masked = {}
+    for key, value in data.items():
+        if key in _SECRET_SETTINGS_KEYS:
+            masked[key] = _mask_value(value)
+        else:
+            masked[key] = value
+    return masked
+
+
+def _mask_notifications_config(config: dict[str, Any]) -> dict[str, Any]:
+    """对通知配置中的敏感字段进行脱敏。"""
+    result = {}
+    for section_key, section_val in config.items():
+        if not isinstance(section_val, dict):
+            result[section_key] = section_val
+            continue
+        masked_section = {}
+        for k, v in section_val.items():
+            if re.search(r"password|token|secret|device_key", k, re.IGNORECASE):
+                masked_section[k] = _mask_value(v)
+            else:
+                masked_section[k] = v
+        result[section_key] = masked_section
+    return result
 
 # ── 工具名称到用户可读描述的映射 ─────────────────────────────────────────
 TOOL_DISPLAY_NAMES: dict[str, dict[str, str]] = {
@@ -302,8 +354,9 @@ def _build_agent_tools(operations: Any) -> list:
 
     @tool
     async def get_settings() -> dict:
-        """获取当前所有系统设置。"""
-        return await operations.get_settings()
+        """获取当前所有系统设置。敏感信息（如 API 密钥、密码）已脱敏处理。"""
+        raw = await operations.get_settings()
+        return _mask_secrets_in_settings(raw)
 
     @tool
     async def update_settings(updates: dict) -> dict:
@@ -319,8 +372,9 @@ def _build_agent_tools(operations: Any) -> list:
 
     @tool
     async def get_notifications_config() -> dict:
-        """获取通知配置信息，包括邮件通知和 Bark 推送通知的设置。"""
-        return operations.get_notifications_config()
+        """获取通知配置信息，包括邮件通知和 Bark 推送通知的设置。敏感信息已脱敏处理。"""
+        raw = operations.get_notifications_config()
+        return _mask_notifications_config(raw)
 
     @tool
     async def get_llm_config() -> dict:
@@ -454,10 +508,13 @@ class AdminAgent:
                             tc_args = tc_chunk.get("args") if isinstance(tc_chunk, dict) else getattr(tc_chunk, "args", None)
 
                             if idx not in tool_calls_buffer:
+                                # 生成回退 ID，确保永不为空
+                                fallback_id = tc_id or f"tc_{_iteration}_{idx}_{uuid.uuid4().hex[:8]}"
                                 tool_calls_buffer[idx] = {
-                                    "id": tc_id or "",
+                                    "id": fallback_id,
                                     "name": tc_name or "",
                                     "args_str": "",
+                                    "start_emitted": False,
                                 }
 
                             buf = tool_calls_buffer[idx]
@@ -465,13 +522,18 @@ class AdminAgent:
                                 buf["id"] = tc_id
                             if tc_name:
                                 buf["name"] = tc_name
-                                display = TOOL_DISPLAY_NAMES.get(tc_name, {})
+
+                            # 当同时有 name 和 id 时才发出 tool_call_start
+                            if buf["name"] and buf["id"] and not buf["start_emitted"]:
+                                display = TOOL_DISPLAY_NAMES.get(buf["name"], {})
                                 yield {
                                     "type": "tool_call_start",
                                     "tool_call_id": buf["id"],
-                                    "name": tc_name,
-                                    "display_name": display.get("zh", display.get("en", tc_name)),
+                                    "name": buf["name"],
+                                    "display_name": display.get("zh", display.get("en", buf["name"])),
                                 }
+                                buf["start_emitted"] = True
+
                             if tc_args:
                                 buf["args_str"] += tc_args
                                 yield {

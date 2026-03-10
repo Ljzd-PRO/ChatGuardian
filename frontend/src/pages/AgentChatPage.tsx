@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, type FormEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, type FormEvent, type ReactNode, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -62,7 +62,7 @@ function renderMarkdown(text: string) {
   if (!text) return null;
 
   const lines = text.split('\n');
-  const elements: React.ReactNode[] = [];
+  const elements: ReactNode[] = [];
   let listItems: string[] = [];
   let inCodeBlock = false;
   let codeLines: string[] = [];
@@ -162,9 +162,9 @@ function renderMarkdown(text: string) {
   return <>{elements}</>;
 }
 
-function renderInlineMarkdown(text: string): React.ReactNode {
+function renderInlineMarkdown(text: string): ReactNode {
   // Bold, italic, inline code, links
-  const parts: React.ReactNode[] = [];
+  const parts: ReactNode[] = [];
   let remaining = text;
   let key = 0;
 
@@ -174,7 +174,7 @@ function renderInlineMarkdown(text: string): React.ReactNode {
     // Inline code: `text`
     const codeMatch = remaining.match(/`(.+?)`/);
 
-    type InlineMatch = { index: number; full: string; node: React.ReactNode };
+    type InlineMatch = { index: number; full: string; node: ReactNode };
     const candidates: InlineMatch[] = [];
 
     if (boldMatch?.index !== undefined) {
@@ -479,7 +479,7 @@ export default function AgentChatPage() {
     handleSubmit();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();

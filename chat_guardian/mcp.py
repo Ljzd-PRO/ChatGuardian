@@ -423,17 +423,23 @@ class ChatGuardianOperations:
             "llm_timeout_seconds",
         }
         llm_updates = llm_related_keys & update_keys
+        llm_rebuild_warning: str | None = None
         if llm_updates:
             try:
                 new_llm_client = build_llm_client()
                 self.container.llm_client = new_llm_client
+                self.container.detection_engine.llm_client = new_llm_client
                 self.container.detection_engine.batch_scheduler.llm_client = new_llm_client
                 self.container.user_memory_service.llm_client = new_llm_client
                 logger.info("🔄 LLM 客户端已根据新配置重建并立即生效")
             except Exception as exc:
+                llm_rebuild_warning = str(exc)
                 logger.warning(f"⚠️ LLM 客户端重建失败，将继续使用旧配置: {exc}")
 
-        return {"status": "saved", "settings": self._settings_subset()}
+        result: dict[str, Any] = {"status": "saved", "settings": self._settings_subset()}
+        if llm_rebuild_warning:
+            result["warning"] = f"Settings saved but LLM client rebuild failed: {llm_rebuild_warning}"
+        return result
 
     def get_notifications_config(self) -> dict[str, Any]:
         s = settings
