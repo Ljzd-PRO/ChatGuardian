@@ -35,6 +35,10 @@ import {
   type AgentMessage,
 } from '../api/agent';
 
+/* ─── Constants ─────────────────────────────────────────────────────── */
+
+const MAX_TOOL_RESULT_LENGTH = 2000;
+
 /* ─── Types ────────────────────────────────────────────────────────── */
 
 interface ToolCallInfo {
@@ -267,7 +271,7 @@ function ToolCallCard({ toolCall }: { toolCall: ToolCallInfo }) {
             <div>
               <p className="text-xs text-default-400 mb-1">{t('agent.toolResult')}:</p>
               <pre className="text-xs bg-default-100 dark:bg-default-50/50 rounded p-2 overflow-x-auto max-h-48 font-mono text-default-600 dark:text-default-400">
-                {resultStr.length > 2000 ? resultStr.slice(0, 2000) + '\n...(truncated)' : resultStr}
+                {resultStr.length > MAX_TOOL_RESULT_LENGTH ? resultStr.slice(0, MAX_TOOL_RESULT_LENGTH) + '\n...(truncated)' : resultStr}
               </pre>
             </div>
           )}

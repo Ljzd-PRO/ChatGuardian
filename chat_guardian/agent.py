@@ -391,6 +391,9 @@ def _build_chat_model() -> ChatOpenAI | ChatOllama:
 class AdminAgent:
     """后台管理智能体，基于 LangChain 的 tool-calling agent。"""
 
+    MAX_ITERATIONS = 10
+    """单次对话中最大工具调用轮次，防止无限循环。"""
+
     def __init__(self, operations: Any):
         self.operations = operations
         self.tools = _build_agent_tools(operations)
@@ -426,12 +429,10 @@ class AdminAgent:
                 lc_messages.append(AIMessage(content=content))
 
         model = self._get_model()
-        max_iterations = 10  # 防止无限循环
 
-        for _iteration in range(max_iterations):
+        for _iteration in range(self.MAX_ITERATIONS):
             try:
                 # 流式调用模型
-                full_response = AIMessage(content="")
                 tool_calls_buffer: dict[int, dict] = {}
 
                 async for chunk in model.astream(lc_messages):
