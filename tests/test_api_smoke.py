@@ -9,9 +9,16 @@ from chat_guardian.domain import ChatMessage, ChatEvent, ChatType, MessageConten
 
 def _register_and_login(client: TestClient) -> dict[str, str]:
     """注册并登录管理员，返回认证 headers。"""
+    username = "admin"
+    password = "pass"
+
+    # 测试在持久化数据库上运行时，管理员凭据可能已存在且密码未知；
+    # 直接重置为固定值，确保登录流程稳定可复现。
+    client.app.state.container.admin_credential_repository.set_credentials(username, password)
+
     register_resp = client.post(
         "/api/auth/register",
-        json={"username": "admin", "password": "pass"},
+        json={"username": username, "password": password},
     )
     assert register_resp.status_code in (200, 400), (
         f"Unexpected status from /api/auth/register: {register_resp.status_code}, "
@@ -20,7 +27,7 @@ def _register_and_login(client: TestClient) -> dict[str, str]:
 
     login_resp = client.post(
         "/api/auth/login",
-        json={"username": "admin", "password": "pass"},
+        json={"username": username, "password": password},
     )
     assert login_resp.status_code == 200, (
         f"Login failed: status={login_resp.status_code}, body={login_resp.text}"
@@ -154,7 +161,7 @@ def test_agent_chat_accepts_json_body(monkeypatch) -> None:
         def __init__(self, operations):
             pass
 
-        async def stream(self, messages):
+        async def stream(self, messages, is_disconnected=None):
             events.append(messages)
             yield {"type": "done"}
 

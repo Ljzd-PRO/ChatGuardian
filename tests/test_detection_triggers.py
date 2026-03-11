@@ -214,9 +214,9 @@ async def test_trigger_dedup_merges_context_and_skips_retrigger() -> None:
     assert notifier.count == 1
 
     by_rule = await results_repo.list_by_rule("r-1")
-    assert len(by_rule) == 2
+    assert len(by_rule) == 1
     assert by_rule[0].trigger_suppressed is False
-    assert by_rule[1].trigger_suppressed is True
+    assert {message.message_id for message in by_rule[0].context_messages} == {"m-1", "m-2"}
     assert await results_repo.contains_message_in_last_triggered("r-1", "m-2") is True
 
     settings.detection_min_new_messages = old_min_new
