@@ -13,7 +13,7 @@ from loguru import logger
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import RuleGenerateRequest, SuggestResponse
-from chat_guardian.domain import DetectionRule, Feedback
+from chat_guardian.domain import DetectionRule, Feedback, UserMemoryFact
 from chat_guardian.services import build_llm_client
 from chat_guardian.settings import Settings, settings
 
@@ -305,19 +305,20 @@ class ChatGuardianOperations:
         self.log_buffer.clear()
         return {"cleared": cleared}
 
-    async def list_user_profiles(self) -> list[Any]:
+    async def list_user_profiles(self) -> list[UserMemoryFact]:
         return list(self.container.memory_repository.profiles.values())
 
-    async def get_user_profile(self, user_id: str) -> Any:
+    async def get_user_profile(self, user_id: str) -> UserMemoryFact:
         profile = await self.container.memory_repository.get_profile(user_id)
         if not profile:
             raise OperationError(f"User not found: {user_id}", status_code=404)
         return profile
 
-    def _settings_subset(self) -> dict[str, object]:
-        return settings.model_dump(exclude={"database_url"})
+    @staticmethod
+    def _settings_subset() -> Settings:
+        return settings
 
-    async def get_settings(self) -> dict[str, object]:
+    async def get_settings(self) -> Settings:
         return self._settings_subset()
 
     async def update_settings(self, payload: dict) -> dict[str, Any]:
@@ -438,12 +439,13 @@ class ChatGuardianOperations:
                 llm_rebuild_warning = str(exc)
                 logger.warning(f"⚠️ LLM 客户端重建失败，将继续使用旧配置: {exc}")
 
-        result: dict[str, Any] = {"status": "saved", "settings": self._settings_subset()}
+        result: dict[str, Any] = {"status": "saved", "settings": self._settings_subset().model_dump(exclude={"database_url"})}
         if llm_rebuild_warning:
             result["warning"] = f"Settings saved but LLM client rebuild failed: {llm_rebuild_warning}"
         return result
 
-    def get_notifications_config(self) -> dict[str, Any]:
+    @staticmethod
+    def get_notifications_config() -> dict[str, Any]:
         s = settings
         return {
             "email": {

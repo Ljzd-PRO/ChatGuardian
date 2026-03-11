@@ -9,9 +9,8 @@
 from __future__ import annotations
 
 import json
-import re
 import uuid
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Union
 
 from langchain_core.messages import (
     AIMessage,
@@ -26,57 +25,9 @@ from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from loguru import logger
 
-from chat_guardian.settings import settings
-
-# ── 需要在 agent 工具输出中脱敏的 settings 字段 ──────────────────────────
-_SECRET_SETTINGS_KEYS = {
-    "llm_langchain_api_key",
-    "smtp_password",
-    "bark_device_key",
-    "bark_device_keys",
-    "onebot_access_token",
-    "telegram_bot_token",
-}
-
-
-def _mask_value(value: Any) -> str:
-    """将敏感值替换为掩码字符串。"""
-    if value is None or value == "" or value == []:
-        return "(not set)"
-    if isinstance(value, list):
-        return f"({len(value)} keys configured)"
-    s = str(value)
-    if len(s) <= 4:
-        return "****"
-    return s[:2] + "*" * (len(s) - 4) + s[-2:]
-
-
-def _mask_secrets_in_settings(data: dict[str, Any]) -> dict[str, Any]:
-    """对 settings 字典中的敏感字段进行脱敏。"""
-    masked = {}
-    for key, value in data.items():
-        if key in _SECRET_SETTINGS_KEYS:
-            masked[key] = _mask_value(value)
-        else:
-            masked[key] = value
-    return masked
-
-
-def _mask_notifications_config(config: dict[str, Any]) -> dict[str, Any]:
-    """对通知配置中的敏感字段进行脱敏。"""
-    result = {}
-    for section_key, section_val in config.items():
-        if not isinstance(section_val, dict):
-            result[section_key] = section_val
-            continue
-        masked_section = {}
-        for k, v in section_val.items():
-            if re.search(r"password|token|secret|device_key", k, re.IGNORECASE):
-                masked_section[k] = _mask_value(v)
-            else:
-                masked_section[k] = v
-        result[section_key] = masked_section
-    return result
+from chat_guardian.domain import DetectionRule, UserMemoryFact
+from chat_guardian.mcp import ChatGuardianOperations
+from chat_guardian.settings import settings, Settings
 
 # ── 工具名称到用户可读描述的映射 ─────────────────────────────────────────
 TOOL_DISPLAY_NAMES: dict[str, dict[str, str]] = {
@@ -214,7 +165,7 @@ SYSTEM_PROMPT = """\
 """
 
 
-def _build_agent_tools(operations: Any) -> list:
+def _build_agent_tools(operations: ChatGuardianOperations) -> list:
     """基于 ChatGuardianOperations 构建 LangChain 工具列表。"""
 
     @tool
@@ -223,43 +174,14 @@ def _build_agent_tools(operations: Any) -> list:
         return await operations.get_dashboard()
 
     @tool
-    async def get_rules_list() -> list:
+    async def get_rules_list() -> list[DetectionRule]:
         """获取所有检测规则的列表，每条规则包含 ID、名称、描述、匹配器、阈值、启用状态等信息。"""
-        rules = await operations.list_rules()
-        return [r.model_dump() if hasattr(r, "model_dump") else r for r in rules]
+        return await operations.list_rules()
 
     @tool
-    async def create_or_update_rule(
-        rule_id: str,
-        name: str,
-        description: str,
-        score_threshold: float = 0.6,
-        enabled: bool = True,
-        topic_hints: list[str] | None = None,
-    ) -> dict:
-        """创建或更新一条检测规则。如果 rule_id 已存在则更新，否则创建新规则。
-
-        Args:
-            rule_id: 规则唯一标识符。创建新规则时可以使用有意义的英文 ID。
-            name: 规则名称，简短描述规则的用途。
-            description: 规则的详细描述，说明何时应该触发此规则。
-            score_threshold: 触发阈值，范围 0-1，默认 0.6。越高越严格。
-            enabled: 是否启用此规则，默认启用。
-            topic_hints: 主题关键词提示列表，用于辅助匹配。
-        """
-        from chat_guardian.domain import DetectionRule, MatchAll
-
-        rule = DetectionRule(
-            rule_id=rule_id,
-            name=name,
-            description=description,
-            matcher=MatchAll(),
-            topic_hints=topic_hints or [],
-            score_threshold=score_threshold,
-            enabled=enabled,
-        )
-        result = await operations.upsert_rule(rule)
-        return result.model_dump() if hasattr(result, "model_dump") else result
+    async def create_or_update_rule(rule: DetectionRule) -> DetectionRule:
+        """创建或更新一条检测规则。如果 rule_id 已存在则更新，否则创建新规则。"""
+        return await operations.upsert_rule(rule)
 
     @tool
     async def delete_rule(rule_id: str) -> dict:
@@ -318,29 +240,26 @@ def _build_agent_tools(operations: Any) -> list:
         return await operations.clear_logs()
 
     @tool
-    async def get_user_profiles() -> list:
+    async def get_user_profiles() -> list[UserMemoryFact]:
         """获取所有用户画像列表。"""
-        profiles = await operations.list_user_profiles()
-        return [p.model_dump() if hasattr(p, "model_dump") else p for p in profiles]
+        return await operations.list_user_profiles()
 
     @tool
-    async def get_user_profile(user_id: str) -> dict:
+    async def get_user_profile(user_id: str) -> Union[UserMemoryFact, dict]:
         """获取指定用户的详细画像信息。
 
         Args:
             user_id: 用户 ID。
         """
         try:
-            profile = await operations.get_user_profile(user_id)
-            return profile.model_dump() if hasattr(profile, "model_dump") else profile
+            return await operations.get_user_profile(user_id)
         except Exception as exc:
             return {"error": str(exc)}
 
     @tool
-    async def get_settings() -> dict:
+    async def get_settings() -> Settings:
         """获取当前所有系统设置。敏感信息（如 API 密钥、密码）已脱敏处理。"""
-        raw = await operations.get_settings()
-        return _mask_secrets_in_settings(raw)
+        return await operations.get_settings()
 
     @tool
     async def update_settings(updates: dict) -> dict:
@@ -357,8 +276,7 @@ def _build_agent_tools(operations: Any) -> list:
     @tool
     async def get_notifications_config() -> dict:
         """获取通知配置信息，包括邮件通知和 Bark 推送通知的设置。敏感信息已脱敏处理。"""
-        raw = operations.get_notifications_config()
-        return _mask_notifications_config(raw)
+        return operations.get_notifications_config()
 
     @tool
     async def get_llm_config() -> dict:
@@ -403,7 +321,7 @@ def _build_agent_tools(operations: Any) -> list:
     ]
 
 
-def _build_chat_model() -> ChatOpenAI | ChatOllama:
+def _build_chat_model() -> Union[ChatOpenAI, ChatOllama]:
     """根据当前设置构建用于 Agent 的 Chat 模型。"""
     backend = settings.llm_langchain_backend.strip().lower()
     if backend == "openai_compatible":
@@ -431,12 +349,12 @@ class AdminAgent:
     MAX_ITERATIONS = 10
     """单次对话中最大工具调用轮次，防止无限循环。"""
 
-    def __init__(self, operations: Any):
+    def __init__(self, operations: ChatGuardianOperations):
         self.operations = operations
         self.tools = _build_agent_tools(operations)
         self._tools_by_name = {t.name: t for t in self.tools}
 
-    def _get_model(self) -> ChatOpenAI | ChatOllama:
+    def _get_model(self):
         """每次调用时重新构建模型，确保使用最新配置。"""
         model = _build_chat_model()
         return model.bind_tools(self.tools)
