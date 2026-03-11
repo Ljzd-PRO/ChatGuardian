@@ -48,6 +48,7 @@ from chat_guardian.mcp import (
 )
 from chat_guardian.repositories import (
     AdminCredentialRepository,
+    AgentSessionRepository,
     ChatHistoryStore,
     DetectionResultRepository,
     FeedbackRepository,
@@ -75,6 +76,26 @@ ENV_ONLY_KEYS = frozenset({"database_url", "app_name", "environment"})
 
 class AgentChatRequest(BaseModel):
     messages: list[dict[str, str]]
+    session_id: str | None = None
+
+
+class CreateSessionRequest(BaseModel):
+    title: str = ""
+
+
+class UpdateSessionTitleRequest(BaseModel):
+    title: str
+
+
+class SaveMessageRequest(BaseModel):
+    role: str
+    content: str
+    tool_calls: list | None = None
+    elapsed_ms: int | None = None
+
+
+class DeleteMessagePairRequest(BaseModel):
+    user_message_id: int
 
 
 @asynccontextmanager
@@ -178,6 +199,7 @@ class AppContainer:
         self.memory_repository = MemoryRepository(database_url=settings.database_url)
         self.detection_result_repository = DetectionResultRepository(database_url=settings.database_url)
         self.admin_credential_repository = AdminCredentialRepository(database_url=settings.database_url)
+        self.agent_session_repository = AgentSessionRepository(database_url=settings.database_url)
 
         self.llm_client = build_llm_client()
         self.context_service = ContextWindowService(self.chat_history_store)
@@ -785,6 +807,61 @@ def create_app() -> FastAPI:
                 },
             ],
         }
+
+    # ── Agent Session endpoints ───────────────────────────────────────────────
+    agent_session_repo = container.agent_session_repository
+
+    @app.get("/api/agent/sessions")
+    async def list_agent_sessions():
+        """列出所有 AI 助手会话。"""
+        return agent_session_repo.list_sessions()
+
+    @app.post("/api/agent/sessions")
+    async def create_agent_session(payload: CreateSessionRequest):
+        """创建新的 AI 助手会话。"""
+        import uuid as _uuid
+        session_id = _uuid.uuid4().hex[:16]
+        return agent_session_repo.create_session(session_id, payload.title)
+
+    @app.delete("/api/agent/sessions/{session_id}")
+    async def delete_agent_session(session_id: str):
+        """删除 AI 助手会话及其所有消息。"""
+        ok = agent_session_repo.delete_session(session_id)
+        if not ok:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return {"ok": True}
+
+    @app.patch("/api/agent/sessions/{session_id}")
+    async def update_agent_session_title(session_id: str, payload: UpdateSessionTitleRequest):
+        """更新 AI 助手会话标题。"""
+        ok = agent_session_repo.update_session_title(session_id, payload.title)
+        if not ok:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return {"ok": True}
+
+    @app.get("/api/agent/sessions/{session_id}/messages")
+    async def get_agent_session_messages(session_id: str):
+        """获取指定会话的所有消息。"""
+        return agent_session_repo.get_messages(session_id)
+
+    @app.post("/api/agent/sessions/{session_id}/messages")
+    async def save_agent_message(session_id: str, payload: SaveMessageRequest):
+        """向指定会话添加消息。"""
+        return agent_session_repo.add_message(
+            session_id=session_id,
+            role=payload.role,
+            content=payload.content,
+            tool_calls=payload.tool_calls,
+            elapsed_ms=payload.elapsed_ms,
+        )
+
+    @app.delete("/api/agent/sessions/{session_id}/message-pair")
+    async def delete_agent_message_pair(session_id: str, payload: DeleteMessagePairRequest):
+        """删除指定会话中的一组问答对。"""
+        ok = agent_session_repo.delete_message_pair(session_id, payload.user_message_id)
+        if not ok:
+            raise HTTPException(status_code=404, detail="Message pair not found")
+        return {"ok": True}
 
     # ── Static frontend ───────────────────────────────────────────────────────
 
