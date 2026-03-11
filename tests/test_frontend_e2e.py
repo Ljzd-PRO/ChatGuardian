@@ -13,12 +13,14 @@ Run:
 
 from __future__ import annotations
 
-import asyncio
+import json
 import os
 import socket
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 
 import pytest
 
@@ -67,8 +69,41 @@ def live_server():
     proc.wait(timeout=5)
 
 
+# Key used by the frontend to persist the auth token in localStorage (see frontend/src/api/client.ts)
+_AUTH_TOKEN_LS_KEY = "cg_auth_token"
+
+
 @pytest.fixture(scope="module")
-def browser_context(live_server):  # noqa: F811
+def auth_token(live_server):
+    """Register an admin user and return a valid Bearer token for UI tests."""
+    payload = json.dumps({"username": "admin", "password": "password123"}).encode()
+    headers = {"Content-Type": "application/json"}
+
+    # Register admin (server uses sqlite:///:memory: so it's always fresh).
+    # Accept 400 only when the body confirms admin is already configured – any
+    # other 400 (e.g. validation error) re-raises to fail the test clearly.
+    req = urllib.request.Request(
+        f"{live_server}/api/auth/register", data=payload, headers=headers
+    )
+    try:
+        urllib.request.urlopen(req)
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode(errors="replace")
+        assert exc.code == 400 and "already configured" in body, (
+            f"Unexpected register error {exc.code}: {body}"
+        )
+
+    # Login
+    req = urllib.request.Request(
+        f"{live_server}/api/auth/login", data=payload, headers=headers
+    )
+    with urllib.request.urlopen(req) as resp:
+        token = json.loads(resp.read())["token"]
+    return token
+
+
+@pytest.fixture(scope="module")
+def browser_context(live_server, auth_token):  # noqa: F811
     """Synchronous Playwright browser context (chromium, headless)."""
     pytest.importorskip("playwright")
     from playwright.sync_api import sync_playwright
@@ -76,6 +111,10 @@ def browser_context(live_server):  # noqa: F811
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
         ctx = browser.new_context(viewport={"width": 1280, "height": 800})
+        # Inject auth token so every page load sees the user as authenticated
+        ctx.add_init_script(
+            f"window.localStorage.setItem({json.dumps(_AUTH_TOKEN_LS_KEY)}, {json.dumps(auth_token)});"
+        )
         yield ctx, live_server
         ctx.close()
         browser.close()
@@ -113,10 +152,10 @@ PAGES = [
     ("/stats", "Trigger Statistics"),
     ("/users", "User Profiles"),
     ("/adapters", "Adapters"),
-    ("/llm", "LLM"),
+    ("/llm", "LLM Configuration"),
     ("/notifications", "Notifications"),
-    ("/queues", "Queues"),
-    ("/logs", "Logs"),
+    ("/queues", "Message Queues"),
+    ("/logs", "System Logs"),
     ("/settings", "Settings"),
 ]
 
@@ -143,7 +182,7 @@ def test_dashboard_stat_cards(page):
     pg.wait_for_selector("text=Total Rules", timeout=10_000)
     pg.wait_for_selector("text=Enabled Rules")
     pg.wait_for_selector("text=Triggers Today")
-    pg.wait_for_selector("text=Trigger Rate")
+    pg.wait_for_selector("text=Messages Processed Today")
 
 
 # ── sidebar navigation ────────────────────────────────────────────────────────
@@ -225,12 +264,12 @@ def test_create_and_delete_rule(page):
 
 
 def test_settings_page_shows_fields(page):
-    """Settings page should render General / Detection / LLM sections."""
+    """Settings page should render the settings preview card with configuration entries."""
     pg, base = page
     go(pg, base, "/settings")
-    pg.wait_for_selector("text=General", timeout=8_000)
-    pg.wait_for_selector("text=Detection")
-    pg.wait_for_selector("text=LLM")
+    pg.wait_for_selector("text=Settings Preview", timeout=8_000)
+    pg.wait_for_selector("text=Preview only")
+    pg.wait_for_selector("text=Read-only snapshot of all configuration items.")
     assert_no_fatal_errors(pg)
 
 
@@ -239,10 +278,8 @@ def test_settings_page_shows_fields(page):
 
 def test_backend_health_still_ok(page):
     """After all the UI interactions the backend /health endpoint must still respond."""
-    import urllib.request
     pg, base = page
     with urllib.request.urlopen(f"{base}/health", timeout=5) as resp:
-        import json
         data = json.loads(resp.read())
     assert data.get("status") == "ok"
 
