@@ -21,12 +21,12 @@ import { useTranslation } from 'react-i18next';
 
 const NAV_ITEMS: { path: string; labelKey: string; icon: IconifyIcon }[] = [
   { path: '/',             labelKey: 'layout.nav.dashboard',     icon: widget2Bold },
+  { path: '/agent',        labelKey: 'layout.nav.agent',         icon: chatRoundLineBold },
   { path: '/rules',        labelKey: 'layout.nav.rules',         icon: shieldCheckBold },
   { path: '/stats',        labelKey: 'layout.nav.stats',         icon: chart2Bold },
   { path: '/users',        labelKey: 'layout.nav.users',         icon: usersGroupRoundedBold },
   { path: '/adapters',     labelKey: 'layout.nav.adapters',      icon: plugCircleBold },
   { path: '/llm',          labelKey: 'layout.nav.llm',           icon: cpuBoltBold },
-  { path: '/agent',        labelKey: 'layout.nav.agent',         icon: chatRoundLineBold },
   { path: '/notifications',labelKey: 'layout.nav.notifications', icon: bellBingBold },
   { path: '/queues',       labelKey: 'layout.nav.queues',        icon: listCheckBold },
   { path: '/logs',         labelKey: 'layout.nav.logs',          icon: documentTextBold },
