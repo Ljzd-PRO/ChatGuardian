@@ -310,6 +310,7 @@ const resources = {
       },
       auth: {
         login: {
+          title: 'Log In',
           subtitle: 'Sign in to your account',
           username: 'Username',
           password: 'Password',
@@ -688,6 +689,7 @@ const resources = {
       },
       auth: {
         login: {
+          title: '登录',
           subtitle: '登录您的账户',
           username: '用户名',
           password: '密码',
@@ -831,22 +833,22 @@ const resources = {
           agent: 'AI 智慧助手',
         },
       },
-        dashboard: {
-          loading: '正在載入儀表板…',
-          totalRules: '規則總數',
-          enabledRules: '啟用規則',
-          triggersToday: '今日觸發',
-          messagesToday: '今日已處理消息',
-          triggerRate: '觸發率',
-          triggersPerRule: '各規則觸發',
-          adapters: '適配器',
-          noAdapters: '尚未配置適配器',
-          recentTriggers: '最近觸發',
-          noTriggers: '尚無觸發紀錄',
-          todayLabel: '今日',
-          liveChip: '即時',
-          viewAll: '查看全部',
-        },
+      dashboard: {
+        loading: '正在載入儀表板…',
+        totalRules: '規則總數',
+        enabledRules: '啟用規則',
+        triggersToday: '今日觸發',
+        messagesToday: '今日已處理消息',
+        triggerRate: '觸發率',
+        triggersPerRule: '各規則觸發',
+        adapters: '適配器',
+        noAdapters: '尚未配置適配器',
+        recentTriggers: '最近觸發',
+        noTriggers: '尚無觸發紀錄',
+        todayLabel: '今日',
+        liveChip: '即時',
+        viewAll: '查看全部',
+      },
       rules: {
         loading: '正在載入規則…',
         detectionSettings: '偵測與通用設定',
@@ -1066,6 +1068,7 @@ const resources = {
       },
       auth: {
         login: {
+          title: '登入',
           subtitle: '登入您的帳戶',
           username: '使用者名稱',
           password: '密碼',
@@ -1209,22 +1212,22 @@ const resources = {
           agent: 'AI アシスタント',
         },
       },
-        dashboard: {
-          loading: 'ダッシュボードを読み込み中…',
-          totalRules: 'ルール総数',
-          enabledRules: '有効なルール',
-          triggersToday: '今日のトリガー',
-          messagesToday: '本日処理済みメッセージ',
-          triggerRate: 'トリガー率',
-          triggersPerRule: 'ルール別トリガー',
-          adapters: 'アダプター',
-          noAdapters: 'アダプターが設定されていません',
-          recentTriggers: '最近のトリガー',
-          noTriggers: 'まだトリガーはありません',
-          todayLabel: '今日',
-          liveChip: 'ライブ',
-          viewAll: 'すべて表示',
-        },
+      dashboard: {
+        loading: 'ダッシュボードを読み込み中…',
+        totalRules: 'ルール総数',
+        enabledRules: '有効なルール',
+        triggersToday: '今日のトリガー',
+        messagesToday: '本日処理済みメッセージ',
+        triggerRate: 'トリガー率',
+        triggersPerRule: 'ルール別トリガー',
+        adapters: 'アダプター',
+        noAdapters: 'アダプターが設定されていません',
+        recentTriggers: '最近のトリガー',
+        noTriggers: 'まだトリガーはありません',
+        todayLabel: '今日',
+        liveChip: 'ライブ',
+        viewAll: 'すべて表示',
+      },
       rules: {
         loading: 'ルールを読み込み中…',
         detectionSettings: '検知・共通設定',
@@ -1425,6 +1428,7 @@ const resources = {
       },
       auth: {
         login: {
+          title: 'ログイン',
           subtitle: 'アカウントにサインイン',
           username: 'ユーザー名',
           password: 'パスワード',
@@ -1784,6 +1788,7 @@ const resources = {
       },
       auth: {
         login: {
+          title: '로그인',
           subtitle: '계정에 로그인',
           username: '사용자 이름',
           password: '비밀번호',
@@ -2143,6 +2148,7 @@ const resources = {
       },
       auth: {
         login: {
+          title: 'Connexion',
           subtitle: 'Connectez-vous à votre compte',
           username: "Nom d'utilisateur",
           password: 'Mot de passe',
@@ -2502,6 +2508,7 @@ const resources = {
       },
       auth: {
         login: {
+          title: 'Anmeldung',
           subtitle: 'Melden Sie sich bei Ihrem Konto an',
           username: 'Benutzername',
           password: 'Passwort',
@@ -2861,6 +2868,7 @@ const resources = {
       },
       auth: {
         login: {
+          title: 'Вход',
           subtitle: 'Войдите в свой аккаунт',
           username: 'Имя пользователя',
           password: 'Пароль',
