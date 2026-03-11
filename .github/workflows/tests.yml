@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         run: |
           poetry install --with dev
-          playwright install
+          poetry run playwright install
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
