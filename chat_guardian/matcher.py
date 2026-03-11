@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from chat_guardian.domain import ChatEvent, ContentType
 
 
+# noinspection PyTypeChecker
 class Matcher(BaseModel, ABC):
     """所有匹配器的基类，支持使用 & 和 | 运算符组合规则"""
 
@@ -64,6 +65,7 @@ class NotMatcher(Matcher):
     """表示单个匹配规则的"非"关系"""
     type: Literal["not"] = "not"
     model_config = ConfigDict(arbitrary_types_allowed=True)
+    # noinspection PyTypeHints
     matcher: "MatcherUnion" = Field(default_factory=lambda: MatchAll())
 
     def matches(self, event: ChatEvent) -> bool:

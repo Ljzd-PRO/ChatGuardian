@@ -21,7 +21,7 @@ import json
 import re
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Callable, Coroutine, Any, Union, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -423,14 +423,14 @@ class LangChainLLMClient:
             (是否成功, 失败原因, 延迟毫秒)
         """
         logger.debug(f"🔔 LLM ping 开始...")
-        start = datetime.utcnow()
+        start = datetime.now(timezone.utc)
         try:
             await asyncio.wait_for(self.model.ainvoke([HumanMessage(content="ping")]), timeout=2.0)
-            elapsed_ms = (datetime.utcnow() - start).total_seconds() * 1000
+            elapsed_ms = (datetime.now(timezone.utc) - start).total_seconds() * 1000
             logger.success(f"✅ LLM ping 成功 | 延迟={elapsed_ms:.2f}ms")
             return True, None, elapsed_ms
         except Exception as exc:
-            elapsed_ms = (datetime.utcnow() - start).total_seconds() * 1000
+            elapsed_ms = (datetime.now(timezone.utc) - start).total_seconds() * 1000
             logger.warning(f"⚠️ LLM ping 失败: {exc} | 延迟={elapsed_ms:.2f}ms")
             return False, str(exc), elapsed_ms
 
@@ -859,7 +859,7 @@ class DetectionEngine:
                 message_id=event.message.message_id,
                 decision=decision,
                 context_messages=list(context_messages),
-                generated_at=datetime.utcnow(),
+                generated_at=datetime.now(timezone.utc),
                 trigger_suppressed=suppressed,
                 suppression_reason=suppression_reason,
             )
@@ -914,7 +914,7 @@ class DetectionEngine:
         """
         state = self._state_of(platform, chat_type, chat_id)
         async with state.lock:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             cooldown = max(0.0, settings.detection_cooldown_seconds)
 
             logger.debug(f"🔒 获取会话锁 | 会话={chat_id} | force_all={force_all_pending}")
@@ -933,7 +933,7 @@ class DetectionEngine:
                 logger.debug(f"⏭️ 无消息可处理，返回")
                 return None
 
-            state.last_detection_at = datetime.utcnow()
+            state.last_detection_at = datetime.now(timezone.utc)
             logger.success(f"✅ 检测完成 | 事件ID={output.event_id} | 触发规则数={len(output.triggered_rule_ids)}")
 
             pending = await self.context_service.store.pending_size(platform, chat_type, chat_id)
@@ -1106,8 +1106,8 @@ class UserMemoryService:
             return 0
         logger.debug(f"  ✓ LLM 提取完成 | 话题数={len(extract.get('topics', []))}")
 
-        now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-        today_str = datetime.utcnow().strftime("%Y-%m-%d")
+        now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
         profile = existing_profile or UserMemoryFact(
             user_id=user_id,

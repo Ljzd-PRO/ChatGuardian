@@ -25,8 +25,8 @@ from pydantic import BaseModel
 from starlette.requests import Request
 from starlette.responses import JSONResponse, StreamingResponse
 
-from chat_guardian.agent import AdminAgent, TOOL_DISPLAY_NAMES
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
+from chat_guardian.agent import AdminAgent, TOOL_DISPLAY_NAMES
 from chat_guardian.api.schemas import (
     ChangePasswordRequest,
     LoginRequest,
@@ -39,14 +39,14 @@ from chat_guardian.domain import (
     DetectionRule,
     Feedback,
 )
-from chat_guardian.notifiers import (
-    build_notifiers_from_settings,
-)
 from chat_guardian.mcp import (
     ChatGuardianMCPService,
     ChatGuardianOperations,
     OperationError,
     normalize_mcp_transport,
+)
+from chat_guardian.notifiers import (
+    build_notifiers_from_settings,
 )
 from chat_guardian.repositories import (
     AdminCredentialRepository,
@@ -74,7 +74,13 @@ from chat_guardian.services import (
 from chat_guardian.settings import settings, Settings
 
 ENV_ONLY_KEYS = frozenset({"database_url", "app_name", "environment"})
-
+PUBLIC_PATH_PREFIXES = ("/app/", "/app/assets", "/assets", "/mcp")
+PUBLIC_PATHS = {
+    "/",
+    "/auth/login",
+    "/health",
+    "/app",
+}
 
 class AgentChatRequest(BaseModel):
     messages: list[dict[str, str]]
@@ -285,14 +291,6 @@ def create_app() -> FastAPI:
         """将内部 OperationError 转换为 HTTPException。"""
         return HTTPException(status_code=exc.status_code, detail=str(exc))
 
-    PUBLIC_PATH_PREFIXES = ("/app/", "/app/assets", "/assets", "/mcp")
-    PUBLIC_PATHS = {
-        "/",
-        "/auth/login",
-        "/health",
-        "/app",
-    }
-
     @app.middleware("http")
     async def auth_middleware(request: Request, call_next):
         """Bearer Token 认证中间件，公共路径与 /api/auth/ 前缀路径放行。"""
@@ -353,15 +351,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health() -> dict[str, str]:
-        return {"status": "ok", "time": datetime.utcnow().isoformat()}
-        """
-        健康检查接口，确认 API 进程是否正常运行。
-
-        Returns:
-            dict[str, str]: 字段说明：
-                - ``status``：固定返回 ``"ok"`` 表示服务存活。
-                - ``time``：当前 UTC 时间的 ISO8601 字符串，便于探测端确认时间。
-        """
+        """健康检查接口，确认 API 进程是否正常运行。"""
         return await operations.health()
 
     @app.get("/llm/health")
@@ -371,42 +361,17 @@ def create_app() -> FastAPI:
 
         Args:
             do_ping: 是否执行一次最小化的 LLM ping 探活。
-
-        Returns:
-            dict[str, object]: 字段说明：
-                - ``status``：``"ok"`` 或 ``"degraded"``（当 ping 失败时）。
-                - ``time``：当前 UTC 时间 ISO8601 字符串。
-                - ``llm``：``LLMClient.diagnostics()`` 返回的诊断字典。
-                - ``scheduler``：批处理调度器诊断信息。
-                - ``ping``：当 ``do_ping`` 为 True 时包含：
-                    - ``ok``：布尔值，ping 是否成功。
-                    - ``latency_ms``：往返耗时毫秒。
-                    - ``error``：异常信息字符串或 ``None``。
         """
         return await operations.llm_health(do_ping=do_ping)
 
     @app.post("/adapters/start")
     async def start_adapters() -> dict[str, str | list[str]]:
-        """
-        启动所有已启用的 adapter。
-
-        Returns:
-            dict[str, str | list[str]]: 字段说明：
-                - ``status``：固定返回 ``"started"``。
-                - ``enabled_adapters``：已启用的 adapter 名称列表。
-        """
+        """启动所有已启用的 adapter。"""
         return await operations.start_adapters()
 
     @app.post("/adapters/stop")
     async def stop_adapters() -> dict[str, str | list[str]]:
-        """
-        停止所有已启用的 adapter。
-
-        Returns:
-            dict[str, str | list[str]]: 字段说明：
-                - ``status``：固定返回 ``"stopped"``。
-                - ``enabled_adapters``：已启用的 adapter 名称列表。
-        """
+        """停止所有已启用的 adapter。"""
         return await operations.stop_adapters()
 
     @app.post("/rules", response_model=DetectionRule)
@@ -416,20 +381,12 @@ def create_app() -> FastAPI:
 
         Args:
             payload: `DetectionRule` 对象，包含规则定义。
-
-        Returns:
-            DetectionRule: 保存后的规则（包含生成的 ``rule_id`` 等字段）。
         """
         return await operations.upsert_rule(payload)
 
     @app.get("/rules/list", response_model=list[DetectionRule])
     async def list_rules() -> list[DetectionRule]:
-        """
-        列出所有规则。
-
-        Returns:
-            list[DetectionRule]: 规则列表。
-        """
+        """列出所有规则。"""
         return await operations.list_rules()
 
     @app.post("/rules/delete/{rule_id}")
@@ -439,13 +396,6 @@ def create_app() -> FastAPI:
 
         Args:
             rule_id: 规则标识。
-
-        Returns:
-            dict[str, str | bool]: 字段说明：
-                - ``status``：固定返回 ``"deleted"``。
-                - ``rule_id``：被删除的规则 ID。
-                - ``deleted``：布尔值，恒为 True。
-
         Raises:
             HTTPException: 404 当规则不存在。
         """
@@ -461,10 +411,6 @@ def create_app() -> FastAPI:
 
         Args:
             payload: `Feedback` 对象，包含评分与备注。
-
-        Returns:
-            dict[str, str]: 字段说明：
-                - ``status``：固定返回 ``"accepted"``。
         """
         return await operations.submit_feedback(payload)
 
@@ -475,9 +421,6 @@ def create_app() -> FastAPI:
 
         Args:
             user_id: 目标用户 ID。
-
-        Returns:
-            SuggestResponse: 包含 ``suggestions`` 列表（每条为字符串）。
         """
         return await operations.suggest_new_rules(user_id)
 
@@ -488,9 +431,6 @@ def create_app() -> FastAPI:
 
         Args:
             rule_id: 规则 ID。
-
-        Returns:
-            SuggestResponse: 包含 ``suggestions`` 列表。
         """
         return await operations.suggest_rule_improvements(rule_id)
 
@@ -502,10 +442,6 @@ def create_app() -> FastAPI:
         Args:
             payload: `RuleGenerateRequest`，包含 ``utterance``（描述文本）、``use_external``（是否调用外部端点）、
                 ``override_system_prompt``（可选的系统提示词覆盖）。
-
-        Returns:
-            DetectionRule: 生成的规则。
-
         Raises:
             HTTPException: 400 当输入无法生成合法规则时。
         """
@@ -521,40 +457,17 @@ def create_app() -> FastAPI:
 
         Args:
             payload: `RuleGenerateRequest`。
-
-        Returns:
-            DetectionRule: 生成的规则。
         """
         return await generate_rule(payload)
 
     @app.get("/api/rule_stats")
     async def get_rule_stats():
-        """
-        汇总规则触发统计数据，仅包含已触发的结果。
-
-        Returns:
-            dict: 字段说明：
-                - ``stats``：固定返回 ``"ok"``。
-                - ``data``：以规则名为键的统计字典，包含：
-                    - ``count``：触发次数。
-                    - ``description``：规则描述。
-                    - ``records``：按时间倒序的触发记录列表，每条含 ``result_id``、``event_id``、
-                      ``rule_id``、``adapter``、``chat_type``、``chat_id``、``message_id``、
-                      ``trigger_time``（ISO8601）、``confidence``、``result``、``trigger_suppressed``、
-                      ``suppression_reason``、``rule_name``、``messages``、``extracted_params``、``reason``。
-        """
+        """汇总规则触发统计数据，仅包含已触发的结果。"""
         return await operations.get_rule_stats()
 
     @app.get("/api/queues")
     async def get_queues():
-        """
-        获取待处理与历史消息队列的扁平化视图。
-
-        Returns:
-            dict: 字段说明：
-                - ``pending``：待处理消息列表，每条包含平台、chat_type/chat_id、message_id、sender_name、content、timestamp。
-                - ``history``：历史消息列表，字段与 ``pending`` 相同。
-        """
+        """获取待处理与历史消息队列的扁平化视图。"""
         return await operations.get_queues()
 
     @app.delete("/api/queues/history")
@@ -565,40 +478,19 @@ def create_app() -> FastAPI:
         Request Body:
             clear_all: 可选，True 时清空全部历史。
             items: 可选，待删除消息的列表，元素包含 ``platform``/``adapter``、``chat_type``、``chat_id``、``message_id``。
-
-        Returns:
-            dict: 当 ``clear_all`` 为 True 返回 ``{"cleared": <count>}``，否则返回 ``{"deleted": <count>}``。
         """
         return await operations.delete_history_messages(payload=payload)
 
     @app.get("/api/adapters/status")
     async def get_adapters_status():
-        """
-        查询所有 adapter 的运行状态。
-
-        Returns:
-            list[dict]: 每个元素包含：
-                - ``name``：adapter 名称。
-                - ``running``：当前是否运行。
-        """
+        """查询所有 adapter 的运行状态。"""
         return await operations.get_adapters_status()
 
     # ── Dashboard ────────────────────────────────────────────────────────────
 
     @app.get("/api/dashboard")
     async def get_dashboard():
-        """
-        获取仪表盘概览数据。
-
-        Returns:
-            dict: 字段说明：
-                - ``total_rules``：规则总数。
-                - ``enabled_rules``：启用的规则数。
-                - ``triggers_today``：今日触发次数。
-                - ``trigger_rate``：累计触发占比。
-                - ``messages_today``：今日处理的消息数。
-                - ``llm_status``：LLM 诊断信息。
-        """
+        """获取仪表盘概览数据。"""
         return await operations.get_dashboard()
 
     # ── Logs ─────────────────────────────────────────────────────────────────
@@ -630,32 +522,19 @@ def create_app() -> FastAPI:
 
         Args:
             limit: 最多返回的日志条数，默认 100。
-
-        Returns:
-            list[dict]: 每条包含 ``timestamp``、``level``、``message``。
         """
         return await operations.get_logs(limit=limit)
 
     @app.delete("/api/logs")
     async def clear_logs():
-        """
-        清空内存日志缓冲区。
-
-        Returns:
-            dict[str, int]: 字段 ``cleared`` 表示删除的条数。
-        """
+        """清空内存日志缓冲区。"""
         return await operations.clear_logs()
 
     # ── User Profiles ─────────────────────────────────────────────────────────
 
     @app.get("/api/user_profiles")
     async def list_user_profiles():
-        """
-        列出所有用户画像。
-
-        Returns:
-            list: 用户画像列表（`UserProfile` dict 格式）。
-        """
+        """列出所有用户画像。"""
         return await operations.list_user_profiles()
 
     @app.get("/api/user_profiles/{user_id}")
@@ -665,10 +544,6 @@ def create_app() -> FastAPI:
 
         Args:
             user_id: 用户 ID。
-
-        Returns:
-            dict: 用户画像。
-
         Raises:
             HTTPException: 404 当用户不存在。
         """
@@ -680,7 +555,7 @@ def create_app() -> FastAPI:
     # ── Settings ──────────────────────────────────────────────────────────────
 
     @app.get("/api/settings")
-    async def get_settings_api() -> dict:
+    async def get_settings_api() -> Settings:
         """返回当前所有可配置项（不含 database_url）。"""
         return await operations.get_settings()
 
@@ -696,32 +571,14 @@ def create_app() -> FastAPI:
 
     @app.get("/api/notifications/config")
     async def get_notifications_config():
-        """
-        获取通知配置（邮件与 Bark）。
-
-        Returns:
-            dict: 字段 ``email`` 与 ``bark``，各自包含启用状态与配置字段。
-        """
+        """获取通知配置（邮件与 Bark）。"""
         return operations.get_notifications_config()
 
     # ── LLM config ────────────────────────────────────────────────────────────
 
     @app.get("/api/llm/config")
     async def get_llm_config():
-        """
-        返回当前 LLM 配置摘要。
-
-        Returns:
-            dict: 字段说明：
-                - ``backend``：LangChain 后端类型。
-                - ``model``：模型名称。
-                - ``api_base``：API 基础地址。
-                - ``temperature``：采样温度。
-                - ``timeout_seconds``：超时时间。
-                - ``max_parallel_batches``：最大并行批次数。
-                - ``rules_per_batch``：每批处理规则数。
-                - ``ollama_base_url``：Ollama 基础地址。
-        """
+        """返回当前 LLM 配置摘要。"""
         return operations.get_llm_config()
 
     container.operations = operations

@@ -16,8 +16,8 @@ class _EnvConfig(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="CHAT_GUARDIAN_", env_file=".env", extra="ignore")
 
     database_url: str = "sqlite:///./db.sqlite"
-    app_name: str | None = None
-    environment: str | None = None
+    app_name: Optional[str] = None
+    environment: Optional[str] = None
 
 
 class Settings(BaseModel):

@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -185,6 +185,7 @@ class DetectionRule(BaseModel):
     rule_id: str
     name: str
     description: str
+    # noinspection PyTypeHints
     matcher: MatcherUnion = Field(default_factory=MatchAll)
     topic_hints: list[str] = Field(default_factory=list)
     score_threshold: float = 0.6
@@ -343,4 +344,4 @@ class Feedback(BaseModel):
     event_id: str
     score: int
     comment: str | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda _: datetime.now(timezone.utc))

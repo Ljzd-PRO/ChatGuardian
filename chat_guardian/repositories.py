@@ -12,7 +12,7 @@ import json
 import os
 import secrets
 from collections import defaultdict, deque
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, delete, select
@@ -767,7 +767,7 @@ class AgentSessionRepository:
         """创建新会话。"""
         if self._db is None:
             return {"session_id": session_id, "title": title, "created_at": "", "updated_at": ""}
-        now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds") + "Z"
         record = _AgentSessionRecord(
             session_id=session_id,
             title=title,
@@ -788,7 +788,7 @@ class AgentSessionRepository:
         """更新会话标题。"""
         if self._db is None:
             return False
-        now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds") + "Z"
         with self._db.session_factory() as session:
             row = session.get(_AgentSessionRecord, session_id)
             if row is None:
@@ -842,7 +842,7 @@ class AgentSessionRepository:
         """向会话添加一条消息。"""
         if self._db is None:
             return {}
-        now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds") + "Z"
         tc_json = json.dumps(tool_calls or [], ensure_ascii=False, default=str)
         with self._db.session_factory() as session:
             # Validate the session exists to prevent orphaned messages

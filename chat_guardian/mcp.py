@@ -5,7 +5,7 @@ import ipaddress
 from collections import deque
 from contextlib import asynccontextmanager, suppress
 from datetime import date, datetime, timezone
-from typing import Any, AsyncIterator, Iterable
+from typing import Any, AsyncIterator, Iterable, Literal
 
 from fastmcp import FastMCP
 from fastmcp.client.transports import FastMCPTransport
@@ -26,7 +26,7 @@ class OperationError(Exception):
         self.status_code = status_code
 
 
-def normalize_mcp_transport(transport: str | None) -> str:
+def normalize_mcp_transport(transport: str | None) -> Literal["sse", "streamable-http"]:
     """Normalize MCP transport value, defaulting to streamable-http."""
     return "sse" if transport == "sse" else "streamable-http"
 
@@ -56,7 +56,8 @@ class ChatGuardianOperations:
         self.env_only_keys = set(env_only_keys)
         self.settings_allowlist = set(Settings.model_fields.keys()) - self.env_only_keys
 
-    async def health(self) -> dict[str, str]:
+    @staticmethod
+    async def health() -> dict[str, str]:
         return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}
 
     async def llm_health(self, do_ping: bool = True) -> dict[str, object]:
@@ -467,7 +468,8 @@ class ChatGuardianOperations:
             },
         }
 
-    def get_llm_config(self) -> dict[str, Any]:
+    @staticmethod
+    def get_llm_config() -> dict[str, Any]:
         s = settings
         return {
             "backend": s.llm_langchain_backend,
@@ -811,7 +813,7 @@ class ChatGuardianMCPService:
                 raise ValueError(str(exc)) from exc
 
         @self.server.tool(name="settings_get", description="获取当前配置。")
-        async def tool_settings_get() -> dict[str, object]:
+        async def tool_settings_get() -> Settings:
             """
             获取配置（不含 database_url）。
 
