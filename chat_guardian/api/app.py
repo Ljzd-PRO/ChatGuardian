@@ -10,6 +10,7 @@ import asyncio
 import json
 import os
 import secrets
+import uuid as _uuid
 from collections import deque
 from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timedelta, timezone
@@ -819,7 +820,6 @@ def create_app() -> FastAPI:
     @app.post("/api/agent/sessions")
     async def create_agent_session(payload: CreateSessionRequest):
         """创建新的 AI 助手会话。"""
-        import uuid as _uuid
         session_id = _uuid.uuid4().hex[:16]
         return agent_session_repo.create_session(session_id, payload.title)
 

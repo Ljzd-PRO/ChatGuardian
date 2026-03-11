@@ -76,6 +76,15 @@ interface ToolCallInfo {
   isLoading: boolean;
 }
 
+interface StoredToolCall {
+  id?: string;
+  name?: string;
+  displayName?: string;
+  display_name?: string;
+  args?: string;
+  result?: unknown;
+}
+
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -492,7 +501,7 @@ export default function AgentChatPage() {
       const chatMsgs: ChatMessage[] = msgs.map((m: AgentSessionMessage) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
-        toolCalls: (m.tool_calls ?? []).map((tc: any) => ({
+        toolCalls: (m.tool_calls ?? []).map((tc: StoredToolCall) => ({
           id: tc.id ?? '',
           name: tc.name ?? '',
           displayName: tc.displayName ?? tc.display_name ?? tc.name ?? '',
@@ -563,7 +572,7 @@ export default function AgentChatPage() {
       const chatMsgs: ChatMessage[] = msgs.map((m: AgentSessionMessage) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
-        toolCalls: (m.tool_calls ?? []).map((tc: any) => ({
+        toolCalls: (m.tool_calls ?? []).map((tc: StoredToolCall) => ({
           id: tc.id ?? '',
           name: tc.name ?? '',
           displayName: tc.displayName ?? tc.display_name ?? tc.name ?? '',
@@ -1035,11 +1044,11 @@ export default function AgentChatPage() {
                         {msg.content && !isStreaming && (
                           <div className={`absolute ${isUser ? '-left-8' : '-right-8'} top-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity`}>
                             <CopyButton text={msg.content} t={t} />
-                            {canDeletePair && (
+                            {canDeletePair && currentSessionId && msg.dbId != null && (
                               <Tooltip content={t('agent.deletePair')}>
                                 <button
                                   type="button"
-                                  onClick={() => requestDeletePair(currentSessionId!, msg.dbId!)}
+                                  onClick={() => requestDeletePair(currentSessionId, msg.dbId as number)}
                                   className="p-1 rounded-md hover:bg-danger/20 transition-colors text-foreground/40 hover:text-danger"
                                   aria-label={t('agent.deletePair')}
                                 >
