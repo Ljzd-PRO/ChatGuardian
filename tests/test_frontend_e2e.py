@@ -71,6 +71,8 @@ def live_server():
 
 # Key used by the frontend to persist the auth token in localStorage (see frontend/src/api/client.ts)
 _AUTH_TOKEN_LS_KEY = "cg_auth_token"
+# Keep auth bootstrap requests bounded to avoid hanging CI jobs.
+_AUTH_HTTP_TIMEOUT_SECONDS = 5
 
 
 @pytest.fixture(scope="module")
@@ -86,7 +88,7 @@ def auth_token(live_server):
         f"{live_server}/api/auth/register", data=payload, headers=headers
     )
     try:
-        urllib.request.urlopen(req)
+        urllib.request.urlopen(req, timeout=_AUTH_HTTP_TIMEOUT_SECONDS)
     except urllib.error.HTTPError as exc:
         body = exc.read().decode(errors="replace")
         assert exc.code == 400 and "already configured" in body, (
@@ -97,7 +99,7 @@ def auth_token(live_server):
     req = urllib.request.Request(
         f"{live_server}/api/auth/login", data=payload, headers=headers
     )
-    with urllib.request.urlopen(req) as resp:
+    with urllib.request.urlopen(req, timeout=_AUTH_HTTP_TIMEOUT_SECONDS) as resp:
         token = json.loads(resp.read())["token"]
     return token
 
