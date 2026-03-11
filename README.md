@@ -1,6 +1,6 @@
 # ChatGuardian
 
-基于 LLM 的群聊/私聊规则检测与提醒系统（MVP骨架）。
+基于 LLM 的群聊/私聊规则检测与提醒系统。
 
 ## 当前已实现（第三阶段）
 
@@ -15,24 +15,6 @@
 - MVP WebUI 入口：`/ui`（轻量说明页，API联调入口）。
 
 > 设计原则：只做抽象能力，不把任何示例场景写死。
-
-## 目录结构
-
-```
-chat_guardian/
-	api/
-		app.py
-		schemas.py
-	adapters.py
-	domain.py
-	repositories.py
-	services.py
-	settings.py
-	main.py
-tests/
-	test_api_smoke.py
-	test_detection_engine.py
-```
 
 ## 本地运行
 
@@ -62,22 +44,6 @@ copy .env.example .env
 > - `openai_compatible`：OpenAI 官方与兼容平台（如 DeepSeek）
 > - `ollama`：本地 Ollama 服务
 
-> OpenAI 兼容后端示例（OpenAI / DeepSeek）：
-> - `CHAT_GUARDIAN_LLM_LANGCHAIN_BACKEND=openai_compatible`
-> - `CHAT_GUARDIAN_LLM_LANGCHAIN_MODEL=gpt-4o-mini`（或 DeepSeek 模型名）
-> - `CHAT_GUARDIAN_LLM_LANGCHAIN_API_KEY=your_key`
-> - `CHAT_GUARDIAN_LLM_LANGCHAIN_API_BASE=https://api.deepseek.com/v1`（DeepSeek 示例）
-
-> Ollama 后端示例：
-> - `CHAT_GUARDIAN_LLM_LANGCHAIN_BACKEND=ollama`
-> - `CHAT_GUARDIAN_LLM_LANGCHAIN_MODEL=qwen2.5:7b`
-> - `CHAT_GUARDIAN_LLM_OLLAMA_BASE_URL=http://localhost:11434`
-
-额外只读元信息可通过环境变量注入：
-
-- `CHAT_GUARDIAN_APP_NAME`：项目名称（只读）
-- `CHAT_GUARDIAN_ENVIRONMENT`：运行环境（dev/prod，仅影响只读逻辑如 CORS）
-
 4. 启动服务
 
 ```bash
@@ -88,19 +54,6 @@ poetry run uvicorn chat_guardian.api.app:create_app --factory --reload --host 0.
 
 - Swagger: `http://127.0.0.1:8000/docs`
 - Web UI（单端口构建版）: `http://127.0.0.1:8000/app/`
-- 旧版 MVP 说明页: `http://127.0.0.1:8000/ui`
-
-## 临时 Gradio UI（联调）
-
-1. 启动 API（保持运行）
-
-```bash
-poetry run uvicorn chat_guardian.api.app:create_app --factory --reload --host 0.0.0.0 --port 8000
-```
-
-2. 访问内嵌 Gradio 面板（单端口）
-
-- `http://127.0.0.1:8000/gradio`
 
 ## Docker 运行
 
