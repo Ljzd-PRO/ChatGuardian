@@ -74,6 +74,8 @@ PUBLIC_PATHS = {
     "/auth/login",
     "/health",
     "/app",
+    "/docs",
+    "/openapi.json",
 }
 
 
