@@ -28,7 +28,7 @@ jobs:
           virtualenvs-in-project: true
 
       - name: Install dependencies
-        run: poetry install
+        run: poetry install --with dev
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
