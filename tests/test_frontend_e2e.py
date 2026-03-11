@@ -75,7 +75,7 @@ _AUTH_TOKEN_LS_KEY = "cg_auth_token"
 
 @pytest.fixture(scope="module")
 def auth_token(live_server):
-    """Register an admin user and return a valid Bearer token for UI tests."""
+    """Register an admin user and return a valid access token string for UI tests (without 'Bearer ' prefix)."""
     payload = json.dumps({"username": "admin", "password": "password123"}).encode()
     headers = {"Content-Type": "application/json"}
 
