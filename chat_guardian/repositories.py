@@ -844,20 +844,22 @@ class AgentSessionRepository:
             return {}
         now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
         tc_json = json.dumps(tool_calls or [], ensure_ascii=False, default=str)
-        record = _AgentMessageRecord(
-            session_id=session_id,
-            role=role,
-            content=content,
-            tool_calls_json=tc_json,
-            elapsed_ms=elapsed_ms,
-            created_at=now,
-        )
         with self._db.session_factory() as session:
+            # Validate the session exists to prevent orphaned messages
+            sess_row = session.get(_AgentSessionRecord, session_id)
+            if sess_row is None:
+                return {}
+            record = _AgentMessageRecord(
+                session_id=session_id,
+                role=role,
+                content=content,
+                tool_calls_json=tc_json,
+                elapsed_ms=elapsed_ms,
+                created_at=now,
+            )
             session.add(record)
             # Also update session's updated_at
-            sess_row = session.get(_AgentSessionRecord, session_id)
-            if sess_row:
-                sess_row.updated_at = now
+            sess_row.updated_at = now
             session.commit()
             msg_id = record.id
         return {

@@ -124,18 +124,15 @@ const markdownComponents: Components = {
     <em className="italic">{children}</em>
   ),
   code: ({ className, children }) => {
-    const isBlock = className?.includes('language-');
-    if (isBlock) {
-      return <code className="text-xs font-mono">{children}</code>;
-    }
+    // Block code is handled by `pre` below; standalone `code` is always inline.
     return (
-      <code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-mono">
+      <code className={`bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-mono ${className ?? ''}`}>
         {children}
       </code>
     );
   },
   pre: ({ children }) => (
-    <pre className="bg-content1 border border-divider rounded-lg p-3 my-2 overflow-x-auto text-xs font-mono text-foreground">
+    <pre className="bg-content1 border border-divider rounded-lg p-3 my-2 overflow-x-auto text-xs font-mono text-foreground leading-relaxed [&_code]:bg-transparent [&_code]:text-foreground [&_code]:px-0 [&_code]:py-0 [&_code]:rounded-none">
       {children}
     </pre>
   ),
@@ -329,6 +326,7 @@ function SessionSidebar({
   onDeleteSession,
   onRenameSession,
   isLoading,
+  isStreaming,
   t,
 }: {
   sessions: AgentSession[];
@@ -338,6 +336,7 @@ function SessionSidebar({
   onDeleteSession: (id: string) => void;
   onRenameSession: (id: string, title: string) => void;
   isLoading: boolean;
+  isStreaming: boolean;
   t: (key: string) => string;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -366,6 +365,7 @@ function SessionSidebar({
           className="w-full"
           startContent={<Icon icon={addBold} fontSize={16} />}
           onPress={onNewSession}
+          isDisabled={isStreaming}
         >
           {t('agent.newSession')}
         </Button>
@@ -384,12 +384,16 @@ function SessionSidebar({
             {sessions.map((session) => (
               <div
                 key={session.session_id}
-                className={`group flex items-center gap-1 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
+                className={`group flex items-center gap-1 px-3 py-2.5 rounded-lg transition-colors ${
+                  isStreaming
+                    ? 'cursor-not-allowed opacity-60'
+                    : 'cursor-pointer'
+                } ${
                   currentSessionId === session.session_id
                     ? 'bg-primary/10 text-primary'
-                    : 'hover:bg-content2 text-foreground'
+                    : isStreaming ? 'text-foreground' : 'hover:bg-content2 text-foreground'
                 }`}
-                onClick={() => onSelectSession(session.session_id)}
+                onClick={() => { if (!isStreaming) onSelectSession(session.session_id); }}
               >
                 <Icon icon={chatBold} fontSize={14} className="flex-shrink-0 opacity-50" />
                 {editingId === session.session_id ? (
@@ -410,24 +414,26 @@ function SessionSidebar({
                     {session.title || t('agent.untitledSession')}
                   </span>
                 )}
-                <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                  <button
-                    type="button"
-                    className="p-1 rounded hover:bg-content3 transition-colors text-foreground/50 hover:text-foreground"
-                    onClick={(e) => { e.stopPropagation(); startRename(session); }}
-                    aria-label={t('agent.rename')}
-                  >
-                    <Icon icon={penBold} fontSize={12} />
-                  </button>
-                  <button
-                    type="button"
-                    className="p-1 rounded hover:bg-danger/20 transition-colors text-foreground/50 hover:text-danger"
-                    onClick={(e) => { e.stopPropagation(); onDeleteSession(session.session_id); }}
-                    aria-label={t('agent.deleteSession')}
-                  >
-                    <Icon icon={trashBold} fontSize={12} />
-                  </button>
-                </div>
+                {!isStreaming && (
+                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    <button
+                      type="button"
+                      className="p-1 rounded hover:bg-content3 transition-colors text-foreground/50 hover:text-foreground"
+                      onClick={(e) => { e.stopPropagation(); startRename(session); }}
+                      aria-label={t('agent.rename')}
+                    >
+                      <Icon icon={penBold} fontSize={12} />
+                    </button>
+                    <button
+                      type="button"
+                      className="p-1 rounded hover:bg-danger/20 transition-colors text-foreground/50 hover:text-danger"
+                      onClick={(e) => { e.stopPropagation(); onDeleteSession(session.session_id); }}
+                      aria-label={t('agent.deleteSession')}
+                    >
+                      <Icon icon={trashBold} fontSize={12} />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -501,7 +507,7 @@ export default function AgentChatPage() {
       const chatMsgs: ChatMessage[] = msgs.map((m: AgentSessionMessage) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
-        toolCalls: (m.tool_calls ?? []).map((tc: StoredToolCall) => ({
+        toolCalls: ((m.tool_calls ?? []) as StoredToolCall[]).map((tc) => ({
           id: tc.id ?? '',
           name: tc.name ?? '',
           displayName: tc.displayName ?? tc.display_name ?? tc.name ?? '',
@@ -572,7 +578,7 @@ export default function AgentChatPage() {
       const chatMsgs: ChatMessage[] = msgs.map((m: AgentSessionMessage) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
-        toolCalls: (m.tool_calls ?? []).map((tc: StoredToolCall) => ({
+        toolCalls: ((m.tool_calls ?? []) as StoredToolCall[]).map((tc) => ({
           id: tc.id ?? '',
           name: tc.name ?? '',
           displayName: tc.displayName ?? tc.display_name ?? tc.name ?? '',
@@ -835,6 +841,7 @@ export default function AgentChatPage() {
             onDeleteSession={handleDeleteSession}
             onRenameSession={handleRenameSession}
             isLoading={sessionsLoading}
+            isStreaming={isStreaming}
             t={t}
           />
         </div>
@@ -854,6 +861,7 @@ export default function AgentChatPage() {
                 onDeleteSession={handleDeleteSession}
                 onRenameSession={handleRenameSession}
                 isLoading={sessionsLoading}
+                isStreaming={isStreaming}
                 t={t}
               />
             </ModalBody>

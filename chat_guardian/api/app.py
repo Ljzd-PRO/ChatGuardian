@@ -14,6 +14,7 @@ import uuid as _uuid
 from collections import deque
 from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timedelta, timezone
+from typing import Literal
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -89,7 +90,7 @@ class UpdateSessionTitleRequest(BaseModel):
 
 
 class SaveMessageRequest(BaseModel):
-    role: str
+    role: Literal['user', 'assistant']
     content: str
     tool_calls: list | None = None
     elapsed_ms: int | None = None
