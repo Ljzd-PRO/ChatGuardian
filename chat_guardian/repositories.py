@@ -836,8 +836,8 @@ class AgentSessionRepository:
         ]
 
     def add_message(
-        self, session_id: str, role: str, content: str,
-        tool_calls: list | None = None, elapsed_ms: int | None = None,
+            self, session_id: str, role: str, content: str,
+            tool_calls: list | None = None, elapsed_ms: int | None = None,
     ) -> dict[str, Any]:
         """向会话添加一条消息。"""
         if self._db is None:

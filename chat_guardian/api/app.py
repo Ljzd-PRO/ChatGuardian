@@ -82,6 +82,7 @@ PUBLIC_PATHS = {
     "/app",
 }
 
+
 class AgentChatRequest(BaseModel):
     messages: list[dict[str, str]]
     session_id: str | None = None
@@ -223,7 +224,7 @@ class AppContainer:
 
         self.suggestion_service = SuggestionService(self.memory_repository, self.feedback_repository)
         self.user_memory_service = UserMemoryService(self.llm_client, self.memory_repository,
-                                self.context_service)
+                                                     self.context_service)
         notifiers = build_notifiers_from_settings()
 
         self.detection_engine = DetectionEngine(
@@ -344,7 +345,7 @@ def create_app() -> FastAPI:
     async def auth_change_password(payload: ChangePasswordRequest):
         """修改管理员密码。"""
         if not container.admin_credential_repository.change_password(
-            payload.username, payload.old_password, payload.new_password
+                payload.username, payload.old_password, payload.new_password
         ):
             raise HTTPException(status_code=400, detail="Invalid current credentials")
         return {"status": "ok"}
@@ -603,8 +604,8 @@ def create_app() -> FastAPI:
         async def event_generator():
             try:
                 async for event in admin_agent.stream(
-                    payload.messages,
-                    is_disconnected=request.is_disconnected,
+                        payload.messages,
+                        is_disconnected=request.is_disconnected,
                 ):
                     if await request.is_disconnected():
                         logger.info("Client disconnected, stopping agent stream")

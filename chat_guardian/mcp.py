@@ -46,10 +46,10 @@ class ChatGuardianOperations:
     """Shared API/MCP business logic for reuse and testing."""
 
     def __init__(
-        self,
-        container: Any,
-        env_only_keys: Iterable[str],
-        log_buffer: deque[dict[str, Any]] | None = None,
+            self,
+            container: Any,
+            env_only_keys: Iterable[str],
+            log_buffer: deque[dict[str, Any]] | None = None,
     ):
         self.container = container
         self.log_buffer = log_buffer
@@ -440,7 +440,8 @@ class ChatGuardianOperations:
                 llm_rebuild_warning = str(exc)
                 logger.warning(f"⚠️ LLM 客户端重建失败，将继续使用旧配置: {exc}")
 
-        result: dict[str, Any] = {"status": "saved", "settings": self._settings_subset().model_dump(exclude={"database_url"})}
+        result: dict[str, Any] = {"status": "saved",
+                                  "settings": self._settings_subset().model_dump(exclude={"database_url"})}
         if llm_rebuild_warning:
             result["warning"] = f"Settings saved but LLM client rebuild failed: {llm_rebuild_warning}"
         return result
@@ -725,7 +726,7 @@ class ChatGuardianMCPService:
 
         @self.server.tool(name="queues_delete_history", description="删除历史消息或清空。")
         async def tool_queues_delete_history(
-            clear_all: bool = False, items: list[dict[str, Any]] | None = None
+                clear_all: bool = False, items: list[dict[str, Any]] | None = None
         ) -> dict[str, Any]:
             """
             删除历史消息。
@@ -862,12 +863,12 @@ class ChatGuardianMCPService:
             return self.operations.get_llm_config()
 
     async def start_http_server(
-        self,
-        *,
-        transport: str = "streamable-http",
-        host: str | None = None,
-        port: int | None = None,
-        path: str | None = None,
+            self,
+            *,
+            transport: str = "streamable-http",
+            host: str | None = None,
+            port: int | None = None,
+            path: str | None = None,
     ) -> asyncio.Task | None:
         """Start HTTP/SSE server in the background and return the task."""
         if self._http_task and not self._http_task.done():

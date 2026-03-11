@@ -360,9 +360,9 @@ class AdminAgent:
         return model.bind_tools(self.tools)
 
     async def stream(
-        self,
-        messages: list[dict[str, str]],
-        is_disconnected: Any | None = None,
+            self,
+            messages: list[dict[str, str]],
+            is_disconnected: Any | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """流式处理用户消息，返回事件流。
 
@@ -425,10 +425,13 @@ class AdminAgent:
                     # 处理工具调用
                     if chunk.tool_call_chunks:
                         for tc_chunk in chunk.tool_call_chunks:
-                            idx = tc_chunk.get("index", 0) if isinstance(tc_chunk, dict) else getattr(tc_chunk, "index", 0)
+                            idx = tc_chunk.get("index", 0) if isinstance(tc_chunk, dict) else getattr(tc_chunk, "index",
+                                                                                                      0)
                             tc_id = tc_chunk.get("id") if isinstance(tc_chunk, dict) else getattr(tc_chunk, "id", None)
-                            tc_name = tc_chunk.get("name") if isinstance(tc_chunk, dict) else getattr(tc_chunk, "name", None)
-                            tc_args = tc_chunk.get("args") if isinstance(tc_chunk, dict) else getattr(tc_chunk, "args", None)
+                            tc_name = tc_chunk.get("name") if isinstance(tc_chunk, dict) else getattr(tc_chunk, "name",
+                                                                                                      None)
+                            tc_args = tc_chunk.get("args") if isinstance(tc_chunk, dict) else getattr(tc_chunk, "args",
+                                                                                                      None)
 
                             if idx not in tool_calls_buffer:
                                 # 生成回退 ID，确保永不为空
@@ -527,7 +530,8 @@ class AdminAgent:
                     }
 
                     # 添加工具结果消息
-                    result_str = json.dumps(result, ensure_ascii=False, default=str) if not isinstance(result, str) else result
+                    result_str = json.dumps(result, ensure_ascii=False, default=str) if not isinstance(result,
+                                                                                                       str) else result
                     lc_messages.append(
                         ToolMessage(content=result_str, tool_call_id=tc["id"])
                     )
