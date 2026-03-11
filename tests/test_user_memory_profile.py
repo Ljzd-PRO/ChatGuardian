@@ -1,4 +1,4 @@
-"""Tests for the new user profile-based UserMemoryFact design and SelfMessageMemoryService."""
+"""Tests for user profile models, repository, and UserMemoryService."""
 
 from datetime import datetime
 
@@ -15,14 +15,15 @@ from chat_guardian.domain import (
     UserMemoryFact,
 )
 from chat_guardian.repositories import MemoryRepository
-from chat_guardian.services import SelfMessageMemoryService
+from chat_guardian.services import UserMemoryService
+from chat_guardian.settings import settings
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _build_event(sender_id: str = "u-self", chat_id: str = "g-1", is_from_self: bool = True) -> ChatEvent:
+def _build_event(sender_id: str = "u-self", chat_id: str = "g-1") -> ChatEvent:
     message = ChatMessage(
         message_id="m-1",
         chat_id=chat_id,
@@ -32,12 +33,10 @@ def _build_event(sender_id: str = "u-self", chat_id: str = "g-1", is_from_self: 
         timestamp=datetime.utcnow(),
     )
     return ChatEvent(
-        event_id="e-1",
         platform="test",
         chat_type=ChatType.GROUP,
         chat_id=chat_id,
         message=message,
-        is_from_self=is_from_self,
     )
 
 
@@ -135,7 +134,7 @@ async def test_memory_repository_get_missing_returns_none() -> None:
 
 
 # ---------------------------------------------------------------------------
-# SelfMessageMemoryService tests
+# UserMemoryService tests
 # ---------------------------------------------------------------------------
 
 class FakeContextService:
@@ -146,9 +145,8 @@ class FakeContextService:
 class FakeLLMReturnsTopics:
     async def extract_self_participation(self, event, context, existing_topics=None):
         return {
-            "user_name": "老张",
             "topics": [
-                {"name": "黑苹果", "score": 3, "keywords": ["白屏", "安装"]},
+                {"name": "黑苹果", "keywords": ["白屏", "安装"]},
             ],
             "interactions": [
                 {"user_id": "u-456", "user_name": "小李", "topics": ["黑苹果"]},
@@ -163,25 +161,27 @@ class FakeLLMReturnsNone:
 
 async def test_self_message_service_skips_non_self_message() -> None:
     repo = MemoryRepository()
-    service = SelfMessageMemoryService(FakeLLMReturnsTopics(), repo, FakeContextService())
-    event = _build_event(is_from_self=False)
-    result = await service.process_if_self_message(event)
+    service = UserMemoryService(FakeLLMReturnsTopics(), repo, FakeContextService())
+    settings.memory_target_user_ids = ["target-user"]
+    event = _build_event(sender_id="not-target")
+    result = await service.process_user_memory(event)
     assert result == 0
-    assert await repo.get_profile("u-self") is None
+    assert await repo.get_profile("not-target") is None
 
 
 async def test_self_message_service_builds_profile_from_scratch() -> None:
     repo = MemoryRepository()
-    service = SelfMessageMemoryService(FakeLLMReturnsTopics(), repo, FakeContextService())
+    service = UserMemoryService(FakeLLMReturnsTopics(), repo, FakeContextService())
+    settings.memory_target_user_ids = ["u-self"]
     event = _build_event()
-    result = await service.process_if_self_message(event)
+    result = await service.process_user_memory(event)
 
     assert result == 1
     profile = await repo.get_profile("u-self")
     assert profile is not None
     assert profile.user_name == "老张"
     assert "黑苹果" in profile.interests
-    assert profile.interests["黑苹果"].score == 3
+    assert profile.interests["黑苹果"].score == 1
     assert "白屏" in profile.interests["黑苹果"].keywords
     assert "g-1" in profile.interests["黑苹果"].related_chat
     assert len(profile.active_groups) == 1
@@ -194,15 +194,16 @@ async def test_self_message_service_builds_profile_from_scratch() -> None:
 
 async def test_self_message_service_accumulates_on_repeated_calls() -> None:
     repo = MemoryRepository()
-    service = SelfMessageMemoryService(FakeLLMReturnsTopics(), repo, FakeContextService())
+    service = UserMemoryService(FakeLLMReturnsTopics(), repo, FakeContextService())
+    settings.memory_target_user_ids = ["u-self"]
     event = _build_event()
-    await service.process_if_self_message(event)
-    await service.process_if_self_message(event)
+    await service.process_user_memory(event)
+    await service.process_user_memory(event)
 
     profile = await repo.get_profile("u-self")
     assert profile is not None
-    # Score should be accumulated (3 + 3 = 6)
-    assert profile.interests["黑苹果"].score == 6
+    # Score should be accumulated (+1 per detection)
+    assert profile.interests["黑苹果"].score == 2
     # Group frequency should be 2
     assert profile.active_groups[0].frequency == 2
     # Contact interaction count should be 2
@@ -211,9 +212,10 @@ async def test_self_message_service_accumulates_on_repeated_calls() -> None:
 
 async def test_self_message_service_handles_llm_failure_gracefully() -> None:
     repo = MemoryRepository()
-    service = SelfMessageMemoryService(FakeLLMReturnsNone(), repo, FakeContextService())
+    service = UserMemoryService(FakeLLMReturnsNone(), repo, FakeContextService())
+    settings.memory_target_user_ids = ["u-self"]
     event = _build_event()
-    result = await service.process_if_self_message(event)
+    result = await service.process_user_memory(event)
     assert result == 0
     assert await repo.get_profile("u-self") is None
 
@@ -226,8 +228,7 @@ async def test_self_message_service_passes_existing_topics_to_llm() -> None:
         async def extract_self_participation(self, event, context, existing_topics=None):
             captured.append(existing_topics or [])
             return {
-                "user_name": "老张",
-                "topics": [{"name": "汽车", "score": 2, "keywords": []}],
+                "topics": [{"name": "汽车", "keywords": []}],
                 "interactions": [],
             }
 
@@ -246,9 +247,10 @@ async def test_self_message_service_passes_existing_topics_to_llm() -> None:
     )
     await repo.upsert_profile(seed)
 
-    service = SelfMessageMemoryService(CapturingLLM(), repo, FakeContextService())
+    service = UserMemoryService(CapturingLLM(), repo, FakeContextService())
+    settings.memory_target_user_ids = ["u-self"]
     event = _build_event()
-    await service.process_if_self_message(event)
+    await service.process_user_memory(event)
 
     # The LLM must receive the existing topic list
     assert captured == [["黑苹果"]]
@@ -258,4 +260,4 @@ async def test_self_message_service_passes_existing_topics_to_llm() -> None:
     assert "黑苹果" in profile.interests
     assert profile.interests["黑苹果"].score == 5  # unchanged since LLM returned "汽车" only
     assert "汽车" in profile.interests
-    assert profile.interests["汽车"].score == 2
+    assert profile.interests["汽车"].score == 1

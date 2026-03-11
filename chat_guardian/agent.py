@@ -47,10 +47,6 @@ TOOL_DISPLAY_NAMES: dict[str, dict[str, str]] = {
         "en": "Delete Rule",
         "zh": "删除规则",
     },
-    "generate_rule_from_description": {
-        "en": "Generate Rule from Description",
-        "zh": "根据描述生成规则",
-    },
     "get_rule_stats": {
         "en": "View Rule Statistics",
         "zh": "查看规则统计",
@@ -140,7 +136,6 @@ SYSTEM_PROMPT = """\
 - 创建新的检测规则
 - 修改现有规则（名称、描述、阈值、启用状态等）
 - 删除规则
-- 根据自然语言描述自动生成规则
 
 ### ⚙️ 系统管理
 - 启动/停止消息适配器

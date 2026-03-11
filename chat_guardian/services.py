@@ -8,7 +8,6 @@
 
 说明：
 - 通知器实现已迁移至 `chat_guardian.notifiers`；
-- 规则生成与编排已迁移至 `chat_guardian.rule_authoring`。
 
 所有对外依赖（如真实 LLM、消息平台、持久化）均通过协议抽象，便于替换。
 """

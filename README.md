@@ -9,11 +9,9 @@
 - Adapter 插件体系：支持 `onebot`、`telegram`、`wechat`、`feishu`，其中 `onebot`（`aiocqhttp`）已实现。
 - 规则检测引擎：自动拼接上下文消息 + 规则分批并行调用 LLM。
 - LLM 调用链：已接入 LangChain（`langchain_openai.ChatOpenAI`），支持 OpenAI 兼容 API 与本地/云端网关。
-- 一句话规则生成：内置生成后端 + 外部自定义提示词后端（可选）。
 - 通知链路：邮件通知抽象 + 外部 API Hook 调用抽象。
 - 本人发言识别：触发参与话题/相关群友记忆写入。
 - 建议系统：新规则建议 + 规则改进建议（基于记忆与反馈）。
-- API + MCP 风格入口：`/rule-generation` 与 `/mcp/tools/generate-rule`。
 - MVP WebUI 入口：`/ui`（轻量说明页，API联调入口）。
 
 > 设计原则：只做抽象能力，不把任何示例场景写死。
@@ -34,7 +32,6 @@ chat_guardian/
 tests/
 	test_api_smoke.py
 	test_detection_engine.py
-	test_rule_generation.py
 ```
 
 ## 本地运行
@@ -120,8 +117,6 @@ docker compose up --build
 - `POST /feedback`：提交检测结果评分与意见。
 - `GET /suggestions/new-rules/{user_id}`：生成新规则建议。
 - `GET /suggestions/rule-improvements/{rule_id}`：生成规则改进建议。
-- `POST /rule-generation`：一句话生成规则（内置/外部后端）。
-- `POST /mcp/tools/generate-rule`：MCP 风格规则生成入口。
 - `GET /llm/health`：返回当前 LLM 后端诊断信息，并可执行最小 ping 探活（`do_ping` 参数）。
 - `POST /adapters/start`：按配置启动已启用 adapter（可反复调用）。
 - `POST /adapters/stop`：停止已启用 adapter。

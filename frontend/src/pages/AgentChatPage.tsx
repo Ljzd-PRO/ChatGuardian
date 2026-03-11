@@ -297,7 +297,6 @@ const CAPABILITY_ICONS: Record<string, typeof widgetBold> = {
   check_system_health: healthBold,
   create_or_update_rule: shieldCheckBold,
   delete_rule: shieldCheckBold,
-  generate_rule_from_description: magnetBold,
   start_adapters: plugBold,
   stop_adapters: plugBold,
   update_settings: settingsBold,

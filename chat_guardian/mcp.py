@@ -12,7 +12,7 @@ from fastmcp.client.transports import FastMCPTransport
 from loguru import logger
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
-from chat_guardian.api.schemas import RuleGenerateRequest, SuggestResponse
+from chat_guardian.api.schemas import SuggestResponse
 from chat_guardian.domain import DetectionRule, Feedback, UserMemoryFact
 from chat_guardian.services import build_llm_client
 from chat_guardian.settings import Settings, settings
@@ -145,18 +145,6 @@ class ChatGuardianOperations:
     async def suggest_rule_improvements(self, rule_id: str) -> SuggestResponse:
         suggestions = await self.container.suggestion_service.suggest_rule_improvements(rule_id)
         return SuggestResponse(suggestions=suggestions)
-
-    async def generate_rule(self, payload: RuleGenerateRequest) -> DetectionRule:
-        try:
-            rule = await self.container.rule_authoring_service.generate_rule(
-                utterance=payload.utterance,
-                use_external=payload.use_external,
-                override_system_prompt=payload.override_system_prompt,
-            )
-            # Persist the generated rule so it is visible in the rule list
-            return await self.container.rule_repository.upsert(rule)
-        except ValueError as exc:
-            raise OperationError(str(exc), status_code=400) from exc
 
     async def get_rule_stats(self) -> dict[str, Any]:
         stats: dict[str, Any] = {}
@@ -684,25 +672,6 @@ class ChatGuardianMCPService:
                 dict: ``suggestions`` 列表。
             """
             return self._serialize(await self.operations.suggest_rule_improvements(rule_id))
-
-        @self.server.tool(name="rules_generate", description="一句话生成规则。")
-        async def tool_rules_generate(request: RuleGenerateRequest) -> dict[str, Any]:
-            """
-            一句话生成规则。
-
-            Args:
-                request: `RuleGenerateRequest`，包含 ``utterance``、``use_external``、``override_system_prompt``。
-
-            Returns:
-                dict: 生成的规则（序列化）。
-
-            Raises:
-                ValueError: 当生成失败。
-            """
-            try:
-                return self._serialize(await self.operations.generate_rule(request))
-            except OperationError as exc:
-                raise ValueError(str(exc)) from exc
 
         @self.server.tool(name="rule_stats", description="规则触发统计。")
         async def tool_rule_stats() -> dict[str, Any]:

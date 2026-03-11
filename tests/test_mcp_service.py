@@ -1,9 +1,6 @@
 import pytest
 
-from chat_guardian.api.schemas import RuleGenerateRequest
-from chat_guardian.domain import DetectionRule
 from chat_guardian.mcp import ChatGuardianMCPService, ChatGuardianOperations
-from chat_guardian.matcher import MatchAll
 from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
 
@@ -19,29 +16,12 @@ class _DummyTokenManager:
         self.revoked.append(token)
 
 
-class _DummyRuleAuthoringService:
-    async def generate_rule(self, utterance: str, use_external: bool, override_system_prompt: str | None) -> DetectionRule:
-        return DetectionRule(
-            rule_id="r-1",
-            name=f"rule for {utterance}",
-            description="generated",
-            matcher=MatchAll(),
-        )
-
-
-class _DummyRuleRepository:
-    async def upsert(self, rule: DetectionRule) -> DetectionRule:
-        return rule
-
-
 class _DummyContainer:
     def __init__(self):
         self.admin_username = "admin"
         self.admin_password = "secret"
         self.using_default_credentials = False
         self.token_manager = _DummyTokenManager()
-        self.rule_authoring_service = _DummyRuleAuthoringService()
-        self.rule_repository = _DummyRuleRepository()
 
 
 @pytest.fixture
@@ -71,16 +51,6 @@ async def test_tool_auth_login_and_status_error(mcp_service: ChatGuardianMCPServ
     async with Context(fastmcp=mcp_service.server):
         with pytest.raises(ToolError):
             await mcp_service.call_tool("auth_status", {"username": None})
-
-
-@pytest.mark.asyncio
-async def test_tool_rules_generate_uses_stub(mcp_service: ChatGuardianMCPService):
-    req = RuleGenerateRequest(utterance="hello", use_external=False, override_system_prompt=None)
-    async with Context(fastmcp=mcp_service.server):
-        result = await mcp_service.call_tool("rules_generate", {"request": req})
-    _, meta = result.to_mcp_result()
-    assert meta["rule_id"] == "r-1"
-    assert meta["name"].startswith("rule for")
 
 
 @pytest.mark.asyncio

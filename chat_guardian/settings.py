@@ -66,8 +66,6 @@ class Settings(BaseModel):
         bark_group: Bark 推送分组。
         bark_level: Bark 推送级别（如 active/timeSensitive/passive/critical）。
         hook_timeout_seconds: 外部 Hook 超时时间（秒）。
-        enable_internal_rule_generation: 是否启用内置规则生成。
-        external_rule_generation_endpoint: 外部规则生成 API 地址。
         enabled_adapters: 启用的 adapter 列表。
         onebot_host: OneBot WebSocket 服务器监听地址。
         onebot_port: OneBot WebSocket 服务器监听端口。
@@ -145,10 +143,8 @@ class Settings(BaseModel):
     bark_group: Optional[str] = None
     bark_level: Optional[str] = None
 
-    # 外部 Hook 与规则生成端点
+    # 外部 Hook 配置
     hook_timeout_seconds: float = 8.0
-    enable_internal_rule_generation: bool = True
-    external_rule_generation_endpoint: Optional[str] = None
 
     # Adapter 插件配置
     enabled_adapters: list[str] = []

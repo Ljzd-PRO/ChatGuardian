@@ -31,7 +31,6 @@ from chat_guardian.api.schemas import (
     ChangePasswordRequest,
     LoginRequest,
     RegisterRequest,
-    RuleGenerateRequest,
     SuggestResponse,
 )
 from chat_guardian.domain import (
@@ -57,11 +56,6 @@ from chat_guardian.repositories import (
     MemoryRepository,
     RuleRepository,
     SettingsRepository,
-)
-from chat_guardian.rule_authoring import (
-    ExternalPromptRuleGenerationBackend,
-    InternalRuleGenerationBackend,
-    RuleAuthoringService,
 )
 from chat_guardian.services import (
     build_llm_client,
@@ -212,15 +206,6 @@ class AppContainer:
 
         self.llm_client = build_llm_client()
         self.context_service = ContextWindowService(self.chat_history_store)
-
-        self.rule_authoring_service = RuleAuthoringService(
-            internal_backend=InternalRuleGenerationBackend(),
-            external_backend=(
-                ExternalPromptRuleGenerationBackend(settings.external_rule_generation_endpoint)
-                if settings.external_rule_generation_endpoint
-                else None
-            ),
-        )
 
         self.suggestion_service = SuggestionService(self.memory_repository, self.feedback_repository)
         self.user_memory_service = UserMemoryService(self.llm_client, self.memory_repository,
@@ -435,32 +420,6 @@ def create_app() -> FastAPI:
         """
         return await operations.suggest_rule_improvements(rule_id)
 
-    @app.post("/rule-generation", response_model=DetectionRule)
-    async def generate_rule(payload: RuleGenerateRequest) -> DetectionRule:
-        """
-        根据用户输入的一句话生成结构化检测规则。
-
-        Args:
-            payload: `RuleGenerateRequest`，包含 ``utterance``（描述文本）、``use_external``（是否调用外部端点）、
-                ``override_system_prompt``（可选的系统提示词覆盖）。
-        Raises:
-            HTTPException: 400 当输入无法生成合法规则时。
-        """
-        try:
-            return await operations.generate_rule(payload)
-        except OperationError as exc:
-            raise _to_http_error(exc) from exc
-
-    @app.post("/mcp/tools/generate-rule", response_model=DetectionRule)
-    async def mcp_generate_rule(payload: RuleGenerateRequest) -> DetectionRule:
-        """
-        MCP 入口的规则生成，逻辑等同于 ``POST /rule-generation``。
-
-        Args:
-            payload: `RuleGenerateRequest`。
-        """
-        return await generate_rule(payload)
-
     @app.get("/api/rule_stats")
     async def get_rule_stats():
         """汇总规则触发统计数据，仅包含已触发的结果。"""
@@ -657,7 +616,6 @@ def create_app() -> FastAPI:
                     "items": [
                         "create_or_update_rule",
                         "delete_rule",
-                        "generate_rule_from_description",
                         "start_adapters",
                         "stop_adapters",
                         "update_settings",

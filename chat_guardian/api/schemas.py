@@ -41,21 +41,6 @@ class DetectResponse(BaseModel):
     notified_count: int
 
 
-class RuleGenerateRequest(BaseModel):
-    """
-    一句话生成规则的请求负载。
-
-    Attributes:
-        utterance: 用户的一句话描述。
-        use_external: 是否调用外部生成后端。
-        override_system_prompt: 可选系统提示词覆盖。
-    """
-
-    utterance: str
-    use_external: bool = False
-    override_system_prompt: str | None = None
-
-
 class SuggestResponse(BaseModel):
     """
     建议返回模型，包含若干建议文本。
