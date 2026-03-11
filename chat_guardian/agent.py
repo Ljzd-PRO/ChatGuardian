@@ -274,22 +274,6 @@ def _build_agent_tools(operations: Any) -> list:
             return {"error": str(exc)}
 
     @tool
-    async def generate_rule_from_description(description: str) -> dict:
-        """根据自然语言描述自动生成一条检测规则。系统会利用 LLM 理解描述并创建结构化规则。
-
-        Args:
-            description: 用自然语言描述你想要的规则，例如 "当有人发送广告链接时触发"。
-        """
-        from chat_guardian.api.schemas import RuleGenerateRequest
-
-        try:
-            req = RuleGenerateRequest(utterance=description)
-            result = await operations.generate_rule(req)
-            return result.model_dump() if hasattr(result, "model_dump") else result
-        except Exception as exc:
-            return {"error": str(exc)}
-
-    @tool
     async def get_rule_stats() -> dict:
         """获取规则触发统计数据，包括每条规则的触发次数和触发记录详情。"""
         return await operations.get_rule_stats()
@@ -400,7 +384,6 @@ def _build_agent_tools(operations: Any) -> list:
         get_rules_list,
         create_or_update_rule,
         delete_rule,
-        generate_rule_from_description,
         get_rule_stats,
         get_adapters_status,
         start_adapters,
