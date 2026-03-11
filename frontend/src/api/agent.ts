@@ -1,4 +1,5 @@
 import { getToken } from './client';
+import { apiFetch } from './client';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/';
 
@@ -34,10 +35,28 @@ export interface AgentCapabilitiesResponse {
   capabilities: AgentCapability[];
 }
 
+export interface AgentSession {
+  session_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentSessionMessage {
+  id: number;
+  session_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  tool_calls: unknown[];
+  elapsed_ms: number | null;
+  created_at: string;
+}
+
 export async function streamAgentChat(
   messages: AgentMessage[],
   onEvent: (event: AgentEvent) => void,
   signal?: AbortSignal,
+  sessionId?: string,
 ): Promise<void> {
   const normalizedBase = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE;
   const url = `${normalizedBase}/api/agent/chat`;
@@ -49,7 +68,7 @@ export async function streamAgentChat(
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, session_id: sessionId }),
     signal,
   });
 
@@ -100,21 +119,60 @@ export async function streamAgentChat(
 }
 
 export async function fetchAgentCapabilities(): Promise<AgentCapabilitiesResponse> {
-  const normalizedBase = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE;
-  const url = `${normalizedBase}/api/agent/capabilities`;
-  const token = getToken();
+  return apiFetch<AgentCapabilitiesResponse>('/api/agent/capabilities');
+}
 
-  const res = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+/* ── Session APIs ── */
+
+export async function fetchAgentSessions(): Promise<AgentSession[]> {
+  return apiFetch<AgentSession[]>('/api/agent/sessions');
+}
+
+export async function createAgentSession(title: string = ''): Promise<AgentSession> {
+  return apiFetch<AgentSession>('/api/agent/sessions', {
+    method: 'POST',
+    body: JSON.stringify({ title }),
   });
+}
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`API ${res.status}: ${text}`);
-  }
+export async function deleteAgentSession(sessionId: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/api/agent/sessions/${sessionId}`, {
+    method: 'DELETE',
+  });
+}
 
-  return res.json();
+export async function updateAgentSessionTitle(sessionId: string, title: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/api/agent/sessions/${sessionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title }),
+  });
+}
+
+export async function fetchSessionMessages(sessionId: string): Promise<AgentSessionMessage[]> {
+  return apiFetch<AgentSessionMessage[]>(`/api/agent/sessions/${sessionId}/messages`);
+}
+
+export async function saveSessionMessage(
+  sessionId: string,
+  role: string,
+  content: string,
+  toolCalls?: unknown[],
+  elapsedMs?: number,
+): Promise<AgentSessionMessage> {
+  return apiFetch<AgentSessionMessage>(`/api/agent/sessions/${sessionId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({
+      role,
+      content,
+      tool_calls: toolCalls ?? null,
+      elapsed_ms: elapsedMs ?? null,
+    }),
+  });
+}
+
+export async function deleteMessagePair(sessionId: string, userMessageId: number): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/api/agent/sessions/${sessionId}/message-pair`, {
+    method: 'DELETE',
+    body: JSON.stringify({ user_message_id: userMessageId }),
+  });
 }

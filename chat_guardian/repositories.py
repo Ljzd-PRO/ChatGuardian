@@ -85,6 +85,27 @@ class _AdminCredentialRecord(_Base):
     password_hash: Mapped[str] = mapped_column(String(512))
 
 
+class _AgentSessionRecord(_Base):
+    __tablename__ = "agent_sessions"
+
+    session_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    title: Mapped[str] = mapped_column(String(256), default="")
+    created_at: Mapped[str] = mapped_column(String(32))
+    updated_at: Mapped[str] = mapped_column(String(32))
+
+
+class _AgentMessageRecord(_Base):
+    __tablename__ = "agent_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(64), index=True)
+    role: Mapped[str] = mapped_column(String(16))
+    content: Mapped[str] = mapped_column(Text, default="")
+    tool_calls_json: Mapped[str] = mapped_column(Text, default="[]")
+    elapsed_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[str] = mapped_column(String(32))
+
+
 class _RepositoryDatabase:
     def __init__(self, database_url: str):
         normalized_url = normalize_database_url(database_url)
@@ -715,4 +736,166 @@ class AdminCredentialRepository:
         if not self.verify(username, old_password):
             return False
         self.set_credentials(username, new_password)
+        return True
+
+
+class AgentSessionRepository:
+    """管理 AI 助手会话与消息的仓库。"""
+
+    def __init__(self, database_url: str | None = None):
+        self._db = _get_db_manager(database_url)
+
+    def list_sessions(self) -> list[dict[str, Any]]:
+        """列出所有会话，按更新时间降序排列。"""
+        if self._db is None:
+            return []
+        with self._db.session_factory() as session:
+            rows = session.scalars(
+                select(_AgentSessionRecord).order_by(_AgentSessionRecord.updated_at.desc())
+            ).all()
+        return [
+            {
+                "session_id": r.session_id,
+                "title": r.title,
+                "created_at": r.created_at,
+                "updated_at": r.updated_at,
+            }
+            for r in rows
+        ]
+
+    def create_session(self, session_id: str, title: str = "") -> dict[str, Any]:
+        """创建新会话。"""
+        if self._db is None:
+            return {"session_id": session_id, "title": title, "created_at": "", "updated_at": ""}
+        now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        record = _AgentSessionRecord(
+            session_id=session_id,
+            title=title,
+            created_at=now,
+            updated_at=now,
+        )
+        with self._db.session_factory() as session:
+            session.add(record)
+            session.commit()
+        return {
+            "session_id": session_id,
+            "title": title,
+            "created_at": now,
+            "updated_at": now,
+        }
+
+    def update_session_title(self, session_id: str, title: str) -> bool:
+        """更新会话标题。"""
+        if self._db is None:
+            return False
+        now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        with self._db.session_factory() as session:
+            row = session.get(_AgentSessionRecord, session_id)
+            if row is None:
+                return False
+            row.title = title
+            row.updated_at = now
+            session.commit()
+        return True
+
+    def delete_session(self, session_id: str) -> bool:
+        """删除会话及其所有消息。"""
+        if self._db is None:
+            return False
+        with self._db.session_factory() as session:
+            session.execute(
+                delete(_AgentMessageRecord).where(_AgentMessageRecord.session_id == session_id)
+            )
+            result = session.execute(
+                delete(_AgentSessionRecord).where(_AgentSessionRecord.session_id == session_id)
+            )
+            session.commit()
+        return result.rowcount > 0
+
+    def get_messages(self, session_id: str) -> list[dict[str, Any]]:
+        """获取指定会话的所有消息。"""
+        if self._db is None:
+            return []
+        with self._db.session_factory() as session:
+            rows = session.scalars(
+                select(_AgentMessageRecord)
+                .where(_AgentMessageRecord.session_id == session_id)
+                .order_by(_AgentMessageRecord.id.asc())
+            ).all()
+        return [
+            {
+                "id": r.id,
+                "session_id": r.session_id,
+                "role": r.role,
+                "content": r.content,
+                "tool_calls": json.loads(r.tool_calls_json) if r.tool_calls_json else [],
+                "elapsed_ms": r.elapsed_ms,
+                "created_at": r.created_at,
+            }
+            for r in rows
+        ]
+
+    def add_message(
+        self, session_id: str, role: str, content: str,
+        tool_calls: list | None = None, elapsed_ms: int | None = None,
+    ) -> dict[str, Any]:
+        """向会话添加一条消息。"""
+        if self._db is None:
+            return {}
+        now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        tc_json = json.dumps(tool_calls or [], ensure_ascii=False, default=str)
+        with self._db.session_factory() as session:
+            # Validate the session exists to prevent orphaned messages
+            sess_row = session.get(_AgentSessionRecord, session_id)
+            if sess_row is None:
+                return {}
+            record = _AgentMessageRecord(
+                session_id=session_id,
+                role=role,
+                content=content,
+                tool_calls_json=tc_json,
+                elapsed_ms=elapsed_ms,
+                created_at=now,
+            )
+            session.add(record)
+            # Also update session's updated_at
+            sess_row.updated_at = now
+            session.commit()
+            msg_id = record.id
+        return {
+            "id": msg_id,
+            "session_id": session_id,
+            "role": role,
+            "content": content,
+            "tool_calls": tool_calls or [],
+            "elapsed_ms": elapsed_ms,
+            "created_at": now,
+        }
+
+    def delete_message_pair(self, session_id: str, user_message_id: int) -> bool:
+        """删除一组问答对：指定的用户消息及其后紧接的助手消息。"""
+        if self._db is None:
+            return False
+        with self._db.session_factory() as session:
+            # Verify user message exists and belongs to session
+            user_msg = session.get(_AgentMessageRecord, user_message_id)
+            if user_msg is None or user_msg.session_id != session_id or user_msg.role != "user":
+                return False
+
+            # Find the next assistant message after this user message
+            assistant_msg = session.scalars(
+                select(_AgentMessageRecord)
+                .where(
+                    _AgentMessageRecord.session_id == session_id,
+                    _AgentMessageRecord.id > user_message_id,
+                    _AgentMessageRecord.role == "assistant",
+                )
+                .order_by(_AgentMessageRecord.id.asc())
+                .limit(1)
+            ).first()
+
+            session.delete(user_msg)
+            if assistant_msg is not None:
+                session.delete(assistant_msg)
+            session.commit()
         return True

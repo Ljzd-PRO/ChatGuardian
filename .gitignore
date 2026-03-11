@@ -217,3 +217,5 @@ db.sqlite
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+.env
+db.sqlite
