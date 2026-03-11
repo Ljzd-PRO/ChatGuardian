@@ -30,7 +30,6 @@ import bellBold from '@iconify/icons-solar/bell-bing-bold';
 import cpuBold from '@iconify/icons-solar/cpu-bolt-bold';
 import plugBold from '@iconify/icons-solar/plug-circle-bold';
 import listBold from '@iconify/icons-solar/list-check-bold';
-import magnetBold from '@iconify/icons-solar/magnet-bold';
 import healthBold from '@iconify/icons-solar/health-bold';
 import eraserBold from '@iconify/icons-solar/eraser-bold';
 import clockBold from '@iconify/icons-solar/clock-circle-bold';
