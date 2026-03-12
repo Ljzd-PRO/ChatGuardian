@@ -1,4 +1,4 @@
-import { useState, useEffect, type KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, type KeyboardEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Button, Card, CardBody, CardHeader, Chip, Divider, Input, Progress, Spinner,
@@ -26,10 +26,13 @@ export default function UserProfilesPage() {
   const { data: appSettings } = useQuery({ queryKey: ['settings'], queryFn: fetchSettings });
   const [targetUserIds, setTargetUserIds] = useState<string[]>([]);
   const [newUserId, setNewUserId] = useState('');
+  const initializedRef = useRef(false);
 
+  // Only sync from server on initial load to avoid overwriting unsaved edits
   useEffect(() => {
-    if (appSettings) {
+    if (appSettings && !initializedRef.current) {
       setTargetUserIds(appSettings.memory_target_user_ids ?? []);
+      initializedRef.current = true;
     }
   }, [appSettings]);
 
@@ -53,6 +56,8 @@ export default function UserProfilesPage() {
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') addUserId();
   }
+
+  const trimmedNewUserId = newUserId.trim();
 
   // ── Profile list ─────────────────────────────────────────────────────
   const { data: profiles, isLoading } = useQuery({
@@ -140,7 +145,7 @@ export default function UserProfilesPage() {
                 color="primary"
                 startContent={<Icon icon={addCircleBold} fontSize={ICON_SIZES.button} />}
                 onPress={addUserId}
-                isDisabled={newUserId.trim() === ''}
+                isDisabled={trimmedNewUserId === ''}
               >
                 {t('common.add')}
               </Button>
