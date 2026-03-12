@@ -23,18 +23,24 @@ export default function UserProfilesPage() {
   const queryClient = useQueryClient();
 
   // ── Profiling settings ───────────────────────────────────────────────
-  const { data: appSettings } = useQuery({ queryKey: ['settings'], queryFn: fetchSettings });
+  const { data: appSettings, isLoading: settingsLoading } = useQuery({ queryKey: ['settings'], queryFn: fetchSettings });
   const [targetUserIds, setTargetUserIds] = useState<string[]>([]);
   const [newUserId, setNewUserId] = useState('');
+  const [settingsReady, setSettingsReady] = useState(false);
   const initializedRef = useRef(false);
 
-  // Only sync from server on initial load to avoid overwriting unsaved edits
+  // Only sync from server on initial load to avoid overwriting unsaved edits.
+  // settingsReady (state) drives the UI; initializedRef guards against double-init in StrictMode.
   useEffect(() => {
     if (appSettings && !initializedRef.current) {
-      setTargetUserIds(appSettings.memory_target_user_ids ?? []);
       initializedRef.current = true;
+      setTargetUserIds(appSettings.memory_target_user_ids ?? []);
+      setSettingsReady(true);
     }
   }, [appSettings]);
+
+  // True while settings data is in flight or the initial sync hasn't run yet
+  const isSettingsLoading = settingsLoading || !settingsReady;
 
   const save = useMutation({
     mutationFn: () => updateSettings({ memory_target_user_ids: targetUserIds }),
@@ -91,6 +97,7 @@ export default function UserProfilesPage() {
             color="primary"
             startContent={<Icon icon={disketteBold} fontSize={ICON_SIZES.button} />}
             isLoading={save.isPending}
+            isDisabled={isSettingsLoading}
             onPress={() => save.mutate()}
             className="shrink-0"
           >
@@ -107,7 +114,11 @@ export default function UserProfilesPage() {
             <p className="text-xs text-default-400 mb-3">{t('users.targetUserIdsHint')}</p>
 
             {/* Active target user IDs */}
-            {targetUserIds.length === 0 ? (
+            {isSettingsLoading ? (
+              <div className="mb-3">
+                <Spinner size="sm" />
+              </div>
+            ) : targetUserIds.length === 0 ? (
               <div className="mb-3">
                 <Chip size="sm" variant="flat" color="warning" startContent={<Icon icon={usersGroupRoundedBold} fontSize={14} />}>
                   {t('users.profilingDisabled')}
@@ -138,6 +149,7 @@ export default function UserProfilesPage() {
                 value={newUserId}
                 onValueChange={setNewUserId}
                 onKeyDown={handleKeyDown}
+                isDisabled={isSettingsLoading}
               />
               <Button
                 size="sm"
@@ -145,7 +157,7 @@ export default function UserProfilesPage() {
                 color="primary"
                 startContent={<Icon icon={addCircleBold} fontSize={ICON_SIZES.button} />}
                 onPress={addUserId}
-                isDisabled={trimmedNewUserId === ''}
+                isDisabled={isSettingsLoading || trimmedNewUserId === ''}
               >
                 {t('common.add')}
               </Button>
