@@ -39,6 +39,7 @@ export interface AppSettings {
   bark_server_url: string;
   bark_group: string | null;
   bark_level: string | null;
+  memory_target_user_ids: string[];
   enabled_adapters: string[];
   onebot_host: string;
   onebot_port: number;
