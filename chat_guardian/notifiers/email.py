@@ -24,6 +24,50 @@ class EmailNotifier(Notifier):
     def __init__(self, config: NotificationConfig):
         self.config = config
 
+    async def test(self) -> bool:
+        """发送测试邮件，验证邮件通知器配置是否正确。"""
+        if not self.config.to_email or not settings.smtp_host or not settings.smtp_sender:
+            logger.warning(
+                f"⚠️ 邮件通知测试失败：配置不完整 | to_email={bool(self.config.to_email)} "
+                f"| smtp_host={bool(settings.smtp_host)}")
+            return False
+
+        subject = "[ChatGuardian] Test Notification"
+        body = "This is a test notification from ChatGuardian. If you received this email, your email notification settings are configured correctly."
+
+        smtp = SMTP(hostname=settings.smtp_host, port=settings.smtp_port, use_tls=False)
+        connected = False
+        try:
+            await smtp.connect()
+            connected = True
+            logger.debug("  ✓ SMTP 测试连接成功")
+
+            if settings.smtp_username and settings.smtp_password:
+                await smtp.login(settings.smtp_username, settings.smtp_password)
+                logger.debug("  ✓ SMTP 测试认证成功")
+
+            await smtp.sendmail(
+                settings.smtp_sender,
+                [self.config.to_email],
+                (
+                    f"From: {settings.smtp_sender}\r\n"
+                    f"To: {self.config.to_email}\r\n"
+                    f"Subject: {subject}\r\n\r\n"
+                    f"{body}"
+                ),
+            )
+            logger.success(f"✅ 测试邮件已发送 | 收件人={self.config.to_email}")
+            return True
+        except Exception as e:
+            logger.error(f"❌ 测试邮件发送失败: {e}")
+            return False
+        finally:
+            if connected:
+                try:
+                    await smtp.quit()
+                except Exception:
+                    pass
+
     async def notify(self, event: ChatEvent, decision: RuleDecision, _context_messages: list[ChatMessage]) -> bool:
         """发送邮件通知。
 

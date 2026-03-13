@@ -46,6 +46,8 @@ from chat_guardian.mcp import (
 )
 from chat_guardian.notifiers import (
     build_notifiers_from_settings,
+    build_email_notifier_from_settings,
+    build_bark_notifier_from_settings,
 )
 from chat_guardian.repositories import (
     AdminCredentialRepository,
@@ -535,6 +537,32 @@ def create_app() -> FastAPI:
     async def get_notifications_config():
         """获取通知配置（邮件与 Bark）。"""
         return operations.get_notifications_config()
+
+    @app.post("/api/notifications/test/{notifier_type}")
+    async def test_notification(notifier_type: str):
+        """测试通知服务是否可用。支持 type: email, bark。"""
+        if notifier_type == "email":
+            notifier = build_email_notifier_from_settings()
+            if notifier is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Email notifier is not enabled or not fully configured.",
+                )
+            ok = await notifier.test()
+        elif notifier_type == "bark":
+            notifier = build_bark_notifier_from_settings()
+            if notifier is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Bark notifier is not enabled or not fully configured.",
+                )
+            ok = await notifier.test()
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown notifier type: {notifier_type}")
+
+        if not ok:
+            raise HTTPException(status_code=502, detail="Notification test failed. Check your configuration.")
+        return {"ok": True}
 
     # ── LLM config ────────────────────────────────────────────────────────────
 

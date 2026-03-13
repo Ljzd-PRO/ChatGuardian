@@ -32,4 +32,6 @@ __all__ = [
     "BarkNotifier",
     "BarkNotificationConfig",
     "build_notifiers_from_settings",
+    "build_email_notifier_from_settings",
+    "build_bark_notifier_from_settings",
 ]

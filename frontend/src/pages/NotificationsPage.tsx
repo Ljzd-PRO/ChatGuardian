@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Button, Card, CardBody, CardHeader, Input, Spinner, Switch,
@@ -16,8 +16,10 @@ import server2Bold from '@iconify/icons-solar/server-2-bold';
 import smartphone2Bold from '@iconify/icons-solar/smartphone-2-bold';
 import tagBold from '@iconify/icons-solar/tag-bold';
 import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
+import playCircleBold from '@iconify/icons-solar/play-circle-bold';
 import { useTranslation } from 'react-i18next';
-import { fetchNotificationsConfig, updateSettings } from '../api/settings';
+import { fetchNotificationsConfig, updateSettings, testNotification } from '../api/settings';
+import { ApiError } from '../api/client';
 import type { AppSettings } from '../api/settings';
 import { ICON_SIZES } from '../constants/iconSizes';
 
@@ -25,6 +27,17 @@ export default function NotificationsPage() {
   const { t } = useTranslation();
   const { data, isLoading } = useQuery({ queryKey: ['notifications_config'], queryFn: fetchNotificationsConfig });
   const [form, setForm] = useState<Partial<AppSettings>>({});
+  const [emailTestState, setEmailTestState] = useState<'idle' | 'loading' | 'success' | 'error' | 'notConfigured'>('idle');
+  const [barkTestState, setBarkTestState] = useState<'idle' | 'loading' | 'success' | 'error' | 'notConfigured'>('idle');
+  const testResetTimers = useRef<{ email: ReturnType<typeof setTimeout> | null; bark: ReturnType<typeof setTimeout> | null }>({ email: null, bark: null });
+
+  // Clear timers on unmount to avoid state updates on unmounted component
+  useEffect(() => {
+    return () => {
+      if (testResetTimers.current.email !== null) clearTimeout(testResetTimers.current.email);
+      if (testResetTimers.current.bark !== null) clearTimeout(testResetTimers.current.bark);
+    };
+  }, []);
 
   useEffect(() => {
     if (!data) return;
@@ -49,6 +62,47 @@ export default function NotificationsPage() {
     mutationFn: () => updateSettings(form),
   });
 
+  async function handleTest(type: 'email' | 'bark') {
+    const setState = type === 'email' ? setEmailTestState : setBarkTestState;
+
+    // Cancel any pending reset timer for this notifier
+    if (testResetTimers.current[type] !== null) {
+      clearTimeout(testResetTimers.current[type]!);
+      testResetTimers.current[type] = null;
+    }
+
+    setState('loading');
+    try {
+      await testNotification(type);
+      setState('success');
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 400) {
+        setState('notConfigured');
+      } else {
+        setState('error');
+      }
+    }
+    testResetTimers.current[type] = setTimeout(() => {
+      testResetTimers.current[type] = null;
+      setState('idle');
+    }, 5000);
+  }
+
+  function testStatusText(state: typeof emailTestState): string | null {
+    switch (state) {
+      case 'success': return t('notifications.testSuccess');
+      case 'error': return t('notifications.testFailed');
+      case 'notConfigured': return t('notifications.testNotConfigured');
+      default: return null;
+    }
+  }
+
+  function testButtonColor(state: typeof emailTestState): 'success' | 'danger' | 'secondary' {
+    if (state === 'success') return 'success';
+    if (state === 'error' || state === 'notConfigured') return 'danger';
+    return 'secondary';
+  }
+
   if (isLoading) return <div className="flex justify-center h-64"><Spinner label={t('notifications.loading')} /></div>;
 
   return (
@@ -57,13 +111,30 @@ export default function NotificationsPage() {
       <Card>
         <CardHeader className="flex items-center justify-between">
           <span className="font-semibold">{t('notifications.email')}</span>
-          <Switch
-            isSelected={form.email_notifier_enabled ?? false}
-            onValueChange={v => setForm(f => ({ ...f, email_notifier_enabled: v }))}
-            aria-label={t('notifications.enableEmail')}
-          />
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="flat"
+              color={testButtonColor(emailTestState)}
+              startContent={<Icon icon={playCircleBold} fontSize={ICON_SIZES.button} />}
+              isLoading={emailTestState === 'loading'}
+              onPress={() => handleTest('email')}
+            >
+              {emailTestState === 'loading' ? t('notifications.testing') : t('notifications.test')}
+            </Button>
+            <Switch
+              isSelected={form.email_notifier_enabled ?? false}
+              onValueChange={v => setForm(f => ({ ...f, email_notifier_enabled: v }))}
+              aria-label={t('notifications.enableEmail')}
+            />
+          </div>
         </CardHeader>
         <CardBody className="space-y-3">
+          {testStatusText(emailTestState) && (
+            <p className={`text-sm ${emailTestState === 'success' ? 'text-success' : 'text-danger'}`}>
+              {testStatusText(emailTestState)}
+            </p>
+          )}
           <Input
             label={t('notifications.toEmail')}
             startContent={<Icon icon={letterBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
@@ -109,13 +180,30 @@ export default function NotificationsPage() {
       <Card>
         <CardHeader className="flex items-center justify-between">
           <span className="font-semibold">{t('notifications.bark')}</span>
-          <Switch
-            isSelected={form.bark_notifier_enabled ?? false}
-            onValueChange={v => setForm(f => ({ ...f, bark_notifier_enabled: v }))}
-            aria-label={t('notifications.enableBark')}
-          />
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="flat"
+              color={testButtonColor(barkTestState)}
+              startContent={<Icon icon={playCircleBold} fontSize={ICON_SIZES.button} />}
+              isLoading={barkTestState === 'loading'}
+              onPress={() => handleTest('bark')}
+            >
+              {barkTestState === 'loading' ? t('notifications.testing') : t('notifications.test')}
+            </Button>
+            <Switch
+              isSelected={form.bark_notifier_enabled ?? false}
+              onValueChange={v => setForm(f => ({ ...f, bark_notifier_enabled: v }))}
+              aria-label={t('notifications.enableBark')}
+            />
+          </div>
         </CardHeader>
         <CardBody className="space-y-3">
+          {testStatusText(barkTestState) && (
+            <p className={`text-sm ${barkTestState === 'success' ? 'text-success' : 'text-danger'}`}>
+              {testStatusText(barkTestState)}
+            </p>
+          )}
           <Input
             label={t('notifications.deviceKey')}
             startContent={<Icon icon={smartphone2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}

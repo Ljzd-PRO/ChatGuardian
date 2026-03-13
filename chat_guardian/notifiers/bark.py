@@ -35,6 +35,52 @@ class BarkNotifier(Notifier):
     def __init__(self, config: BarkNotificationConfig):
         self.config = config
 
+    async def test(self) -> bool:
+        """发送测试 Bark 推送，验证 Bark 通知器配置是否正确。"""
+        keys = _normalize_device_keys(self.config.device_key, self.config.device_keys)
+
+        if not keys:
+            logger.warning("⚠️ Bark 通知测试失败：未配置 device_key/device_keys")
+            return False
+
+        endpoint = f"{self.config.server_url.rstrip('/')}/push"
+        payload: dict[str, object] = {
+            "title": "[ChatGuardian] Test Notification",
+            "body": "This is a test notification from ChatGuardian. If you received this, your Bark notification settings are configured correctly.",
+        }
+        if len(keys) == 1:
+            payload["device_key"] = keys[0]
+        else:
+            payload["device_keys"] = keys
+
+        if self.config.group:
+            payload["group"] = self.config.group
+
+        logger.debug(f"📲 准备发送 Bark 测试通知 | endpoint={endpoint}")
+        try:
+            async with httpx.AsyncClient(timeout=settings.hook_timeout_seconds) as client:
+                response = await client.post(endpoint, json=payload)
+
+            if response.status_code != 200:
+                logger.error(f"❌ Bark 测试推送失败 | status={response.status_code} | body={response.text}")
+                return False
+
+            try:
+                body = response.json()
+            except ValueError:
+                body = {}
+
+            code = body.get("code") if isinstance(body, dict) else None
+            if code not in (None, 200):
+                logger.error(f"❌ Bark 测试推送返回异常 | code={code} | body={body}")
+                return False
+
+            logger.success("✅ Bark 测试推送成功")
+            return True
+        except httpx.HTTPError as e:
+            logger.error(f"❌ Bark 测试推送异常: {e}")
+            return False
+
     async def notify(self, event: ChatEvent, decision: RuleDecision, _context_messages: list[ChatMessage]) -> bool:
         keys = _normalize_device_keys(self.config.device_key, self.config.device_keys)
 

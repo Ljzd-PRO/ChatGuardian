@@ -98,3 +98,5 @@ export const updateSettings = (s: Partial<AppSettings>) => {
 export const fetchNotificationsConfig = () => apiFetch<NotificationsConfig>('/api/notifications/config');
 export const fetchLLMConfig           = () => apiFetch<LLMConfig>('/api/llm/config');
 export const fetchLLMHealth           = () => apiFetch<Record<string, unknown>>('/llm/health');
+export const testNotification = (type: 'email' | 'bark') =>
+  apiFetch<{ ok: boolean }>(`/api/notifications/test/${type}`, { method: 'POST' });

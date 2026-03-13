@@ -460,6 +460,10 @@ export default function AgentChatPage() {
   const pendingMsgRef = useRef<ChatMessage | null>(null);
   const rafIdRef = useRef<number>(0);
   const streamStartRef = useRef<number>(0);
+  // When a new session is created programmatically (first message), we skip the
+  // automatic message re-fetch triggered by the currentSessionId effect to avoid
+  // a race condition where the effect's fetch returns [] before messages are saved.
+  const skipNextSessionLoadRef = useRef(false);
 
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   const [deleteTarget, setDeleteTarget] = useState<{ sessionId: string; userMsgId: number } | null>(null);
@@ -497,6 +501,12 @@ export default function AgentChatPage() {
   useEffect(() => {
     if (!currentSessionId) {
       setMessages([]);
+      return;
+    }
+    // Skip if we just programmatically created this session (messages are already
+    // managed by handleSubmit; fetching now would race with saveSessionMessage).
+    if (skipNextSessionLoadRef.current) {
+      skipNextSessionLoadRef.current = false;
       return;
     }
     let cancelled = false;
@@ -602,6 +612,7 @@ export default function AgentChatPage() {
       if (!sessionId) {
         const session = await createAgentSession(content.slice(0, 50));
         sessionId = session.session_id;
+        skipNextSessionLoadRef.current = true;
         setCurrentSessionId(sessionId);
         queryClient.invalidateQueries({ queryKey: ['agent-sessions'] });
       }
@@ -827,7 +838,7 @@ export default function AgentChatPage() {
   }, []);
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] max-w-6xl mx-auto gap-0">
+    <div className="flex h-full gap-0">
       {/* ── Sidebar (desktop) ── */}
       {!isMobile && (
         <div className="w-64 flex-shrink-0 border-r border-divider bg-content1 rounded-l-xl overflow-hidden">

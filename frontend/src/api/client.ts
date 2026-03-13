@@ -2,6 +2,19 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/';
 
 const TOKEN_KEY = 'cg_auth_token';
 
+/** Thrown by apiFetch when the server returns a non-2xx status. */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly detail: string;
+
+  constructor(status: number, detail: string) {
+    super(`API ${status}: ${detail}`);
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -38,7 +51,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   }
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
-    throw new Error(`API ${res.status}: ${text}`);
+    throw new ApiError(res.status, text);
   }
   return res.json() as Promise<T>;
 }

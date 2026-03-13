@@ -23,8 +23,9 @@ class _FakeResponse:
 
 
 class _RecorderClient:
-    def __init__(self, recorder: list[dict]):
+    def __init__(self, recorder: list[dict], response: _FakeResponse | None = None):
         self._recorder = recorder
+        self._response = response or _FakeResponse()
 
     async def __aenter__(self):
         return self
@@ -34,7 +35,7 @@ class _RecorderClient:
 
     async def post(self, url: str, json: dict):
         self._recorder.append({"url": url, "json": json})
-        return _FakeResponse()
+        return self._response
 
 
 def _build_event() -> ChatEvent:
@@ -88,3 +89,98 @@ async def test_bark_notifier_uses_device_keys_when_multiple_keys(monkeypatch):
     payload = recorded[0]["json"]
     assert payload["device_keys"] == ["key-1", "key-2"]
     assert "device_key" not in payload
+
+
+# ── BarkNotifier.test() ──────────────────────────────────────────────────────
+
+async def test_bark_test_single_key_success(monkeypatch):
+    """test() sends push to single device_key and returns True on 200/200."""
+    recorded: list[dict] = []
+    monkeypatch.setattr(
+        bark_module.httpx,
+        "AsyncClient",
+        lambda timeout: _RecorderClient(recorded, _FakeResponse(200, {"code": 200})),
+    )
+
+    notifier = BarkNotifier(BarkNotificationConfig(device_key="test-key"))
+    ok = await notifier.test()
+
+    assert ok is True
+    assert len(recorded) == 1
+    payload = recorded[0]["json"]
+    assert payload["device_key"] == "test-key"
+    assert "device_keys" not in payload
+
+
+async def test_bark_test_multiple_keys_success(monkeypatch):
+    """test() uses device_keys when multiple keys are configured."""
+    recorded: list[dict] = []
+    monkeypatch.setattr(
+        bark_module.httpx,
+        "AsyncClient",
+        lambda timeout: _RecorderClient(recorded, _FakeResponse(200, {"code": 200})),
+    )
+
+    notifier = BarkNotifier(BarkNotificationConfig(device_key=None, device_keys=["k1", "k2"]))
+    ok = await notifier.test()
+
+    assert ok is True
+    payload = recorded[0]["json"]
+    assert payload["device_keys"] == ["k1", "k2"]
+    assert "device_key" not in payload
+
+
+async def test_bark_test_no_keys_returns_false():
+    """test() returns False immediately when no device keys are configured."""
+    notifier = BarkNotifier(BarkNotificationConfig(device_key=None, device_keys=[]))
+    ok = await notifier.test()
+    assert ok is False
+
+
+async def test_bark_test_non_200_http_status_returns_false(monkeypatch):
+    """test() returns False when the HTTP response status is not 200."""
+    recorded: list[dict] = []
+    monkeypatch.setattr(
+        bark_module.httpx,
+        "AsyncClient",
+        lambda timeout: _RecorderClient(recorded, _FakeResponse(500, {})),
+    )
+
+    notifier = BarkNotifier(BarkNotificationConfig(device_key="key"))
+    ok = await notifier.test()
+    assert ok is False
+
+
+async def test_bark_test_non_200_json_code_returns_false(monkeypatch):
+    """test() returns False when JSON body contains a non-200 code."""
+    recorded: list[dict] = []
+    monkeypatch.setattr(
+        bark_module.httpx,
+        "AsyncClient",
+        lambda timeout: _RecorderClient(recorded, _FakeResponse(200, {"code": 400, "message": "bad key"})),
+    )
+
+    notifier = BarkNotifier(BarkNotificationConfig(device_key="bad-key"))
+    ok = await notifier.test()
+    assert ok is False
+
+
+async def test_bark_test_http_error_returns_false(monkeypatch):
+    """test() returns False when an httpx.HTTPError is raised."""
+    import httpx
+
+    class _ErrorClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_):
+            return None
+
+        async def post(self, url: str, json: dict):
+            raise httpx.ConnectError("connection refused")
+
+    monkeypatch.setattr(bark_module.httpx, "AsyncClient", lambda timeout: _ErrorClient())
+
+    notifier = BarkNotifier(BarkNotificationConfig(device_key="key"))
+    ok = await notifier.test()
+    assert ok is False

@@ -5,7 +5,6 @@ import {
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import addCircleBold from '@iconify/icons-solar/add-circle-bold';
-import disketteBold from '@iconify/icons-solar/diskette-bold';
 import textFieldFocusBold from '@iconify/icons-solar/text-field-focus-bold';
 import tuning2Bold from '@iconify/icons-solar/tuning-2-bold';
 import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
@@ -43,20 +42,28 @@ export default function UserProfilesPage() {
   const isSettingsLoading = settingsLoading || !settingsReady;
 
   const save = useMutation({
-    mutationFn: () => updateSettings({ memory_target_user_ids: targetUserIds }),
+    mutationFn: (ids: string[]) => updateSettings({ memory_target_user_ids: ids }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
   });
 
   function addUserId() {
     const trimmed = newUserId.trim();
-    if (trimmed && !targetUserIds.includes(trimmed)) {
-      setTargetUserIds(ids => [...ids, trimmed]);
-      setNewUserId('');
-    }
+    if (!trimmed) return;
+    setTargetUserIds(prev => {
+      if (prev.includes(trimmed)) return prev;
+      const next = [...prev, trimmed];
+      save.mutate(next);
+      return next;
+    });
+    setNewUserId('');
   }
 
   function removeUserId(id: string) {
-    setTargetUserIds(ids => ids.filter(x => x !== id));
+    setTargetUserIds(prev => {
+      const next = prev.filter(x => x !== id);
+      save.mutate(next);
+      return next;
+    });
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -92,17 +99,7 @@ export default function UserProfilesPage() {
               <p className="text-sm text-default-500">{t('users.settingsDescription')}</p>
             </div>
           </div>
-          <Button
-            size="sm"
-            color="primary"
-            startContent={<Icon icon={disketteBold} fontSize={ICON_SIZES.button} />}
-            isLoading={save.isPending}
-            isDisabled={isSettingsLoading}
-            onPress={() => save.mutate()}
-            className="shrink-0"
-          >
-            {t('common.save')}
-          </Button>
+          {save.isPending && <Spinner size="sm" />}
         </CardHeader>
         <Divider />
         <CardBody className="space-y-4">
@@ -164,7 +161,7 @@ export default function UserProfilesPage() {
             </div>
           </div>
 
-          {save.isSuccess && <p className="text-success text-sm">{t('common.saveSuccess')}</p>}
+          {save.isSuccess && <p className="text-success text-sm">{t('common.saved')}</p>}
           {save.isError && <p className="text-danger text-sm">{t('common.saveFailed')}</p>}
         </CardBody>
       </Card>
