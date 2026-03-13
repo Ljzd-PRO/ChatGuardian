@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Button, Card, CardBody, CardHeader, Input, Spinner, Switch,
@@ -19,6 +19,7 @@ import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
 import playCircleBold from '@iconify/icons-solar/play-circle-bold';
 import { useTranslation } from 'react-i18next';
 import { fetchNotificationsConfig, updateSettings, testNotification } from '../api/settings';
+import { ApiError } from '../api/client';
 import type { AppSettings } from '../api/settings';
 import { ICON_SIZES } from '../constants/iconSizes';
 
@@ -28,6 +29,15 @@ export default function NotificationsPage() {
   const [form, setForm] = useState<Partial<AppSettings>>({});
   const [emailTestState, setEmailTestState] = useState<'idle' | 'loading' | 'success' | 'error' | 'notConfigured'>('idle');
   const [barkTestState, setBarkTestState] = useState<'idle' | 'loading' | 'success' | 'error' | 'notConfigured'>('idle');
+  const testResetTimers = useRef<{ email: ReturnType<typeof setTimeout> | null; bark: ReturnType<typeof setTimeout> | null }>({ email: null, bark: null });
+
+  // Clear timers on unmount to avoid state updates on unmounted component
+  useEffect(() => {
+    return () => {
+      if (testResetTimers.current.email !== null) clearTimeout(testResetTimers.current.email);
+      if (testResetTimers.current.bark !== null) clearTimeout(testResetTimers.current.bark);
+    };
+  }, []);
 
   useEffect(() => {
     if (!data) return;
@@ -54,19 +64,28 @@ export default function NotificationsPage() {
 
   async function handleTest(type: 'email' | 'bark') {
     const setState = type === 'email' ? setEmailTestState : setBarkTestState;
+
+    // Cancel any pending reset timer for this notifier
+    if (testResetTimers.current[type] !== null) {
+      clearTimeout(testResetTimers.current[type]!);
+      testResetTimers.current[type] = null;
+    }
+
     setState('loading');
     try {
       await testNotification(type);
       setState('success');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : '';
-      if (message.includes('400') || message.toLowerCase().includes('not enabled') || message.toLowerCase().includes('not configured')) {
+      if (err instanceof ApiError && err.status === 400) {
         setState('notConfigured');
       } else {
         setState('error');
       }
     }
-    setTimeout(() => setState('idle'), 5000);
+    testResetTimers.current[type] = setTimeout(() => {
+      testResetTimers.current[type] = null;
+      setState('idle');
+    }, 5000);
   }
 
   function testStatusText(state: typeof emailTestState): string | null {

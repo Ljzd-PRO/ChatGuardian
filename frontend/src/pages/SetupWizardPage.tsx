@@ -50,6 +50,7 @@ export default function SetupWizardPage() {
   const [step, setStep] = useState(0);
   const [accountDone, setAccountDone] = useState(false);
   const [nextSaving, setNextSaving] = useState(false);
+  const [stepError, setStepError] = useState('');
 
   const llmStepRef = useRef<StepHandle>(null);
   const adapterStepRef = useRef<StepHandle>(null);
@@ -80,29 +81,42 @@ export default function SetupWizardPage() {
     }
   }, [authLoading, setupRequired, authenticated, accountDone, navigate]);
 
-  async function saveCurrentStep() {
+  async function saveCurrentStep(): Promise<void> {
     const ref = getActiveStepRef();
     if (ref?.current) {
       setNextSaving(true);
-      try { await ref.current.save(); } catch { /* ignore */ }
-      setNextSaving(false);
+      setStepError('');
+      try {
+        await ref.current.save();
+      } finally {
+        setNextSaving(false);
+      }
     }
   }
 
   async function handleNext() {
-    await saveCurrentStep();
-    setStep(s => s + 1);
+    try {
+      await saveCurrentStep();
+      setStep(s => s + 1);
+    } catch {
+      setStepError(t('common.saveFailed'));
+    }
   }
 
   async function handleFinish() {
-    await saveCurrentStep();
-    await refreshSetupState();
-    navigate('/', { replace: true });
+    try {
+      await saveCurrentStep();
+      await refreshSetupState();
+      navigate('/', { replace: true });
+    } catch {
+      setStepError(t('common.saveFailed'));
+    }
   }
 
   /** Prevent clicking steps beyond 0 until account is created */
   function handleStepChange(idx: number) {
     if (!accountDone && idx > 0) return;
+    setStepError('');
     setStep(idx);
   }
 
@@ -151,38 +165,41 @@ export default function SetupWizardPage() {
           <Button
             variant="flat"
             isDisabled={!canGoBack}
-            onPress={() => setStep(s => s - 1)}
+            onPress={() => { setStepError(''); setStep(s => s - 1); }}
             startContent={<Icon icon={arrowLeftBold} fontSize={ICON_SIZES.button} />}
           >
             {t('setup.back')}
           </Button>
-          <div className="flex gap-2">
-            {step > 0 && !isLast && (
-              <Button variant="light" isDisabled={nextSaving} onPress={() => setStep(s => s + 1)}>
-                {t('setup.skip')}
-              </Button>
-            )}
-            {isLast ? (
-              <Button
-                color="primary"
-                isDisabled={!accountDone}
-                isLoading={nextSaving}
-                onPress={handleFinish}
-                endContent={<Icon icon={checkCircleBold} fontSize={ICON_SIZES.button} />}
-              >
-                {t('setup.finish')}
-              </Button>
-            ) : (
-              <Button
-                color="primary"
-                isDisabled={step === 0 && !accountDone}
-                isLoading={nextSaving}
-                onPress={handleNext}
-                endContent={<Icon icon={arrowRightBold} fontSize={ICON_SIZES.button} />}
-              >
-                {t('setup.next')}
-              </Button>
-            )}
+          <div className="flex flex-col items-end gap-2">
+            {stepError && <p className="text-danger text-sm">{stepError}</p>}
+            <div className="flex gap-2">
+              {step > 0 && !isLast && (
+                <Button variant="light" isDisabled={nextSaving} onPress={() => { setStepError(''); setStep(s => s + 1); }}>
+                  {t('setup.skip')}
+                </Button>
+              )}
+              {isLast ? (
+                <Button
+                  color="primary"
+                  isDisabled={!accountDone}
+                  isLoading={nextSaving}
+                  onPress={handleFinish}
+                  endContent={<Icon icon={checkCircleBold} fontSize={ICON_SIZES.button} />}
+                >
+                  {t('setup.finish')}
+                </Button>
+              ) : (
+                <Button
+                  color="primary"
+                  isDisabled={step === 0 && !accountDone}
+                  isLoading={nextSaving}
+                  onPress={handleNext}
+                  endContent={<Icon icon={arrowRightBold} fontSize={ICON_SIZES.button} />}
+                >
+                  {t('setup.next')}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>

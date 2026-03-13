@@ -48,18 +48,22 @@ export default function UserProfilesPage() {
 
   function addUserId() {
     const trimmed = newUserId.trim();
-    if (trimmed && !targetUserIds.includes(trimmed)) {
-      const next = [...targetUserIds, trimmed];
-      setTargetUserIds(next);
-      setNewUserId('');
+    if (!trimmed) return;
+    setTargetUserIds(prev => {
+      if (prev.includes(trimmed)) return prev;
+      const next = [...prev, trimmed];
       save.mutate(next);
-    }
+      return next;
+    });
+    setNewUserId('');
   }
 
   function removeUserId(id: string) {
-    const next = targetUserIds.filter(x => x !== id);
-    setTargetUserIds(next);
-    save.mutate(next);
+    setTargetUserIds(prev => {
+      const next = prev.filter(x => x !== id);
+      save.mutate(next);
+      return next;
+    });
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
