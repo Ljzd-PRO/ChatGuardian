@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button, Card, CardBody, Input, Select, SelectItem, Switch, Spinner,
@@ -39,12 +39,28 @@ import { ICON_SIZES } from '../constants/iconSizes';
 
 const STEP_KEYS = ['account', 'llm', 'adapters', 'notifications'] as const;
 
+interface StepHandle {
+  save: () => Promise<void>;
+}
+
 export default function SetupWizardPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { login, loading: authLoading, setupRequired, authenticated, refreshSetupState } = useAuth();
   const [step, setStep] = useState(0);
   const [accountDone, setAccountDone] = useState(false);
+  const [nextSaving, setNextSaving] = useState(false);
+
+  const llmStepRef = useRef<StepHandle>(null);
+  const adapterStepRef = useRef<StepHandle>(null);
+  const notificationStepRef = useRef<StepHandle>(null);
+
+  function getActiveStepRef() {
+    if (step === 1) return llmStepRef;
+    if (step === 2) return adapterStepRef;
+    if (step === 3) return notificationStepRef;
+    return null;
+  }
 
   const steps = STEP_KEYS.map(k => ({ title: t(`setup.steps.${k}`) }));
 
@@ -64,7 +80,22 @@ export default function SetupWizardPage() {
     }
   }, [authLoading, setupRequired, authenticated, accountDone, navigate]);
 
+  async function saveCurrentStep() {
+    const ref = getActiveStepRef();
+    if (ref?.current) {
+      setNextSaving(true);
+      try { await ref.current.save(); } catch { /* ignore */ }
+      setNextSaving(false);
+    }
+  }
+
+  async function handleNext() {
+    await saveCurrentStep();
+    setStep(s => s + 1);
+  }
+
   async function handleFinish() {
+    await saveCurrentStep();
     await refreshSetupState();
     navigate('/', { replace: true });
   }
@@ -110,9 +141,9 @@ export default function SetupWizardPage() {
                 }}
               />
             )}
-            {step === 1 && <LLMStep />}
-            {step === 2 && <AdapterStep />}
-            {step === 3 && <NotificationStep />}
+            {step === 1 && <LLMStep ref={llmStepRef} />}
+            {step === 2 && <AdapterStep ref={adapterStepRef} />}
+            {step === 3 && <NotificationStep ref={notificationStepRef} />}
           </CardBody>
         </Card>
 
@@ -127,7 +158,7 @@ export default function SetupWizardPage() {
           </Button>
           <div className="flex gap-2">
             {step > 0 && !isLast && (
-              <Button variant="light" onPress={() => setStep(s => s + 1)}>
+              <Button variant="light" isDisabled={nextSaving} onPress={() => setStep(s => s + 1)}>
                 {t('setup.skip')}
               </Button>
             )}
@@ -135,6 +166,7 @@ export default function SetupWizardPage() {
               <Button
                 color="primary"
                 isDisabled={!accountDone}
+                isLoading={nextSaving}
                 onPress={handleFinish}
                 endContent={<Icon icon={checkCircleBold} fontSize={ICON_SIZES.button} />}
               >
@@ -144,7 +176,8 @@ export default function SetupWizardPage() {
               <Button
                 color="primary"
                 isDisabled={step === 0 && !accountDone}
-                onPress={() => setStep(s => s + 1)}
+                isLoading={nextSaving}
+                onPress={handleNext}
                 endContent={<Icon icon={arrowRightBold} fontSize={ICON_SIZES.button} />}
               >
                 {t('setup.next')}
@@ -241,12 +274,10 @@ function AccountStep({ done, onDone }: { done: boolean; onDone: (u: string, p: s
 
 /* ─── Step 2: LLM ─────────────────────────────────────────────────────────── */
 
-function LLMStep() {
+const LLMStep = forwardRef<StepHandle>(function LLMStep(_, ref) {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<Partial<AppSettings> | null>(null);
   const [form, setForm] = useState<Partial<AppSettings>>({});
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
@@ -273,18 +304,14 @@ function LLMStep() {
       .catch(() => setLoadError(true));
   }, []);
 
+  useImperativeHandle(ref, () => ({
+    save: async () => {
+      await updateSettings(form);
+    },
+  }));
+
   if (loadError) return <p className="text-danger text-sm">{t('common.saveFailed')}</p>;
   if (!settings) return <div className="flex justify-center py-8"><Spinner label={t('llm.loading')} /></div>;
-
-  async function handleSave() {
-    setSaving(true);
-    setSaved(false);
-    try {
-      await updateSettings(form);
-      setSaved(true);
-    } catch { /* ignore */ }
-    setSaving(false);
-  }
 
   return (
     <div className="space-y-4">
@@ -387,22 +414,16 @@ function LLMStep() {
           onValueChange={v => setForm(f => ({ ...f, llm_ollama_base_url: v }))}
         />
       </div>
-      <Button color="primary" isLoading={saving} onPress={handleSave}>
-        {t('common.save')}
-      </Button>
-      {saved && <p className="text-success text-sm">{t('common.saveSuccess')}</p>}
     </div>
   );
-}
+});
 
 /* ─── Step 3: Adapters ────────────────────────────────────────────────────── */
 
-function AdapterStep() {
+const AdapterStep = forwardRef<StepHandle>(function AdapterStep(_, ref) {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<Partial<AppSettings> | null>(null);
   const [form, setForm] = useState<Partial<AppSettings>>({});
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     fetchSettings()
@@ -423,14 +444,13 @@ function AdapterStep() {
       .catch(() => { /* ignore */ });
   }, []);
 
-  if (!settings) return <div className="flex justify-center py-8"><Spinner label={t('adapters.loading')} /></div>;
+  useImperativeHandle(ref, () => ({
+    save: async () => {
+      await updateSettings(form);
+    },
+  }));
 
-  async function handleSave() {
-    setSaving(true);
-    setSaved(false);
-    try { await updateSettings(form); setSaved(true); } catch { /* ignore */ }
-    setSaving(false);
-  }
+  if (!settings) return <div className="flex justify-center py-8"><Spinner label={t('adapters.loading')} /></div>;
 
   return (
     <div className="space-y-4">
@@ -507,22 +527,16 @@ function AdapterStep() {
         </div>
       </div>
 
-      <Button color="primary" isLoading={saving} onPress={handleSave}>
-        {t('common.save')}
-      </Button>
-      {saved && <p className="text-success text-sm">{t('common.saveSuccess')}</p>}
     </div>
   );
-}
+});
 
 /* ─── Step 4: Notifications ───────────────────────────────────────────────── */
 
-function NotificationStep() {
+const NotificationStep = forwardRef<StepHandle>(function NotificationStep(_, ref) {
   const { t } = useTranslation();
   const [form, setForm] = useState<Partial<AppSettings>>({});
   const [loaded, setLoaded] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     fetchSettings()
@@ -547,14 +561,13 @@ function NotificationStep() {
       .catch(() => setLoaded(true));
   }, []);
 
-  if (!loaded) return <div className="flex justify-center py-8"><Spinner label={t('notifications.loading')} /></div>;
+  useImperativeHandle(ref, () => ({
+    save: async () => {
+      await updateSettings(form);
+    },
+  }));
 
-  async function handleSave() {
-    setSaving(true);
-    setSaved(false);
-    try { await updateSettings(form); setSaved(true); } catch { /* ignore */ }
-    setSaving(false);
-  }
+  if (!loaded) return <div className="flex justify-center py-8"><Spinner label={t('notifications.loading')} /></div>;
 
   return (
     <div className="space-y-4">
@@ -603,10 +616,6 @@ function NotificationStep() {
           value={form.bark_level ?? ''} onValueChange={v => setForm(f => ({ ...f, bark_level: v.trim() === '' ? null : v }))} />
       </div>
 
-      <Button color="primary" isLoading={saving} onPress={handleSave}>
-        {t('common.save')}
-      </Button>
-      {saved && <p className="text-success text-sm">{t('common.saveSuccess')}</p>}
     </div>
   );
-}
+});
