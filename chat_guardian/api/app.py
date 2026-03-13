@@ -544,8 +544,7 @@ def create_app() -> FastAPI:
         if notifier_type == "email":
             notifier = build_email_notifier_from_settings()
             if notifier is None:
-                from fastapi import HTTPException as _HTTPException
-                raise _HTTPException(
+                raise HTTPException(
                     status_code=400,
                     detail="Email notifier is not enabled or not fully configured.",
                 )
@@ -553,19 +552,16 @@ def create_app() -> FastAPI:
         elif notifier_type == "bark":
             notifier = build_bark_notifier_from_settings()
             if notifier is None:
-                from fastapi import HTTPException as _HTTPException
-                raise _HTTPException(
+                raise HTTPException(
                     status_code=400,
                     detail="Bark notifier is not enabled or not fully configured.",
                 )
             ok = await notifier.test()
         else:
-            from fastapi import HTTPException as _HTTPException
-            raise _HTTPException(status_code=400, detail=f"Unknown notifier type: {notifier_type}")
+            raise HTTPException(status_code=400, detail=f"Unknown notifier type: {notifier_type}")
 
         if not ok:
-            from fastapi import HTTPException as _HTTPException
-            raise _HTTPException(status_code=502, detail="Notification test failed. Check your configuration.")
+            raise HTTPException(status_code=502, detail="Notification test failed. Check your configuration.")
         return {"ok": True}
 
     # ── LLM config ────────────────────────────────────────────────────────────

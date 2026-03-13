@@ -78,6 +78,12 @@ export default function NotificationsPage() {
     }
   }
 
+  function testButtonColor(state: typeof emailTestState): 'success' | 'danger' | 'secondary' {
+    if (state === 'success') return 'success';
+    if (state === 'error' || state === 'notConfigured') return 'danger';
+    return 'secondary';
+  }
+
   if (isLoading) return <div className="flex justify-center h-64"><Spinner label={t('notifications.loading')} /></div>;
 
   return (
@@ -90,7 +96,7 @@ export default function NotificationsPage() {
             <Button
               size="sm"
               variant="flat"
-              color={emailTestState === 'success' ? 'success' : emailTestState === 'error' || emailTestState === 'notConfigured' ? 'danger' : 'secondary'}
+              color={testButtonColor(emailTestState)}
               startContent={<Icon icon={playCircleBold} fontSize={ICON_SIZES.button} />}
               isLoading={emailTestState === 'loading'}
               onPress={() => handleTest('email')}
@@ -159,7 +165,7 @@ export default function NotificationsPage() {
             <Button
               size="sm"
               variant="flat"
-              color={barkTestState === 'success' ? 'success' : barkTestState === 'error' || barkTestState === 'notConfigured' ? 'danger' : 'secondary'}
+              color={testButtonColor(barkTestState)}
               startContent={<Icon icon={playCircleBold} fontSize={ICON_SIZES.button} />}
               isLoading={barkTestState === 'loading'}
               onPress={() => handleTest('bark')}
