@@ -16,6 +16,7 @@ import {
   ModalBody,
   ModalFooter,
   useDisclosure,
+  Divider,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import paperPlaneBold from '@iconify/icons-solar/map-arrow-up-bold';
@@ -40,6 +41,12 @@ import chatBold from '@iconify/icons-solar/chat-round-dots-bold';
 import addBold from '@iconify/icons-solar/add-circle-bold';
 import menuBold from '@iconify/icons-solar/hamburger-menu-bold';
 import penBold from '@iconify/icons-solar/pen-bold';
+import checkCircleBold from '@iconify/icons-solar/check-circle-bold';
+import closeCircleBold from '@iconify/icons-solar/close-circle-bold';
+import arrowDownBold from '@iconify/icons-solar/alt-arrow-down-bold';
+import arrowRightBold from '@iconify/icons-solar/alt-arrow-right-bold';
+import sparklesLinear from '@iconify/icons-solar/stars-line-duotone';
+import keyboardBold from '@iconify/icons-solar/keyboard-bold';
 
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -59,6 +66,27 @@ import {
   type AgentSession,
   type AgentSessionMessage,
 } from '../api/agent';
+
+const messageKeyMap = new WeakMap<AgentMessage, string>();
+
+function getMessageKey(msg: AgentMessage, idx: number): string {
+  const existing = messageKeyMap.get(msg);
+  if (existing) {
+    return existing;
+  }
+
+  let key: string;
+  if (msg.dbId != null) {
+    key = String(msg.dbId);
+  } else if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    key = `tmp-${crypto.randomUUID()}`;
+  } else {
+    key = `tmp-${idx}`;
+  }
+
+  messageKeyMap.set(msg, key);
+  return key;
+}
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
 
@@ -92,80 +120,78 @@ interface ChatMessage {
   dbId?: number;
 }
 
-/* ─── Markdown components for react-markdown ───────────────────────── */
+/* ─── Markdown components ───────────────────────────────────────────── */
 
 const markdownComponents: Components = {
   h1: ({ children }) => (
-    <h2 className="font-bold text-foreground text-lg mt-3 mb-1">{children}</h2>
+    <h2 className="font-bold text-foreground text-lg mt-4 mb-2 leading-tight">{children}</h2>
   ),
   h2: ({ children }) => (
-    <h3 className="font-bold text-foreground text-base mt-3 mb-1">{children}</h3>
+    <h3 className="font-bold text-foreground text-base mt-3 mb-1.5 leading-tight">{children}</h3>
   ),
   h3: ({ children }) => (
-    <h4 className="font-semibold text-foreground text-sm mt-3 mb-1">{children}</h4>
+    <h4 className="font-semibold text-foreground text-sm mt-3 mb-1 leading-tight">{children}</h4>
   ),
   p: ({ children }) => (
-    <p className="text-foreground/80 text-sm my-1 leading-relaxed">{children}</p>
+    <p className="text-foreground/85 text-sm my-1.5 leading-relaxed">{children}</p>
   ),
   ul: ({ children }) => (
-    <ul className="list-disc list-inside space-y-1 my-2 text-foreground/80 text-sm">{children}</ul>
+    <ul className="list-disc list-outside ml-4 space-y-1 my-2 text-foreground/85 text-sm">{children}</ul>
   ),
   ol: ({ children }) => (
-    <ol className="list-decimal list-inside space-y-1 my-2 text-foreground/80 text-sm">{children}</ol>
+    <ol className="list-decimal list-outside ml-4 space-y-1 my-2 text-foreground/85 text-sm">{children}</ol>
   ),
   li: ({ children }) => (
-    <li className="text-foreground/80 text-sm">{children}</li>
+    <li className="text-foreground/85 text-sm leading-relaxed">{children}</li>
   ),
   strong: ({ children }) => (
     <strong className="font-semibold text-foreground">{children}</strong>
   ),
   em: ({ children }) => (
-    <em className="italic">{children}</em>
+    <em className="italic text-foreground/80">{children}</em>
   ),
-  code: ({ className, children }) => {
-    // Block code is handled by `pre` below; standalone `code` is always inline.
-    return (
-      <code className={`bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-mono ${className ?? ''}`}>
-        {children}
-      </code>
-    );
-  },
+  code: ({ className, children }) => (
+    <code className={`bg-primary/10 text-primary px-1.5 py-0.5 rounded-md text-xs font-mono ${className ?? ''}`}>
+      {children}
+    </code>
+  ),
   pre: ({ children }) => (
-    <pre className="bg-content1 border border-divider rounded-lg p-3 my-2 overflow-x-auto text-xs font-mono text-foreground leading-relaxed [&_code]:bg-transparent [&_code]:text-foreground [&_code]:px-0 [&_code]:py-0 [&_code]:rounded-none">
+    <pre className="bg-default-100 dark:bg-default-50/10 border border-divider rounded-xl p-4 my-3 overflow-x-auto text-xs font-mono text-foreground/90 leading-relaxed [&_code]:bg-transparent [&_code]:text-foreground/90 [&_code]:px-0 [&_code]:py-0 [&_code]:rounded-none shadow-inner">
       {children}
     </pre>
   ),
   table: ({ children }) => (
-    <div className="overflow-x-auto my-2">
-      <table className="min-w-full border-collapse border border-divider text-sm">
+    <div className="overflow-x-auto my-3 rounded-lg border border-divider">
+      <table className="min-w-full border-collapse text-sm">
         {children}
       </table>
     </div>
   ),
   thead: ({ children }) => (
-    <thead className="bg-content2">{children}</thead>
+    <thead className="bg-default-100 dark:bg-default-50/10">{children}</thead>
   ),
   th: ({ children }) => (
-    <th className="border border-divider px-3 py-2 text-left font-semibold text-foreground text-xs">
+    <th className="border-b border-divider px-4 py-2.5 text-left font-semibold text-foreground text-xs tracking-wide">
       {children}
     </th>
   ),
   td: ({ children }) => (
-    <td className="border border-divider px-3 py-2 text-foreground/80 text-xs">
+    <td className="border-b border-divider px-4 py-2.5 text-foreground/80 text-xs last:border-b-0">
       {children}
     </td>
   ),
   a: ({ href, children }) => (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+    <a href={href} target="_blank" rel="noopener noreferrer"
+      className="text-primary hover:text-primary/80 underline underline-offset-2 decoration-primary/40 hover:decoration-primary/80 transition-colors">
       {children}
     </a>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="border-l-3 border-primary/50 pl-3 my-2 text-foreground/60 italic">
+    <blockquote className="border-l-4 border-primary/40 pl-4 my-3 text-foreground/60 italic bg-default-100/50 dark:bg-default-50/5 rounded-r-lg py-2 pr-3">
       {children}
     </blockquote>
   ),
-  hr: () => <hr className="border-divider my-3" />,
+  hr: () => <Divider className="my-4" />,
 };
 
 function MarkdownContent({ content }: { content: string }) {
@@ -173,6 +199,22 @@ function MarkdownContent({ content }: { content: string }) {
     <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
       {content}
     </ReactMarkdown>
+  );
+}
+
+/* ─── Typing indicator ──────────────────────────────────────────────── */
+
+function TypingIndicator() {
+  return (
+    <div className="flex items-center gap-1 py-1">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="w-2 h-2 rounded-full bg-foreground/30 animate-bounce"
+          style={{ animationDelay: `${i * 0.15}s`, animationDuration: '0.9s' }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -199,20 +241,24 @@ function CopyButton({ text, t }: { text: string; t: (key: string) => string }) {
   }, [text]);
 
   return (
-    <Tooltip content={copied ? t('agent.copied') : t('agent.copy')}>
+    <Tooltip content={copied ? t('agent.copied') : t('agent.copy')} placement="left">
       <button
         type="button"
         onClick={handleCopy}
-        className="p-1 rounded-md hover:bg-content2 transition-colors text-foreground/40 hover:text-foreground/70"
+        className={`p-1.5 rounded-lg transition-all duration-200 ${
+          copied
+            ? 'bg-success/20 text-success'
+            : 'hover:bg-content3 text-foreground/40 hover:text-foreground/70'
+        }`}
         aria-label={t('agent.copy')}
       >
-        <Icon icon={copyBold} fontSize={14} />
+        <Icon icon={copied ? checkCircleBold : copyBold} fontSize={14} />
       </button>
     </Tooltip>
   );
 }
 
-/* ─── Tool call display ────────────────────────────────────────────── */
+/* ─── Tool call card ────────────────────────────────────────────────── */
 
 function ToolCallCard({ toolCall }: { toolCall: ToolCallInfo }) {
   const [expanded, setExpanded] = useState(false);
@@ -231,32 +277,36 @@ function ToolCallCard({ toolCall }: { toolCall: ToolCallInfo }) {
     'error' in (toolCall.result as Record<string, unknown>);
 
   return (
-    <div className="my-2 rounded-lg border border-divider overflow-hidden">
+    <div className="my-2 rounded-xl border border-divider overflow-hidden shadow-sm">
       <button
         type="button"
-        className="w-full flex items-center gap-2 px-3 py-2 text-left bg-content1 hover:bg-content2 transition-colors"
+        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left bg-default-50/80 dark:bg-default-100/20 hover:bg-default-100/80 dark:hover:bg-default-100/30 transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
-        {toolCall.isLoading ? (
-          <Spinner size="sm" className="w-4 h-4" />
-        ) : isError ? (
-          <span className="text-danger text-sm">✗</span>
-        ) : (
-          <span className="text-success text-sm">✓</span>
-        )}
-        <span className="text-sm font-medium text-foreground flex-1">
+        <div className="flex-shrink-0">
+          {toolCall.isLoading ? (
+            <Spinner size="sm" className="w-4 h-4" color="primary" />
+          ) : isError ? (
+            <Icon icon={closeCircleBold} className="text-danger" fontSize={16} />
+          ) : (
+            <Icon icon={checkCircleBold} className="text-success" fontSize={16} />
+          )}
+        </div>
+        <span className="text-sm font-medium text-foreground flex-1 truncate">
           {toolCall.displayName}
         </span>
-        <span className="text-xs text-foreground/40">
-          {expanded ? '▲' : '▼'}
-        </span>
+        <Icon
+          icon={expanded ? arrowDownBold : arrowRightBold}
+          className="text-foreground/40 flex-shrink-0 transition-transform duration-200"
+          fontSize={14}
+        />
       </button>
       {expanded && (
-        <div className="px-3 py-2 bg-content1/50 border-t border-divider">
+        <div className="px-3.5 py-3 bg-default-50/50 dark:bg-default-50/5 border-t border-divider space-y-3">
           {toolCall.args && (
-            <div className="mb-2">
-              <p className="text-xs text-foreground/50 mb-1">{t('agent.toolArgs')}:</p>
-              <pre className="text-xs bg-content1 border border-divider rounded p-2 overflow-x-auto font-mono text-foreground/70">
+            <div>
+              <p className="text-xs font-medium text-foreground/50 mb-1.5">{t('agent.toolArgs')}</p>
+              <pre className="text-xs bg-default-100 dark:bg-default-50/10 border border-divider rounded-lg p-3 overflow-x-auto font-mono text-foreground/75 leading-relaxed">
                 {(() => {
                   try { return JSON.stringify(JSON.parse(toolCall.args), null, 2); }
                   catch { return toolCall.args; }
@@ -266,9 +316,13 @@ function ToolCallCard({ toolCall }: { toolCall: ToolCallInfo }) {
           )}
           {resultStr && (
             <div>
-              <p className="text-xs text-foreground/50 mb-1">{t('agent.toolResult')}:</p>
-              <pre className="text-xs bg-content1 border border-divider rounded p-2 overflow-x-auto max-h-48 font-mono text-foreground/70">
-                {resultStr.length > MAX_TOOL_RESULT_LENGTH ? resultStr.slice(0, MAX_TOOL_RESULT_LENGTH) + '\n...(truncated)' : resultStr}
+              <p className="text-xs font-medium text-foreground/50 mb-1.5">{t('agent.toolResult')}</p>
+              <pre className={`text-xs border rounded-lg p-3 overflow-x-auto max-h-52 font-mono leading-relaxed ${
+                isError
+                  ? 'bg-danger/5 border-danger/20 text-danger/80'
+                  : 'bg-default-100 dark:bg-default-50/10 border-divider text-foreground/75'
+              }`}>
+                {resultStr.length > MAX_TOOL_RESULT_LENGTH ? resultStr.slice(0, MAX_TOOL_RESULT_LENGTH) + '\n…(truncated)' : resultStr}
               </pre>
             </div>
           )}
@@ -278,7 +332,7 @@ function ToolCallCard({ toolCall }: { toolCall: ToolCallInfo }) {
   );
 }
 
-/* ─── Suggested prompts ────────────────────────────────────────────── */
+/* ─── Capability icons map ──────────────────────────────────────────── */
 
 const CAPABILITY_ICONS: Record<string, typeof widgetBold> = {
   get_dashboard: widgetBold,
@@ -355,12 +409,17 @@ function SessionSidebar({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-divider">
+      {/* Header */}
+      <div className="p-3 border-b border-divider flex-shrink-0">
+        <div className="flex items-center gap-2 px-1 mb-3">
+          <Icon icon={chatBold} className="text-primary" fontSize={16} />
+          <span className="text-sm font-semibold text-foreground">{t('agent.sessions')}</span>
+        </div>
         <Button
           color="primary"
           variant="flat"
           size="sm"
-          className="w-full"
+          className="w-full font-medium"
           startContent={<Icon icon={addBold} fontSize={16} />}
           onPress={onNewSession}
           isDisabled={isStreaming}
@@ -368,35 +427,46 @@ function SessionSidebar({
           {t('agent.newSession')}
         </Button>
       </div>
-      <ScrollShadow className="flex-1 overflow-y-auto">
+
+      {/* Session list */}
+      <ScrollShadow className="flex-1 min-h-0 overflow-y-auto">
         {isLoading ? (
-          <div className="flex justify-center py-8">
-            <Spinner size="sm" />
+          <div className="flex justify-center items-center py-12">
+            <Spinner size="sm" color="primary" />
           </div>
         ) : sessions.length === 0 ? (
-          <div className="text-center py-8 text-foreground/40 text-sm">
-            {t('agent.noSessions')}
+          <div className="flex flex-col items-center justify-center py-12 px-4 gap-2">
+            <Icon icon={chatBold} className="text-foreground/20" fontSize={32} />
+            <p className="text-center text-foreground/40 text-xs">{t('agent.noSessions')}</p>
           </div>
         ) : (
-          <div className="p-2 space-y-1">
+          <div className="p-2 space-y-0.5">
             {sessions.map((session) => (
               <div
                 key={session.session_id}
-                className={`group flex items-center gap-1 px-3 py-2.5 rounded-lg transition-colors ${
+                className={`group flex items-center gap-1.5 px-3 py-2.5 rounded-xl transition-all duration-150 ${
                   isStreaming
                     ? 'cursor-not-allowed opacity-60'
                     : 'cursor-pointer'
                 } ${
                   currentSessionId === session.session_id
-                    ? 'bg-primary/10 text-primary'
-                    : isStreaming ? 'text-foreground' : 'hover:bg-content2 text-foreground'
+                    ? 'bg-primary/15 text-primary shadow-sm'
+                    : isStreaming
+                      ? 'text-foreground'
+                      : 'hover:bg-default-100/80 text-foreground/80 hover:text-foreground'
                 }`}
                 onClick={() => { if (!isStreaming) onSelectSession(session.session_id); }}
               >
-                <Icon icon={chatBold} fontSize={14} className="flex-shrink-0 opacity-50" />
+                <Icon
+                  icon={chatBold}
+                  fontSize={13}
+                  className={`flex-shrink-0 ${
+                    currentSessionId === session.session_id ? 'text-primary' : 'opacity-40'
+                  }`}
+                />
                 {editingId === session.session_id ? (
                   <input
-                    className="flex-1 min-w-0 text-sm bg-content1 border border-divider rounded px-1 py-0.5 text-foreground outline-none"
+                    className="flex-1 min-w-0 text-xs bg-content1 border border-primary/40 rounded-lg px-2 py-1 text-foreground outline-none focus:ring-1 focus:ring-primary/40"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
                     onBlur={commitRename}
@@ -408,7 +478,7 @@ function SessionSidebar({
                     autoFocus
                   />
                 ) : (
-                  <span className="flex-1 min-w-0 text-sm truncate">
+                  <span className="flex-1 min-w-0 text-xs truncate font-medium">
                     {session.title || t('agent.untitledSession')}
                   </span>
                 )}
@@ -416,19 +486,19 @@ function SessionSidebar({
                   <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                     <button
                       type="button"
-                      className="p-1 rounded hover:bg-content3 transition-colors text-foreground/50 hover:text-foreground"
+                      className="p-1 rounded-lg hover:bg-content3 transition-colors text-foreground/40 hover:text-foreground"
                       onClick={(e) => { e.stopPropagation(); startRename(session); }}
                       aria-label={t('agent.rename')}
                     >
-                      <Icon icon={penBold} fontSize={12} />
+                      <Icon icon={penBold} fontSize={11} />
                     </button>
                     <button
                       type="button"
-                      className="p-1 rounded hover:bg-danger/20 transition-colors text-foreground/50 hover:text-danger"
+                      className="p-1 rounded-lg hover:bg-danger/15 transition-colors text-foreground/40 hover:text-danger"
                       onClick={(e) => { e.stopPropagation(); onDeleteSession(session.session_id); }}
                       aria-label={t('agent.deleteSession')}
                     >
-                      <Icon icon={trashBold} fontSize={12} />
+                      <Icon icon={trashBold} fontSize={11} />
                     </button>
                   </div>
                 )}
@@ -503,8 +573,6 @@ export default function AgentChatPage() {
       setMessages([]);
       return;
     }
-    // Skip if we just programmatically created this session (messages are already
-    // managed by handleSubmit; fetching now would race with saveSessionMessage).
     if (skipNextSessionLoadRef.current) {
       skipNextSessionLoadRef.current = false;
       return;
@@ -838,10 +906,10 @@ export default function AgentChatPage() {
   }, []);
 
   return (
-    <div className="flex h-full gap-0">
+    <div className="flex h-full gap-0 rounded-xl overflow-hidden border border-divider shadow-sm bg-background">
       {/* ── Sidebar (desktop) ── */}
       {!isMobile && (
-        <div className="w-64 flex-shrink-0 border-r border-divider bg-content1 rounded-l-xl overflow-hidden">
+        <aside className="w-60 flex-shrink-0 border-r border-divider bg-content1/60 backdrop-blur-sm">
           <SessionSidebar
             sessions={sessions}
             currentSessionId={currentSessionId}
@@ -853,14 +921,14 @@ export default function AgentChatPage() {
             isStreaming={isStreaming}
             t={t}
           />
-        </div>
+        </aside>
       )}
 
-      {/* ── Sidebar (mobile drawer) ── */}
+      {/* ── Sidebar (mobile modal) ── */}
       {isMobile && (
         <Modal isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} placement="center" size="sm" scrollBehavior="inside">
           <ModalContent>
-            <ModalHeader className="pb-1">{t('agent.sessions')}</ModalHeader>
+            <ModalHeader className="pb-1 text-sm font-semibold">{t('agent.sessions')}</ModalHeader>
             <ModalBody className="p-0 min-h-[50vh]">
               <SessionSidebar
                 sessions={sessions}
@@ -879,9 +947,10 @@ export default function AgentChatPage() {
       )}
 
       {/* ── Main chat area ── */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+        {/* Mobile header */}
         {isMobile && (
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-divider">
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-divider bg-content1/50 flex-shrink-0">
             <Button
               isIconOnly
               variant="light"
@@ -891,35 +960,93 @@ export default function AgentChatPage() {
             >
               <Icon icon={menuBold} fontSize={20} />
             </Button>
-            <span className="text-sm font-medium text-foreground truncate flex-1">
-              {t('agent.title')}
-            </span>
+            <div className="flex items-center gap-1.5 flex-1">
+              <Icon icon={cpuBold} className="text-primary" fontSize={16} />
+              <span className="text-sm font-semibold text-foreground">{t('agent.title')}</span>
+            </div>
+            {isStreaming && <Spinner size="sm" color="primary" className="flex-shrink-0" />}
           </div>
         )}
 
-        <ScrollShadow className="flex-1 overflow-y-auto px-2 sm:px-4 pb-4">
-          {showEmptyState ? (
-            <div className="flex flex-col items-center justify-center h-full gap-6 py-8">
-              <div className="text-center space-y-2">
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  <Icon icon={cpuBold} className="text-primary" fontSize={32} />
+        {/* Desktop header bar */}
+        {!isMobile && (
+          <div className="flex items-center justify-between px-5 py-3 border-b border-divider bg-content1/30 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
+                <Icon icon={cpuBold} className="text-primary" fontSize={15} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground leading-none">{t('agent.title')}</p>
+                {currentSessionId &&
+                  (() => {
+                    const currentSession = sessions.find(s => s.session_id === currentSessionId);
+                    if (!currentSession) return null;
+                    return (
+                      <p className="text-xs text-foreground/40 mt-0.5 truncate max-w-xs">
+                        {currentSession.title || t('agent.untitledSession')}
+                      </p>
+                    );
+                  })()}
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {isStreaming && (
+                <div className="flex items-center gap-1.5 mr-1">
+                  <Spinner size="sm" color="primary" />
+                  <span className="text-xs text-foreground/50">{t('agent.thinking')}</span>
                 </div>
-                <h2 className="text-xl font-bold text-foreground">
-                  {t('agent.title')}
-                </h2>
-                <p className="text-sm text-foreground/50 max-w-md">
-                  {t('agent.description')}
-                </p>
+              )}
+              <Tooltip content={t('agent.reset')}>
+                <Button
+                  isIconOnly
+                  variant="light"
+                  size="sm"
+                  onPress={handleReset}
+                  aria-label={t('agent.reset')}
+                  className="text-foreground/50 hover:text-foreground"
+                >
+                  <Icon icon={restartBold} fontSize={16} />
+                </Button>
+              </Tooltip>
+            </div>
+          </div>
+        )}
+
+        {/* ── Messages area ── */}
+        <ScrollShadow
+          className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4"
+          hideScrollBar={false}
+        >
+          {showEmptyState ? (
+            /* ── Empty / welcome state ── */
+            <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-7 py-8">
+              {/* Icon */}
+              <div className="relative">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center shadow-md">
+                  <Icon icon={sparklesLinear} className="text-primary" fontSize={32} />
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-success/20 border-2 border-background flex items-center justify-center">
+                  <Icon icon={cpuBold} className="text-success" fontSize={11} />
+                </div>
               </div>
 
+              {/* Title */}
+              <div className="text-center space-y-2 max-w-sm">
+                <h2 className="text-xl font-bold text-foreground">{t('agent.title')}</h2>
+                <p className="text-sm text-foreground/50 leading-relaxed">{t('agent.description')}</p>
+              </div>
+
+              {/* Capabilities */}
               {capabilities && (
-                <div className="w-full max-w-2xl space-y-4">
+                <div className="w-full max-w-xl space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <Card className="border border-divider">
+                    <Card className="border border-divider shadow-none bg-content1/80">
                       <CardBody className="p-4">
                         <div className="flex items-center gap-2 mb-3">
-                          <Icon icon={chartBold} className="text-primary" fontSize={18} />
-                          <h3 className="font-semibold text-sm text-foreground">
+                          <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Icon icon={chartBold} className="text-primary" fontSize={13} />
+                          </div>
+                          <h3 className="font-semibold text-xs text-foreground/70 uppercase tracking-wide">
                             {t('agent.capabilities.query')}
                           </h3>
                         </div>
@@ -936,8 +1063,8 @@ export default function AgentChatPage() {
                                   size="sm"
                                   variant="flat"
                                   color="default"
-                                  startContent={icon ? <Icon icon={icon} fontSize={12} className="text-foreground/50" /> : undefined}
-                                  className="text-xs"
+                                  startContent={icon ? <Icon icon={icon} fontSize={11} className="text-foreground/50" /> : undefined}
+                                  className="text-xs h-6"
                                 >
                                   {label}
                                 </Chip>
@@ -947,11 +1074,13 @@ export default function AgentChatPage() {
                       </CardBody>
                     </Card>
 
-                    <Card className="border border-divider">
+                    <Card className="border border-divider shadow-none bg-content1/80">
                       <CardBody className="p-4">
                         <div className="flex items-center gap-2 mb-3">
-                          <Icon icon={settingsBold} className="text-primary" fontSize={18} />
-                          <h3 className="font-semibold text-sm text-foreground">
+                          <div className="w-6 h-6 rounded-lg bg-secondary/10 flex items-center justify-center">
+                            <Icon icon={settingsBold} className="text-secondary" fontSize={13} />
+                          </div>
+                          <h3 className="font-semibold text-xs text-foreground/70 uppercase tracking-wide">
                             {t('agent.capabilities.management')}
                           </h3>
                         </div>
@@ -968,8 +1097,8 @@ export default function AgentChatPage() {
                                   size="sm"
                                   variant="flat"
                                   color="default"
-                                  startContent={icon ? <Icon icon={icon} fontSize={12} className="text-foreground/50" /> : undefined}
-                                  className="text-xs"
+                                  startContent={icon ? <Icon icon={icon} fontSize={11} className="text-foreground/50" /> : undefined}
+                                  className="text-xs h-6"
                                 >
                                   {label}
                                 </Chip>
@@ -980,20 +1109,24 @@ export default function AgentChatPage() {
                     </Card>
                   </div>
 
+                  {/* Suggested prompts */}
                   <div>
-                    <p className="text-xs text-foreground/40 mb-2">{t('agent.suggestedPrompts')}</p>
+                    <p className="text-xs text-foreground/40 mb-2 font-medium">{t('agent.suggestedPrompts')}</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {suggestedPrompts.map((prompt) => (
                         <button
                           type="button"
                           key={prompt}
                           onClick={() => handlePromptClick(prompt)}
-                          className="text-left px-3 py-2.5 rounded-lg border border-divider
-                            bg-content1 hover:bg-content2
-                            text-sm text-foreground/60
-                            transition-colors cursor-pointer"
+                          className="text-left px-3.5 py-3 rounded-xl border border-divider
+                            bg-content1/60 hover:bg-content2 hover:border-primary/30
+                            text-sm text-foreground/65 hover:text-foreground/90
+                            transition-all duration-150 cursor-pointer group"
                         >
-                          {prompt}
+                          <div className="flex items-start gap-2">
+                            <Icon icon={sparklesLinear} className="text-primary/40 group-hover:text-primary/70 flex-shrink-0 mt-0.5 transition-colors" fontSize={14} />
+                            <span className="text-xs leading-relaxed">{prompt}</span>
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -1002,7 +1135,8 @@ export default function AgentChatPage() {
               )}
             </div>
           ) : (
-            <div className="space-y-4 py-4">
+            /* ── Message list ── */
+            <div className="space-y-5 py-2">
               {messages.map((msg, idx) => {
                 const isUser = msg.role === 'user';
                 const isLast = idx === messages.length - 1;
@@ -1017,23 +1151,25 @@ export default function AgentChatPage() {
 
                 return (
                   <div
-                    key={idx}
-                    className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+                    key={getMessageKey(msg, idx)}
+                    className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
                   >
+                    {/* AI avatar */}
                     {!isUser && (
-                      <div className="flex-shrink-0 mr-2 mt-1">
-                        <div className="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center">
-                          <Icon icon={cpuBold} className="text-secondary" fontSize={16} />
+                      <div className="flex-shrink-0 mt-0.5">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-secondary/20 to-primary/20 flex items-center justify-center shadow-sm border border-divider">
+                          <Icon icon={cpuBold} className="text-secondary" fontSize={15} />
                         </div>
                       </div>
                     )}
 
-                    <div className={`max-w-[85%] sm:max-w-[80%] flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+                    <div className={`flex flex-col gap-1 ${isUser ? 'items-end max-w-[78%] sm:max-w-[70%]' : 'items-start max-w-[85%] sm:max-w-[80%]'}`}>
+                      {/* Bubble */}
                       <div
-                        className={`group relative rounded-2xl px-4 py-3 shadow-sm ${
+                        className={`group relative rounded-2xl px-4 py-3 ${
                           isUser
-                            ? 'bg-primary text-primary-foreground rounded-br-md'
-                            : 'bg-content2 rounded-bl-md'
+                            ? 'bg-primary text-primary-foreground rounded-br-sm shadow-sm'
+                            : 'bg-content2/80 backdrop-blur-sm rounded-bl-sm shadow-sm border border-divider/50'
                         }`}
                       >
                         {!isUser ? (
@@ -1042,31 +1178,27 @@ export default function AgentChatPage() {
                               <ToolCallCard key={tc.id} toolCall={tc} />
                             ))}
                             {msg.content ? (
-                              <div className="prose-sm">
+                              <div className="prose-sm max-w-none">
                                 <MarkdownContent content={msg.content} />
                               </div>
                             ) : (
-                              showThinking && (
-                                <div className="flex items-center gap-2">
-                                  <Spinner size="sm" />
-                                  <span className="text-sm text-foreground/40">{t('agent.thinking')}</span>
-                                </div>
-                              )
+                              showThinking && <TypingIndicator />
                             )}
                           </>
                         ) : (
-                          <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                         )}
 
+                        {/* Hover action buttons */}
                         {msg.content && !isStreaming && (
-                          <div className={`absolute ${isUser ? '-left-8' : '-right-8'} top-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity`}>
+                          <div className={`absolute ${isUser ? '-left-9' : '-right-9'} top-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150`}>
                             <CopyButton text={msg.content} t={t} />
                             {canDeletePair && currentSessionId && msg.dbId != null && (
-                              <Tooltip content={t('agent.deletePair')}>
+                              <Tooltip content={t('agent.deletePair')} placement="left">
                                 <button
                                   type="button"
                                   onClick={() => requestDeletePair(currentSessionId, msg.dbId as number)}
-                                  className="p-1 rounded-md hover:bg-danger/20 transition-colors text-foreground/40 hover:text-danger"
+                                  className="p-1.5 rounded-lg hover:bg-danger/15 transition-all duration-150 text-foreground/40 hover:text-danger"
                                   aria-label={t('agent.deletePair')}
                                 >
                                   <Icon icon={trashBold} fontSize={14} />
@@ -1077,19 +1209,21 @@ export default function AgentChatPage() {
                         )}
                       </div>
 
+                      {/* Elapsed time */}
                       {!isUser && msg.elapsedMs != null && (!isStreaming || !isLast) && (
-                        <div className="flex items-center gap-1 mt-1.5 px-1">
-                          <Icon icon={clockBold} className="text-foreground/30" fontSize={12} />
-                          <span className="text-xs text-foreground/40">
-                            {t('agent.elapsed', { time: formatElapsed(msg.elapsedMs) })}
+                        <div className="flex items-center gap-1 px-1">
+                          <Icon icon={clockBold} className="text-foreground/25" fontSize={11} />
+                          <span className="text-xs text-foreground/35">
+                            {formatElapsed(msg.elapsedMs)}
                           </span>
                         </div>
                       )}
                     </div>
 
+                    {/* User avatar */}
                     {isUser && (
-                      <div className="flex-shrink-0 ml-2 mt-1">
-                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                      <div className="flex-shrink-0 mt-0.5">
+                        <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center shadow-sm">
                           <span className="text-primary text-xs font-bold">U</span>
                         </div>
                       </div>
@@ -1102,78 +1236,101 @@ export default function AgentChatPage() {
           )}
         </ScrollShadow>
 
-        <div className="border-t border-divider pt-3 pb-2 px-2 sm:px-4">
-          <form onSubmit={handleFormSubmit} className="flex gap-2 items-end">
-            <div className="flex-1">
-              <Textarea
-                ref={textareaRef}
-                value={input}
-                onValueChange={setInput}
-                onKeyDown={handleKeyDown}
-                placeholder={t('agent.inputPlaceholder')}
-                minRows={1}
-                maxRows={5}
-                variant="bordered"
-                size="lg"
-                classNames={{
-                  inputWrapper: 'bg-content1',
-                }}
-                isDisabled={isStreaming}
-              />
+        {/* ── Input area ── */}
+        <div className="flex-shrink-0 border-t border-divider bg-content1/30 px-3 sm:px-5 pt-3 pb-3">
+          <form onSubmit={handleFormSubmit}>
+            <div className="flex gap-2 items-end">
+              <div className="flex-1 relative">
+                <Textarea
+                  ref={textareaRef}
+                  value={input}
+                  onValueChange={setInput}
+                  onKeyDown={handleKeyDown}
+                  placeholder={t('agent.inputPlaceholder')}
+                  minRows={1}
+                  maxRows={6}
+                  variant="bordered"
+                  classNames={{
+                    base: 'w-full',
+                    inputWrapper: [
+                      'bg-content1 border-divider',
+                      'hover:border-primary/50',
+                      'focus-within:!border-primary',
+                      'transition-colors duration-200',
+                      'rounded-xl shadow-sm',
+                    ].join(' '),
+                    input: 'text-sm pr-1 resize-none',
+                  }}
+                  isDisabled={isStreaming}
+                />
+              </div>
+
+              <div className="flex gap-1.5 pb-1 flex-shrink-0">
+                {isStreaming ? (
+                  <Tooltip content={t('agent.stop')}>
+                    <Button
+                      isIconOnly
+                      color="danger"
+                      variant="flat"
+                      size="lg"
+                      onPress={handleStop}
+                      aria-label={t('agent.stop')}
+                      className="rounded-xl"
+                    >
+                      <Icon icon={stopBold} fontSize={20} />
+                    </Button>
+                  </Tooltip>
+                ) : (
+                  <Tooltip content={t('agent.send')}>
+                    <Button
+                      type="submit"
+                      isIconOnly
+                      color="primary"
+                      size="lg"
+                      isDisabled={!input.trim() || isStreaming}
+                      aria-label={t('agent.send')}
+                      className="rounded-xl shadow-sm"
+                    >
+                      <Icon icon={paperPlaneBold} fontSize={20} />
+                    </Button>
+                  </Tooltip>
+                )}
+                {isMobile && (
+                  <Tooltip content={t('agent.reset')}>
+                    <Button
+                      isIconOnly
+                      variant="flat"
+                      size="lg"
+                      onPress={handleReset}
+                      aria-label={t('agent.reset')}
+                      className="rounded-xl"
+                    >
+                      <Icon icon={restartBold} fontSize={18} />
+                    </Button>
+                  </Tooltip>
+                )}
+              </div>
             </div>
-            <div className="flex gap-1 pb-1">
-              {isStreaming ? (
-                <Tooltip content={t('agent.stop')}>
-                  <Button
-                    isIconOnly
-                    color="danger"
-                    variant="flat"
-                    size="lg"
-                    onPress={handleStop}
-                    aria-label={t('agent.stop')}
-                  >
-                    <Icon icon={stopBold} fontSize={20} />
-                  </Button>
-                </Tooltip>
-              ) : (
-                <Tooltip content={t('agent.send')}>
-                  <Button
-                    type="submit"
-                    isIconOnly
-                    color="primary"
-                    size="lg"
-                    isDisabled={!input.trim()}
-                    aria-label={t('agent.send')}
-                  >
-                    <Icon icon={paperPlaneBold} fontSize={20} />
-                  </Button>
-                </Tooltip>
-              )}
-              <Tooltip content={t('agent.reset')}>
-                <Button
-                  isIconOnly
-                  variant="flat"
-                  size="lg"
-                  onPress={handleReset}
-                  aria-label={t('agent.reset')}
-                >
-                  <Icon icon={restartBold} fontSize={20} />
-                </Button>
-              </Tooltip>
+
+            {/* Hint */}
+            <div className="flex items-center gap-1.5 mt-1.5 px-0.5">
+              <Icon icon={keyboardBold} className="text-foreground/25" fontSize={12} />
+              <span className="text-xs text-foreground/30">{t('agent.sendHint')}</span>
             </div>
           </form>
         </div>
       </div>
 
+      {/* ── Delete confirmation modal ── */}
       <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} placement="center" size="sm">
         <ModalContent>
-          <ModalHeader>{t('agent.deletePairTitle')}</ModalHeader>
+          <ModalHeader className="text-base font-semibold">{t('agent.deletePairTitle')}</ModalHeader>
           <ModalBody>
-            <p className="text-sm text-foreground/70">{t('agent.deletePairConfirm')}</p>
+            <p className="text-sm text-foreground/70 leading-relaxed">{t('agent.deletePairConfirm')}</p>
           </ModalBody>
           <ModalFooter>
-            <Button variant="flat" onPress={onDeleteClose}>{t('agent.cancel')}</Button>
-            <Button color="danger" onPress={handleDeletePair}>{t('agent.delete')}</Button>
+            <Button variant="flat" onPress={onDeleteClose} size="sm">{t('agent.cancel')}</Button>
+            <Button color="danger" onPress={handleDeletePair} size="sm">{t('agent.delete')}</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

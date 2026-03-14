@@ -217,5 +217,6 @@ db.sqlite
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+chat_guardian/static/
 .env
 db.sqlite
