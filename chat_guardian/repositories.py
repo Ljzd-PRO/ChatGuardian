@@ -18,7 +18,7 @@ from typing import Any
 from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, delete, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
-from chat_guardian.domain import ChatMessage, ChatType, DetectionResult, DetectionRule, Feedback, UserMemoryFact
+from chat_guardian.domain import ChatMessage, ChatType, DetectionResult, DetectionRule, UserMemoryFact
 
 
 class _Base(DeclarativeBase):
@@ -40,14 +40,6 @@ class _RuleRecord(_Base):
     __tablename__ = "rules"
 
     rule_id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    payload_json: Mapped[str] = mapped_column(Text)
-
-
-class _FeedbackRecord(_Base):
-    __tablename__ = "feedback"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    rule_id: Mapped[str] = mapped_column(String(128), index=True)
     payload_json: Mapped[str] = mapped_column(Text)
 
 
@@ -464,34 +456,6 @@ class RuleRepository:
                     session.delete(row)
                     session.commit()
         return True
-
-
-class FeedbackRepository:
-    """简单的反馈存储（按规则分组）。"""
-
-    def __init__(self, database_url: str | None = None):
-        self._db = _get_db_manager(database_url)
-        self.feedback_by_rule: dict[str, list[Feedback]] = defaultdict(list)
-        self._load_from_db()
-
-    def _load_from_db(self) -> None:
-        if self._db is None:
-            return
-        with self._db.session_factory() as session:
-            rows = session.scalars(select(_FeedbackRecord).order_by(_FeedbackRecord.id)).all()
-        for row in rows:
-            feedback = Feedback.model_validate_json(row.payload_json)
-            self.feedback_by_rule[feedback.rule_id].append(feedback)
-
-    async def add(self, feedback: Feedback) -> None:
-        self.feedback_by_rule[feedback.rule_id].append(feedback)
-        if self._db is not None:
-            with self._db.session_factory() as session:
-                session.add(_FeedbackRecord(rule_id=feedback.rule_id, payload_json=feedback.model_dump_json()))
-                session.commit()
-
-    async def list_by_rule(self, rule_id: str) -> list[Feedback]:
-        return list(self.feedback_by_rule.get(rule_id, []))
 
 
 class MemoryRepository:

@@ -12,7 +12,6 @@ export default defineConfig({
       '/adapters': 'http://localhost:8000',
       '/llm': 'http://localhost:8000',
       '/health': 'http://localhost:8000',
-      '/feedback': 'http://localhost:8000',
       '/suggestions': 'http://localhost:8000',
     },
   },

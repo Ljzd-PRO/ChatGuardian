@@ -49,7 +49,6 @@ from chat_guardian.notifiers import Notifier
 from chat_guardian.repositories import (
     ChatHistoryStore,
     DetectionResultRepository,
-    FeedbackRepository,
     MemoryRepository,
     RuleRepository,
 )
@@ -1193,14 +1192,13 @@ class UserMemoryService:
 
 
 class SuggestionService:
-    """基于用户记忆与反馈生成规则建议的简易服务。
+    """基于用户记忆生成规则建议的简易服务。
 
     当前实现为启发式聚合示例，后续可替换为依赖 LLM 的高级建议生成器。
     """
 
-    def __init__(self, memory_repository: MemoryRepository, feedback_repository: FeedbackRepository):
+    def __init__(self, memory_repository: MemoryRepository):
         self.memory_repository = memory_repository
-        self.feedback_repository = feedback_repository
 
     async def suggest_new_rules(self, user_id: str) -> list[str]:
         logger.debug(f"🔍 为用户 {user_id} 查找可建议的规则")
@@ -1217,31 +1215,6 @@ class SuggestionService:
             for topic, stat in ranked[:5]
         ]
         logger.success(f"✅ 规则建议生成完成 | 数量={len(suggestions)}")
-        return suggestions
-
-    async def suggest_rule_improvements(self, rule_id: str) -> list[str]:
-        logger.debug(f"📊 为规则 {rule_id} 生成改进建议")
-        feedbacks = await self.feedback_repository.list_by_rule(rule_id)
-        logger.debug(f"  ✓ 查询反馈 | 反馈数={len(feedbacks)}")
-
-        if not feedbacks:
-            logger.info(f"ℹ️ 规则 {rule_id} 无反馈，无法生成建议")
-            return ["暂无反馈数据，可先补充正负样本描述。"]
-
-        avg_score = sum(feedback.score for feedback in feedbacks) / len(feedbacks)
-        logger.debug(f"  📈 平均反馈评分={avg_score:.2f}")
-
-        suggestions = []
-        if avg_score < 3:
-            suggestions.append("命中质量偏低：建议补充排除条件并提高触发阈值。")
-        if avg_score >= 4:
-            suggestions.append("命中质量较好：建议补充参数提取字段以提升自动化价值。")
-
-        text_feedback = [feedback.comment for feedback in feedbacks if feedback.comment]
-        if text_feedback:
-            suggestions.append(f"可合并 {len(text_feedback)} 条用户意见形成新版规则描述。")
-
-        logger.success(f"✅ 改进建议生成完成 | 建议数={len(suggestions)}")
         return suggestions
 
 

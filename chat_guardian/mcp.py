@@ -13,7 +13,7 @@ from loguru import logger
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.api.schemas import SuggestResponse
-from chat_guardian.domain import DetectionRule, Feedback, UserMemoryFact
+from chat_guardian.domain import DetectionRule, UserMemoryFact
 from chat_guardian.services import build_llm_client
 from chat_guardian.settings import Settings, settings
 
@@ -134,16 +134,8 @@ class ChatGuardianOperations:
             raise OperationError(f"Rule not found: {rule_id}", status_code=404)
         return {"status": "deleted", "rule_id": rule_id, "deleted": True}
 
-    async def submit_feedback(self, payload: Feedback) -> dict[str, str]:
-        await self.container.feedback_repository.add(payload)
-        return {"status": "accepted"}
-
     async def suggest_new_rules(self, user_id: str) -> SuggestResponse:
         suggestions = await self.container.suggestion_service.suggest_new_rules(user_id)
-        return SuggestResponse(suggestions=suggestions)
-
-    async def suggest_rule_improvements(self, rule_id: str) -> SuggestResponse:
-        suggestions = await self.container.suggestion_service.suggest_rule_improvements(rule_id)
         return SuggestResponse(suggestions=suggestions)
 
     async def get_rule_stats(self) -> dict[str, Any]:
@@ -634,19 +626,6 @@ class ChatGuardianMCPService:
             except OperationError as exc:
                 raise ValueError(str(exc)) from exc
 
-        @self.server.tool(name="feedback_submit", description="提交检测反馈。")
-        async def tool_feedback_submit(feedback: Feedback) -> dict[str, str]:
-            """
-            提交反馈。
-
-            Args:
-                feedback: 反馈实体。
-
-            Returns:
-                dict[str, str]: ``status`` 为 ``\"accepted\"``。
-            """
-            return await self.operations.submit_feedback(feedback)
-
         @self.server.tool(name="suggest_new_rules", description="生成新的规则建议。")
         async def tool_suggest_new_rules(user_id: str) -> dict[str, Any]:
             """
@@ -659,19 +638,6 @@ class ChatGuardianMCPService:
                 dict: ``suggestions`` 列表。
             """
             return self._serialize(await self.operations.suggest_new_rules(user_id))
-
-        @self.server.tool(name="suggest_rule_improvements", description="生成规则改进建议。")
-        async def tool_suggest_rule_improvements(rule_id: str) -> dict[str, Any]:
-            """
-            生成规则改进建议。
-
-            Args:
-                rule_id: 规则 ID。
-
-            Returns:
-                dict: ``suggestions`` 列表。
-            """
-            return self._serialize(await self.operations.suggest_rule_improvements(rule_id))
 
         @self.server.tool(name="rule_stats", description="规则触发统计。")
         async def tool_rule_stats() -> dict[str, Any]:

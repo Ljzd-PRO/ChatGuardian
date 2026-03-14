@@ -1,14 +1,14 @@
 """
 领域模型（domain objects）。
 
-本模块定义了消息事件、规则、检测结果、用户记忆与反馈等核心数据结构，
+本模块定义了消息事件、规则、检测结果、用户记忆等核心数据结构，
 这些类型用于在系统各层（接入、规则引擎、LLM 交互、存储）之间传递数据。
 """
 
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -328,20 +328,4 @@ class UserMemoryFact(BaseModel):
     frequent_contacts: dict[str, FrequentContactStat] = Field(default_factory=dict)
 
 
-class Feedback(BaseModel):
-    """
-    用户对一次规则命中后的反馈记录。
 
-    Attributes:
-        rule_id: 对应规则 ID。
-        event_id: 触发事件 ID。
-        score: 评分（例如 1-5）。
-        comment: 可选的文字说明。
-        created_at: 反馈时间。
-    """
-
-    rule_id: str
-    event_id: str
-    score: int
-    comment: str | None = None
-    created_at: datetime = Field(default_factory=lambda _: datetime.now(timezone.utc))

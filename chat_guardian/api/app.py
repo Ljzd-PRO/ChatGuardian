@@ -36,7 +36,6 @@ from chat_guardian.api.schemas import (
 from chat_guardian.domain import (
     ChatEvent,
     DetectionRule,
-    Feedback,
 )
 from chat_guardian.mcp import (
     ChatGuardianMCPService,
@@ -54,7 +53,6 @@ from chat_guardian.repositories import (
     AgentSessionRepository,
     ChatHistoryStore,
     DetectionResultRepository,
-    FeedbackRepository,
     MemoryRepository,
     RuleRepository,
     SettingsRepository,
@@ -202,7 +200,6 @@ class AppContainer:
             database_url=settings.database_url,
         )
         self.rule_repository = RuleRepository(database_url=settings.database_url)
-        self.feedback_repository = FeedbackRepository(database_url=settings.database_url)
         self.memory_repository = MemoryRepository(database_url=settings.database_url)
         self.detection_result_repository = DetectionResultRepository(database_url=settings.database_url)
         self.admin_credential_repository = AdminCredentialRepository(database_url=settings.database_url)
@@ -211,7 +208,7 @@ class AppContainer:
         self.llm_client = build_llm_client()
         self.context_service = ContextWindowService(self.chat_history_store)
 
-        self.suggestion_service = SuggestionService(self.memory_repository, self.feedback_repository)
+        self.suggestion_service = SuggestionService(self.memory_repository)
         self.user_memory_service = UserMemoryService(self.llm_client, self.memory_repository,
                                                      self.context_service)
         notifiers = build_notifiers_from_settings()
@@ -394,16 +391,6 @@ def create_app() -> FastAPI:
         except OperationError as exc:
             raise _to_http_error(exc) from exc
 
-    @app.post("/feedback")
-    async def submit_feedback(payload: Feedback) -> dict[str, str]:
-        """
-        提交检测结果的反馈。
-
-        Args:
-            payload: `Feedback` 对象，包含评分与备注。
-        """
-        return await operations.submit_feedback(payload)
-
     @app.get("/suggestions/new-rules/{user_id}", response_model=SuggestResponse)
     async def suggest_new_rules(user_id: str) -> SuggestResponse:
         """
@@ -413,16 +400,6 @@ def create_app() -> FastAPI:
             user_id: 目标用户 ID。
         """
         return await operations.suggest_new_rules(user_id)
-
-    @app.get("/suggestions/rule-improvements/{rule_id}", response_model=SuggestResponse)
-    async def suggest_rule_improvements(rule_id: str) -> SuggestResponse:
-        """
-        针对指定规则生成改进建议。
-
-        Args:
-            rule_id: 规则 ID。
-        """
-        return await operations.suggest_rule_improvements(rule_id)
 
     @app.get("/api/rule_stats")
     async def get_rule_stats():
