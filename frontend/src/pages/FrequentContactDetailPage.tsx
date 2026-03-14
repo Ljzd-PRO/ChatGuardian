@@ -19,17 +19,11 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchUserProfile } from '../api/users';
 import { ICON_SIZES } from '../constants/iconSizes';
+import { parseBackendDate } from '../utils/dates';
 
 /* ── Constants ──────────────────────────────────────────────────────── */
 
 const ROWS_PER_PAGE = 10;
-
-/** Parse backend timestamps that arrive as "YYYY-MM-DD HH:MM:SS" (UTC).
- *  Replacing the space with "T" and appending "Z" gives a valid ISO-8601
- *  string that all browsers parse correctly. */
-function parseBackendDate(s: string): Date {
-  return new Date(s.replace(' ', 'T') + 'Z');
-}
 
 const TOPIC_COL_STYLES: Record<string, string> = {
   topic:     'w-48 min-w-[12rem]',

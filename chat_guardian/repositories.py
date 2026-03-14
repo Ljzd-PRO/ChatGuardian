@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, delete, select, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from chat_guardian.domain import ChatMessage, ChatType, DetectionResult, DetectionRule, UserMemoryFact
@@ -113,14 +114,19 @@ class _RepositoryDatabase:
 
     def _migrate(self) -> None:
         """Apply incremental schema migrations for new columns added after initial creation."""
+        from loguru import logger
         with self.engine.connect() as conn:
-            # Add result_id column to detection_results if it doesn't exist yet
+            # Add result_id column to detection_results if it doesn't exist yet.
+            # OperationalError is raised when the column already exists; any other
+            # exception indicates a genuine failure that we should surface.
             try:
                 conn.execute(text("ALTER TABLE detection_results ADD COLUMN result_id TEXT"))
                 conn.commit()
-            except Exception:
-                pass  # Column already exists
-            # Backfill result_id for rows that were inserted before this migration
+            except OperationalError as exc:
+                if "duplicate column" not in str(exc).lower() and "already exists" not in str(exc).lower():
+                    logger.warning(f"⚠️ Migration: unexpected error adding result_id column: {exc}")
+            # Backfill result_id for rows that were inserted before this migration.
+            # json_extract is SQLite-specific; on other backends this is a no-op.
             try:
                 conn.execute(
                     text(
@@ -129,8 +135,8 @@ class _RepositoryDatabase:
                     )
                 )
                 conn.commit()
-            except Exception:
-                pass  # json_extract not available on this DB backend; backfill skipped
+            except OperationalError as exc:
+                logger.debug(f"Migration backfill skipped (DB may not support json_extract): {exc}")
 
 
 def normalize_database_url(database_url: str) -> str:
