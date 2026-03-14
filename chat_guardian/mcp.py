@@ -295,6 +295,64 @@ class ChatGuardianOperations:
             raise OperationError(f"User not found: {user_id}", status_code=404)
         return profile
 
+    async def delete_user_profile(self, user_id: str) -> dict[str, Any]:
+        deleted = await self.container.memory_repository.delete_profile(user_id)
+        if not deleted:
+            raise OperationError(f"User not found: {user_id}", status_code=404)
+        return {"status": "deleted", "user_id": user_id}
+
+    async def get_rule_stat(self, rule_id: str) -> dict[str, Any]:
+        """获取指定规则的触发统计数据（包含完整记录）。"""
+        rule = await self.container.rule_repository.get(rule_id)
+        if not rule:
+            raise OperationError(f"Rule not found: {rule_id}", status_code=404)
+
+        results = self.container.detection_result_repository.results_by_rule.get(rule_id, [])
+        triggered_results = [r for r in results if r.decision.triggered]
+
+        records = []
+        for r in triggered_results:
+            records.append(
+                {
+                    "id": r.result_id,
+                    "result_id": r.result_id,
+                    "event_id": r.event_id,
+                    "rule_id": r.rule_id,
+                    "adapter": r.adapter,
+                    "chat_type": r.chat_type,
+                    "chat_id": r.chat_id,
+                    "message_id": r.message_id,
+                    "trigger_time": r.generated_at.isoformat(),
+                    "confidence": round(r.decision.confidence, 2),
+                    "result": "Triggered (Suppressed)" if r.trigger_suppressed else "Triggered",
+                    "trigger_suppressed": r.trigger_suppressed,
+                    "suppression_reason": r.suppression_reason,
+                    "rule_name": rule.name,
+                    "messages": [
+                        {"sender": m.sender_name or m.sender_id, "content": str(m)}
+                        for m in r.context_messages
+                    ],
+                    "extracted_params": r.decision.extracted_params,
+                    "reason": r.decision.reason,
+                }
+            )
+
+        return {
+            "rule_id": rule.rule_id,
+            "rule_name": rule.name,
+            "description": rule.description,
+            "count": len(triggered_results),
+            "records": sorted(records, key=lambda x: x["trigger_time"], reverse=True),
+        }
+
+    async def delete_rule_records(self, rule_id: str, record_ids: list[str] | None = None) -> dict[str, Any]:
+        """删除指定规则的触发记录。若提供 record_ids 则只删除这些，否则删除全部。"""
+        rule = await self.container.rule_repository.get(rule_id)
+        if not rule:
+            raise OperationError(f"Rule not found: {rule_id}", status_code=404)
+        deleted = await self.container.detection_result_repository.delete_by_rule(rule_id, record_ids)
+        return {"deleted": deleted}
+
     @staticmethod
     def _settings_subset() -> Settings:
         return settings

@@ -493,6 +493,19 @@ class MemoryRepository:
         """获取指定用户的画像，不存在则返回 None。"""
         return self.profiles.get(user_id)
 
+    async def delete_profile(self, user_id: str) -> bool:
+        """删除指定用户的画像，返回是否成功删除。"""
+        if user_id not in self.profiles:
+            return False
+        del self.profiles[user_id]
+        if self._db is not None:
+            with self._db.session_factory() as session:
+                session.execute(
+                    delete(_MemoryFactRecord).where(_MemoryFactRecord.user_id == user_id)
+                )
+                session.commit()
+        return True
+
 
 class DetectionResultRepository:
     """按规则索引检测结果，并维护最近触发结果的 O(1) 查询结构。"""
@@ -546,6 +559,57 @@ class DetectionResultRepository:
     async def list_by_rule(self, rule_id: str) -> list[DetectionResult]:
         """返回指定规则的全部检测结果。"""
         return list(self.results_by_rule.get(rule_id, []))
+
+    async def delete_by_rule(self, rule_id: str, result_ids: list[str] | None = None) -> int:
+        """删除指定规则的检测结果。若提供 result_ids 则只删除这些记录，否则删除该规则的全部记录。返回删除数量。"""
+        rule_results = self.results_by_rule.get(rule_id, [])
+        if not rule_results:
+            return 0
+
+        if result_ids is not None:
+            id_set = set(result_ids)
+            to_remove = [r for r in rule_results if r.result_id in id_set]
+        else:
+            to_remove = list(rule_results)
+
+        removed_ids = {r.result_id for r in to_remove}
+        if not removed_ids:
+            return 0
+
+        self.results = [r for r in self.results if r.result_id not in removed_ids]
+        self.results_by_rule[rule_id] = [r for r in rule_results if r.result_id not in removed_ids]
+        if not self.results_by_rule[rule_id]:
+            del self.results_by_rule[rule_id]
+            self.last_triggered_by_rule.pop(rule_id, None)
+            self.last_triggered_message_ids.pop(rule_id, None)
+        else:
+            remaining_triggered = [r for r in self.results_by_rule[rule_id]
+                                   if r.decision.triggered and not r.trigger_suppressed]
+            if remaining_triggered:
+                last = remaining_triggered[-1]
+                self.last_triggered_by_rule[rule_id] = last
+                self.last_triggered_message_ids[rule_id] = {m.message_id for m in last.context_messages}
+            else:
+                self.last_triggered_by_rule.pop(rule_id, None)
+                self.last_triggered_message_ids.pop(rule_id, None)
+
+        if self._db is not None:
+            with self._db.session_factory() as session:
+                if result_ids is not None:
+                    for rid in removed_ids:
+                        session.execute(
+                            delete(_DetectionResultRecord).where(
+                                _DetectionResultRecord.rule_id == rule_id,
+                                _DetectionResultRecord.payload_json.contains(rid),
+                            )
+                        )
+                else:
+                    session.execute(
+                        delete(_DetectionResultRecord).where(_DetectionResultRecord.rule_id == rule_id)
+                    )
+                session.commit()
+
+        return len(removed_ids)
 
     async def contains_message_in_last_triggered(self, rule_id: str, message_id: str) -> bool:
         """O(1) 判断某消息是否在该规则最近一次“已触发且未抑制”的结果里。"""

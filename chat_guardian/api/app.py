@@ -493,6 +493,45 @@ def create_app() -> FastAPI:
         except OperationError as exc:
             raise _to_http_error(exc) from exc
 
+    @app.delete("/api/user_profiles/{user_id}")
+    async def delete_user_profile(user_id: str):
+        """
+        删除指定用户的画像。
+
+        Args:
+            user_id: 用户 ID。
+        Raises:
+            HTTPException: 404 当用户不存在。
+        """
+        try:
+            return await operations.delete_user_profile(user_id)
+        except OperationError as exc:
+            raise _to_http_error(exc) from exc
+
+    # ── Rule Stats (per-rule) ────────────────────────────────────────────────
+
+    @app.get("/api/rule_stats/{rule_id}")
+    async def get_rule_stat(rule_id: str):
+        """获取指定规则的触发统计数据。"""
+        try:
+            return await operations.get_rule_stat(rule_id)
+        except OperationError as exc:
+            raise _to_http_error(exc) from exc
+
+    @app.delete("/api/rule_stats/{rule_id}/records")
+    async def delete_rule_records(rule_id: str, payload=Body(default={"record_ids": None})):
+        """
+        删除指定规则的触发记录。
+
+        Request Body:
+            record_ids: 可选，待删除记录 ID 列表。为 null 时清空全部。
+        """
+        try:
+            record_ids = payload.get("record_ids") if isinstance(payload, dict) else None
+            return await operations.delete_rule_records(rule_id, record_ids)
+        except OperationError as exc:
+            raise _to_http_error(exc) from exc
+
     # ── Settings ──────────────────────────────────────────────────────────────
 
     @app.get("/api/settings")

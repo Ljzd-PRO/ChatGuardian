@@ -15,6 +15,7 @@ import LoginPage          from './pages/LoginPage';
 import SetupWizardPage    from './pages/SetupWizardPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import AgentChatPage      from './pages/AgentChatPage';
+import UserProfileDetailPage from './pages/UserProfileDetailPage';
 
 export const router = createBrowserRouter([
   {
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
       { path: 'rules',            element: <RulesPage /> },
       { path: 'stats',            element: <TriggerStatsPage /> },
       { path: 'users',            element: <UserProfilesPage /> },
+      { path: 'users/:userId',     element: <UserProfileDetailPage /> },
       { path: 'adapters',         element: <AdaptersPage /> },
       { path: 'llm',              element: <LLMPage /> },
       { path: 'notifications',    element: <NotificationsPage /> },
