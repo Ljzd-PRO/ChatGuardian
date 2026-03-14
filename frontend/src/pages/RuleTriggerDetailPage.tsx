@@ -101,6 +101,7 @@ export default function RuleTriggerDetailPage() {
 
   const [adapterFilter, setAdapterFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  // chat_type is excluded because it has its own dedicated filter dropdown
   const [searchField, setSearchField] = useState<'reason' | 'chat_id' | 'adapter'>('reason');
   const [query, setQuery] = useState('');
 
