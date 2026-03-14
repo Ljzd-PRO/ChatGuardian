@@ -956,11 +956,16 @@ export default function AgentChatPage() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground leading-none">{t('agent.title')}</p>
-                {currentSessionId && sessions.find(s => s.session_id === currentSessionId) && (
-                  <p className="text-xs text-foreground/40 mt-0.5 truncate max-w-xs">
-                    {sessions.find(s => s.session_id === currentSessionId)?.title || t('agent.untitledSession')}
-                  </p>
-                )}
+                {currentSessionId &&
+                  (() => {
+                    const currentSession = sessions.find(s => s.session_id === currentSessionId);
+                    if (!currentSession) return null;
+                    return (
+                      <p className="text-xs text-foreground/40 mt-0.5 truncate max-w-xs">
+                        {currentSession.title || t('agent.untitledSession')}
+                      </p>
+                    );
+                  })()}
               </div>
             </div>
             <div className="flex items-center gap-1.5">
