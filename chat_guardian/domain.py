@@ -326,6 +326,3 @@ class UserMemoryFact(BaseModel):
     interests: dict[str, InterestTopicStat] = Field(default_factory=dict)
     active_groups: list[ActiveGroupStat] = Field(default_factory=list)
     frequent_contacts: dict[str, FrequentContactStat] = Field(default_factory=dict)
-
-
-
