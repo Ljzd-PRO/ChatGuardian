@@ -61,7 +61,7 @@ def live_server():
         "--port", str(port),
         "--log-level", "warning",
     ]
-    env = {**os.environ, "CHAT_GUARDIAN_DATABASE_URL": "sqlite:///:memory:"}
+    env = {**os.environ, "CHAT_GUARDIAN_DATABASE_URL": "sqlite:///./test.sqlite"}
     proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     assert _wait_for_port("127.0.0.1", port), "Backend failed to start within 15 s"
     yield f"http://127.0.0.1:{port}"
@@ -81,7 +81,7 @@ def auth_token(live_server):
     payload = json.dumps({"username": "admin", "password": "password123"}).encode()
     headers = {"Content-Type": "application/json"}
 
-    # Register admin (server uses sqlite:///:memory: so it's always fresh).
+    # Register admin (server uses sqlite:///./test.sqlite).
     # Accept 400 only when the body confirms admin is already configured – any
     # other 400 (e.g. validation error) re-raises to fail the test clearly.
     req = urllib.request.Request(
