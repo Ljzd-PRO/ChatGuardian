@@ -25,6 +25,13 @@ import { ICON_SIZES } from '../constants/iconSizes';
 
 const ROWS_PER_PAGE = 10;
 
+/** Parse backend timestamps that arrive as "YYYY-MM-DD HH:MM:SS" (UTC).
+ *  Replacing the space with "T" and appending "Z" gives a valid ISO-8601
+ *  string that all browsers parse correctly. */
+function parseBackendDate(s: string): Date {
+  return new Date(s.replace(' ', 'T') + 'Z');
+}
+
 const INTEREST_COL_STYLES: Record<string, string> = {
   topic:        'w-40 min-w-[10rem]',
   score:        'w-24 min-w-[6rem]',
@@ -96,7 +103,7 @@ export default function UserProfileDetailPage() {
         case 'score':
           return (a.score - b.score) * dir;
         case 'last_active':
-          return (new Date(a.last_active).getTime() - new Date(b.last_active).getTime()) * dir;
+          return (parseBackendDate(a.last_active).getTime() - parseBackendDate(b.last_active).getTime()) * dir;
         default:
           return 0;
       }
@@ -314,7 +321,7 @@ export default function UserProfileDetailPage() {
                     {row.score.toFixed(2)}
                   </TableCell>
                   <TableCell className={cn('text-xs text-default-400', INTEREST_COL_STYLES.last_active)}>
-                    {new Date(row.last_active).toLocaleString()}
+                    {parseBackendDate(row.last_active).toLocaleString()}
                   </TableCell>
                   <TableCell className={INTEREST_COL_STYLES.related_chat}>
                     <div className="flex flex-wrap gap-1">
@@ -388,7 +395,7 @@ export default function UserProfileDetailPage() {
                     {row.interaction_count}
                   </TableCell>
                   <TableCell className={cn('text-xs text-default-400', CONTACT_COL_STYLES.last_interact)}>
-                    {new Date(row.last_interact).toLocaleString()}
+                    {parseBackendDate(row.last_interact).toLocaleString()}
                   </TableCell>
                   <TableCell className={CONTACT_COL_STYLES.related_topics}>
                     <div className="flex flex-wrap gap-1">

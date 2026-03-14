@@ -24,6 +24,13 @@ import { ICON_SIZES } from '../constants/iconSizes';
 
 const ROWS_PER_PAGE = 10;
 
+/** Parse backend timestamps that arrive as "YYYY-MM-DD HH:MM:SS" (UTC).
+ *  Replacing the space with "T" and appending "Z" gives a valid ISO-8601
+ *  string that all browsers parse correctly. */
+function parseBackendDate(s: string): Date {
+  return new Date(s.replace(' ', 'T') + 'Z');
+}
+
 const TOPIC_COL_STYLES: Record<string, string> = {
   topic:     'w-48 min-w-[12rem]',
   score:     'w-24 min-w-[6rem]',
@@ -82,7 +89,7 @@ export default function FrequentContactDetailPage() {
       switch (column) {
         case 'score': return (a.score - b.score) * dir;
         case 'topic': return a.topic.localeCompare(b.topic) * dir;
-        case 'last_talk': return (new Date(a.last_talk).getTime() - new Date(b.last_talk).getTime()) * dir;
+        case 'last_talk': return (parseBackendDate(a.last_talk).getTime() - parseBackendDate(b.last_talk).getTime()) * dir;
         default: return 0;
       }
     });
@@ -214,7 +221,7 @@ export default function FrequentContactDetailPage() {
             </Chip>
             {contact.last_interact && (
               <Chip size="sm" variant="flat" startContent={<Icon icon={clockCircleBold} fontSize={ICON_SIZES.chip} />}>
-                {new Date(contact.last_interact).toLocaleString()}
+                {parseBackendDate(contact.last_interact).toLocaleString()}
               </Chip>
             )}
           </div>
@@ -263,7 +270,7 @@ export default function FrequentContactDetailPage() {
                     {row.score}
                   </TableCell>
                   <TableCell className={cn('text-xs text-default-400', TOPIC_COL_STYLES.last_talk)}>
-                    {new Date(row.last_talk).toLocaleString()}
+                    {parseBackendDate(row.last_talk).toLocaleString()}
                   </TableCell>
                 </TableRow>
               ))}

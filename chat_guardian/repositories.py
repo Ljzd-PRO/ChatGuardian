@@ -15,7 +15,7 @@ from collections import defaultdict, deque
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, delete, select
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, delete, select, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from chat_guardian.domain import ChatMessage, ChatType, DetectionResult, DetectionRule, UserMemoryFact
@@ -56,6 +56,7 @@ class _DetectionResultRecord(_Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     rule_id: Mapped[str] = mapped_column(String(128), index=True)
+    result_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     generated_at: Mapped[datetime] = mapped_column(DateTime)
     triggered: Mapped[bool] = mapped_column(Boolean, index=True)
     trigger_suppressed: Mapped[bool] = mapped_column(Boolean, index=True)
@@ -108,6 +109,28 @@ class _RepositoryDatabase:
         self.engine = create_engine(normalized_url, **engine_kwargs)
         self.session_factory = sessionmaker(bind=self.engine, expire_on_commit=False)
         _Base.metadata.create_all(self.engine)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        """Apply incremental schema migrations for new columns added after initial creation."""
+        with self.engine.connect() as conn:
+            # Add result_id column to detection_results if it doesn't exist yet
+            try:
+                conn.execute(text("ALTER TABLE detection_results ADD COLUMN result_id TEXT"))
+                conn.commit()
+            except Exception:
+                pass  # Column already exists
+            # Backfill result_id for rows that were inserted before this migration
+            try:
+                conn.execute(
+                    text(
+                        "UPDATE detection_results SET result_id = json_extract(payload_json, '$.result_id')"
+                        " WHERE result_id IS NULL"
+                    )
+                )
+                conn.commit()
+            except Exception:
+                pass  # json_extract not available on this DB backend; backfill skipped
 
 
 def normalize_database_url(database_url: str) -> str:
@@ -543,6 +566,7 @@ class DetectionResultRepository:
                 session.add(
                     _DetectionResultRecord(
                         rule_id=result.rule_id,
+                        result_id=result.result_id,
                         generated_at=result.generated_at,
                         triggered=result.decision.triggered,
                         trigger_suppressed=result.trigger_suppressed,
@@ -596,13 +620,13 @@ class DetectionResultRepository:
         if self._db is not None:
             with self._db.session_factory() as session:
                 if result_ids is not None:
-                    for rid in removed_ids:
-                        session.execute(
-                            delete(_DetectionResultRecord).where(
-                                _DetectionResultRecord.rule_id == rule_id,
-                                _DetectionResultRecord.payload_json.contains(rid),
-                            )
+                    # Delete by result_id column (exact, indexed, single query)
+                    session.execute(
+                        delete(_DetectionResultRecord).where(
+                            _DetectionResultRecord.rule_id == rule_id,
+                            _DetectionResultRecord.result_id.in_(list(removed_ids)),
                         )
+                    )
                 else:
                     session.execute(
                         delete(_DetectionResultRecord).where(_DetectionResultRecord.rule_id == rule_id)

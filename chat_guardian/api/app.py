@@ -103,6 +103,10 @@ class DeleteMessagePairRequest(BaseModel):
     user_message_id: int
 
 
+class DeleteRuleRecordsRequest(BaseModel):
+    record_ids: list[str] | None = None
+
+
 @asynccontextmanager
 async def _app_lifespan(app: FastAPI):
     """应用生命周期管理：启动时自动启动 adapters，关闭时自动停止。"""
@@ -519,7 +523,7 @@ def create_app() -> FastAPI:
             raise _to_http_error(exc) from exc
 
     @app.delete("/api/rule_stats/{rule_id}/records")
-    async def delete_rule_records(rule_id: str, payload=Body(default={"record_ids": None})):
+    async def delete_rule_records(rule_id: str, payload: DeleteRuleRecordsRequest):
         """
         删除指定规则的触发记录。
 
@@ -527,8 +531,7 @@ def create_app() -> FastAPI:
             record_ids: 可选，待删除记录 ID 列表。为 null 时清空全部。
         """
         try:
-            record_ids = payload.get("record_ids") if isinstance(payload, dict) else None
-            return await operations.delete_rule_records(rule_id, record_ids)
+            return await operations.delete_rule_records(rule_id, payload.record_ids)
         except OperationError as exc:
             raise _to_http_error(exc) from exc
 
