@@ -214,7 +214,7 @@ export default function FrequentContactDetailPage() {
             </Chip>
             {contact.last_interact && (
               <Chip size="sm" variant="flat" startContent={<Icon icon={clockCircleBold} fontSize={ICON_SIZES.chip} />}>
-                {contact.last_interact}
+                {new Date(contact.last_interact).toLocaleString()}
               </Chip>
             )}
           </div>
@@ -263,7 +263,7 @@ export default function FrequentContactDetailPage() {
                     {row.score}
                   </TableCell>
                   <TableCell className={cn('text-xs text-default-400', TOPIC_COL_STYLES.last_talk)}>
-                    {row.last_talk}
+                    {new Date(row.last_talk).toLocaleString()}
                   </TableCell>
                 </TableRow>
               ))}
