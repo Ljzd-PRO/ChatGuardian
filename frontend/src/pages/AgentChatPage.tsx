@@ -67,6 +67,27 @@ import {
   type AgentSessionMessage,
 } from '../api/agent';
 
+const messageKeyMap = new WeakMap<AgentMessage, string>();
+
+function getMessageKey(msg: AgentMessage, idx: number): string {
+  const existing = messageKeyMap.get(msg);
+  if (existing) {
+    return existing;
+  }
+
+  let key: string;
+  if (msg.dbId != null) {
+    key = String(msg.dbId);
+  } else if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    key = `tmp-${crypto.randomUUID()}`;
+  } else {
+    key = `tmp-${idx}`;
+  }
+
+  messageKeyMap.set(msg, key);
+  return key;
+}
+
 /* ─── Constants ─────────────────────────────────────────────────────── */
 
 const MAX_TOOL_RESULT_LENGTH = 2000;
@@ -1130,7 +1151,7 @@ export default function AgentChatPage() {
 
                 return (
                   <div
-                    key={idx}
+                    key={getMessageKey(msg, idx)}
                     className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
                   >
                     {/* AI avatar */}
