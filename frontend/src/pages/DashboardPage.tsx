@@ -6,6 +6,7 @@ import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
 import pulse2Bold from '@iconify/icons-solar/pulse-2-bold';
 import shieldCheckBold from '@iconify/icons-solar/shield-check-bold';
 import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
+import hashtagCircleBold from '@iconify/icons-solar/hashtag-circle-bold';
 import { useTranslation } from 'react-i18next';
 import TriggerChart from '../components/charts/TriggerChart';
 import { fetchDashboard } from '../api/dashboard';
@@ -13,6 +14,16 @@ import { fetchAdapters } from '../api/adapters';
 import { fetchRuleStats } from '../api/stats';
 import { ICON_SIZES } from '../constants/iconSizes';
 import { Link } from 'react-router-dom';
+
+function formatTriggerTime(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, {
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  });
+}
 
 export default function DashboardPage() {
   const { t } = useTranslation();
@@ -197,13 +208,19 @@ export default function DashboardPage() {
             <div className="space-y-2">
               {recentTriggers.map(r => (
                 <div key={r.id} className="flex items-start justify-between gap-2 py-2 border-b border-divider last:border-0">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-default-800">{r.rule_name}</p>
-                    <p className="text-xs text-default-500">{r.reason}</p>
+                    <p className="text-xs text-default-500 truncate">{r.reason}</p>
+                    {r.chat_id && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Icon icon={hashtagCircleBold} fontSize={12} className="text-default-400" />
+                        <span className="text-xs text-default-400">{r.chat_id}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="text-right shrink-0">
                     <Chip size="sm" color="warning" variant="flat">{(r.confidence * 100).toFixed(0)}%</Chip>
-                    <p className="text-xs text-default-400 mt-1">{r.trigger_time}</p>
+                    <p className="text-xs text-default-400 mt-1">{formatTriggerTime(r.trigger_time)}</p>
                   </div>
                 </div>
               ))}

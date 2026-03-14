@@ -16,6 +16,7 @@ export interface AgentEvent {
 export interface AgentMessage {
   role: 'user' | 'assistant';
   content: string;
+  dbId?: number;
 }
 
 export interface ToolDisplayNames {

@@ -4,7 +4,10 @@ import AuthGuard from './components/auth/AuthGuard';
 import DashboardPage      from './pages/DashboardPage';
 import RulesPage          from './pages/RulesPage';
 import TriggerStatsPage   from './pages/TriggerStatsPage';
+import RuleTriggerDetailPage from './pages/RuleTriggerDetailPage';
 import UserProfilesPage   from './pages/UserProfilesPage';
+import UserProfileDetailPage from './pages/UserProfileDetailPage';
+import FrequentContactDetailPage from './pages/FrequentContactDetailPage';
 import AdaptersPage       from './pages/AdaptersPage';
 import LLMPage            from './pages/LLMPage';
 import NotificationsPage  from './pages/NotificationsPage';
@@ -15,7 +18,6 @@ import LoginPage          from './pages/LoginPage';
 import SetupWizardPage    from './pages/SetupWizardPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import AgentChatPage      from './pages/AgentChatPage';
-import UserProfileDetailPage from './pages/UserProfileDetailPage';
 
 export const router = createBrowserRouter([
   {
@@ -37,8 +39,10 @@ export const router = createBrowserRouter([
       { index: true,              element: <DashboardPage /> },
       { path: 'rules',            element: <RulesPage /> },
       { path: 'stats',            element: <TriggerStatsPage /> },
+      { path: 'stats/:ruleId',    element: <RuleTriggerDetailPage /> },
       { path: 'users',            element: <UserProfilesPage /> },
-      { path: 'users/:userId',     element: <UserProfileDetailPage /> },
+      { path: 'users/:userId',    element: <UserProfileDetailPage /> },
+      { path: 'users/:userId/contacts/:contactId', element: <FrequentContactDetailPage /> },
       { path: 'adapters',         element: <AdaptersPage /> },
       { path: 'llm',              element: <LLMPage /> },
       { path: 'notifications',    element: <NotificationsPage /> },
