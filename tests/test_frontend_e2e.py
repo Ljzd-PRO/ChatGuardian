@@ -65,10 +65,10 @@ def live_server():
     # Use an isolated temp database so other test modules writing to the shared
     # test.sqlite (e.g. test_api_smoke.py with a different password) do not
     # interfere with the e2e auth flow.
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         db_path = os.path.join(tmpdir, "e2e_test.sqlite")
         env = {**os.environ, "CHAT_GUARDIAN_DATABASE_URL": f"sqlite:///{db_path}"}
-        proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
             assert _wait_for_port("127.0.0.1", port), "Backend failed to start within 15 s"
             yield f"http://127.0.0.1:{port}"
@@ -94,7 +94,7 @@ def auth_token(live_server):
     payload = json.dumps({"username": "admin", "password": "password123"}).encode()
     headers = {"Content-Type": "application/json"}
 
-    # Register admin (server uses sqlite:///./test.sqlite).
+    # Register admin against the live server started by the fixture's isolated temp DB.
     # Accept 400 only when the body confirms admin is already configured – any
     # other 400 (e.g. validation error) re-raises to fail the test clearly.
     req = urllib.request.Request(
