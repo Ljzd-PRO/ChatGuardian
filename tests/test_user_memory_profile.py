@@ -139,7 +139,15 @@ async def test_memory_repository_get_missing_returns_none() -> None:
 
 class FakeContextService:
     async def build_context(self, event):
-        return []
+        peer_message = ChatMessage(
+            message_id="m-peer",
+            chat_id=event.chat_id,
+            sender_id="u-456",
+            sender_name="小李",
+            contents=[MessageContent(type=ContentType.TEXT, text="我来接着聊")],
+            timestamp=datetime.utcnow(),
+        )
+        return [peer_message, event.message]
 
 
 class FakeLLMReturnsTopics:
@@ -149,7 +157,7 @@ class FakeLLMReturnsTopics:
                 {"name": "黑苹果", "keywords": ["白屏", "安装"]},
             ],
             "interactions": [
-                {"user_id": "u-456", "user_name": "小李", "topics": ["黑苹果"]},
+                {"user_id": "u-456", "topics": ["黑苹果"]},
             ],
         }
 
@@ -221,8 +229,8 @@ async def test_self_message_service_handles_llm_failure_gracefully() -> None:
 
 
 async def test_self_message_service_passes_existing_topics_to_llm() -> None:
-    """Verify that existing topic names are passed to the LLM to avoid synonyms."""
-    captured: list[list[str]] = []
+    """Verify that existing topics and keywords are passed to the LLM to avoid duplicates."""
+    captured: list[list[dict[str, object]]] = []
 
     class CapturingLLM:
         async def extract_self_participation(self, event, context, existing_topics=None):
@@ -252,8 +260,8 @@ async def test_self_message_service_passes_existing_topics_to_llm() -> None:
     event = _build_event()
     await service.process_user_memory(event)
 
-    # The LLM must receive the existing topic list
-    assert captured == [["黑苹果"]]
+    # The LLM must receive existing topic names and keywords
+    assert captured == [[{"name": "黑苹果", "keywords": ["白屏"]}]]
     # The new topic "汽车" should be added alongside the preserved "黑苹果"
     profile = await repo.get_profile("u-self")
     assert profile is not None

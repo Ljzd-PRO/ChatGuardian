@@ -235,17 +235,17 @@ class LangChainLLMClient:
             self,
             event: ChatEvent,
             context: list[ChatMessage],
-            existing_topics: list[str] | None = None,
+            existing_topics: list[dict[str, Any]] | None = None,
     ) -> dict | None:
         """从目标用户发言及上下文中提取参与画像数据。
 
         Args:
             event: 触发检测的消息事件（来自目标用户自身）。
             context: 构建好的上下文消息列表。
-            existing_topics: 用户画像中已有的话题名称列表，用于去重（不生成近义词话题）。
+            existing_topics: 用户画像中已有话题及关键词列表，用于去重。
 
         Returns:
-            包含 user_name、topics、interactions 的原始字典；失败时返回 None。
+            包含 topics、interactions 的原始字典；失败时返回 None。
         """
         if existing_topics is None:
             existing_topics = []
@@ -285,24 +285,22 @@ class LangChainLLMClient:
   - `message`：目标用户本次发送的消息
 - `context`：按时间顺序排列的上下文消息列表，每条消息格式：
   - `[YYYY-MM-DD HH:MM:SS TZ] (发送者): 消息内容`
-- `existing_topics`：用户画像中已有的话题名称列表，用于去重
+- `existing_topics`：用户画像中已有的话题以及其关键词列表，用于去重
 
 # 分析原则
 - 仅分析目标用户参与的内容，不分析与目标用户无关的对话
 - 若两人有明显的对话互动（问答、回应等），视为互动关系
-- `user_name` 从 `target_user.sender_name` 获取，如能在上下文中确认更准确的名称可更新
-- 话题名称不得与 `existing_topics` 中的任何名称语义重复（即不能是近义词）
+- 话题不得与 `existing_topics` 中的任何话题名称、关键词语义重复（即话题名称不能是近义词，新话题的关键词也不能和其他话题的关键词重复）
 - 若无明确话题或互动，对应列表留空即可
 
 # 输出要求（必须遵守）
 1. 只输出一个 JSON 对象，不要输出任何额外解释文本
 2. JSON 必须包含以下字段：
      - `topics`: array，每项包含：
-         - `name`: string（话题名称，不得是 existing_topics 的近义词）
-         - `keywords`: string[]（可选，该话题相关关键词）
+         - `name`: string（话题名称，不能和 existing_topics 中的其他话题重复）
+         - `keywords`: string[]（可选，该话题新增关键词，不得和其他话题的关键词重复）
      - `interactions`: array，每项包含：
          - `user_id`: string（互动对象的用户 ID，从消息发送者 ID 中获取）
-         - `user_name`: string（互动对象的名称，如能从上下文确定）
          - `topics`: string[]（与该对象交流时涉及的话题名称）
 
 # 输出示例
@@ -313,7 +311,7 @@ class LangChainLLMClient:
         {"name": "汽车", "keywords": ["续航"]}
     ],
     "interactions": [
-        {"user_id": "u456", "user_name": "小李", "topics": ["黑苹果"]}
+        {"user_id": "2233445566", "topics": ["黑苹果"]}
     ]
 }
 ```
@@ -335,9 +333,7 @@ class LangChainLLMClient:
             logger.info(
                 f"✅ 参与画像提取完成 | 话题数={len(topics)} | 互动数={len(interactions)}"
             )
-            derived_user_name = event.message.sender_name or event.message.sender_id or ""
             return {
-                "user_name": derived_user_name,
                 "topics": topics,
                 "interactions": interactions,
             }
@@ -1095,7 +1091,13 @@ class UserMemoryService:
         logger.debug(f"  ✓ 构建上下文 | 消息数={len(context_messages)}")
 
         existing_profile = await self.memory_repository.get_profile(user_id)
-        existing_topics = list(existing_profile.interests.keys()) if existing_profile else []
+        existing_topics = [
+            {
+                "name": topic_name,
+                "keywords": list(topic_stat.keywords),
+            }
+            for topic_name, topic_stat in (existing_profile.interests.items() if existing_profile else [])
+        ]
         logger.debug(f"  ✓ 已有话题 | 数量={len(existing_topics)}")
 
         extract = await self.llm_client.extract_self_participation(event, context_messages, existing_topics)
@@ -1109,10 +1111,10 @@ class UserMemoryService:
 
         profile = existing_profile or UserMemoryFact(
             user_id=user_id,
-            user_name=event.message.sender_name or user_id,
+            user_name=event.message.sender_name,
         )
         # 始终使用最新的 sender_name 作为昵称来源（若为空则回退 user_id）
-        profile.user_name = event.message.sender_name or profile.user_name or user_id
+        profile.user_name = event.message.sender_name or profile.user_name
 
         # 累积话题兴趣
         for topic_data in extract.get("topics", []):
@@ -1155,11 +1157,18 @@ class UserMemoryService:
             ))
 
         # 累积常联系群友
+        sender_name_by_id: dict[str, str] = {}
+        for message in context_messages:
+            sender_id = str(message.sender_id or "").strip()
+            sender_name = str(message.sender_name or "").strip()
+            if sender_id and sender_name:
+                sender_name_by_id[sender_id] = sender_name
+
         for interaction in extract.get("interactions", []):
             if not isinstance(interaction, dict):
                 continue
             uid = str(interaction.get("user_id", "")).strip()
-            uname = str(interaction.get("user_name", "")).strip()
+            uname = sender_name_by_id.get(uid, "")
             interact_topics = [str(t).strip() for t in interaction.get("topics", []) if str(t).strip()]
             if not uid:
                 continue
