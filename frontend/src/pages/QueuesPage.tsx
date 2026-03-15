@@ -33,13 +33,13 @@ const COLUMN_CONFIG: { key: string; labelKey: string; icon: IconifyIcon }[] = [
 /** Tailwind classes applied to the selection-checkbox column (first th/td) */
 const SELECTION_COL_CLASS = 'first:w-12 first:min-w-0 first:px-2';
 const COLUMN_STYLES: Record<string, string> = {
-  adapter: 'w-28 min-w-[7rem]',
-  type: 'w-24 min-w-[6rem]',
-  chat: 'w-44 min-w-[10rem]',
-  sender: 'w-44 min-w-[11rem]',
-  content: 'w-[18rem] min-w-[16rem] max-w-[22rem]',
-  time: 'w-48 min-w-[12rem]',
-  actions: 'w-32 min-w-[8rem]',
+  adapter: 'w-28 min-w-[5rem]',
+  type: 'w-24 min-w-[5rem]',
+  chat: 'w-44 min-w-[7rem]',
+  sender: 'w-44 min-w-[7rem]',
+  content: 'w-[18rem] min-w-[10rem] max-w-[22rem]',
+  time: 'w-48 min-w-[8rem]',
+  actions: 'w-32 min-w-[6rem]',
 };
 const ROWS_PER_PAGE = 10;
 type SelectionKey = Selection extends Set<infer K> ? K : never;

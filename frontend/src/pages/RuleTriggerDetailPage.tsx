@@ -51,12 +51,12 @@ const COLUMN_CONFIG: { key: string; labelKey: string; icon: IconifyIcon }[] = [
 ];
 
 const COLUMN_STYLES: Record<string, string> = {
-  adapter:   'w-28 min-w-[7rem]',
-  chat_type: 'w-24 min-w-[6rem]',
-  chat_id:   'w-44 min-w-[10rem]',
-  reason:    'w-[20rem] min-w-[16rem] max-w-[24rem]',
-  time:      'w-48 min-w-[12rem]',
-  actions:   'w-32 min-w-[8rem]',
+  adapter:   'w-28 min-w-[5rem]',
+  chat_type: 'w-24 min-w-[5rem]',
+  chat_id:   'w-44 min-w-[7rem]',
+  reason:    'w-[20rem] min-w-[10rem] max-w-[24rem]',
+  time:      'w-48 min-w-[8rem]',
+  actions:   'w-32 min-w-[6rem]',
 };
 
 const SELECTION_COL_CLASS = 'first:w-12 first:min-w-0 first:px-2';

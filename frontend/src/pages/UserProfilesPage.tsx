@@ -15,13 +15,14 @@ import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
 import usersGroupRoundedBold from '@iconify/icons-solar/users-group-rounded-bold';
 import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { fetchUserProfiles, deleteUserProfile } from '../api/users';
 import { fetchSettings, updateSettings } from '../api/settings';
 import { ICON_SIZES } from '../constants/iconSizes';
 
 export default function UserProfilesPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // ── Profiling settings ───────────────────────────────────────────────
@@ -209,20 +210,24 @@ export default function UserProfilesPage() {
               .slice(0, 5);
 
             return (
-              <Card key={p.user_id}>
+              <Card
+                key={p.user_id}
+                className="w-full transition-shadow hover:shadow-md"
+              >
+                <Link
+                  className="cursor-pointer block"
+                  to={`/users/${encodeURIComponent(p.user_id)}`}
+                >
                 <CardHeader className="pb-0 gap-3 flex items-start justify-between">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-1.5 rounded-lg bg-default-100 shrink-0">
-                      <Icon icon={userRoundedBold} fontSize={ICON_SIZES.cardHeader} className="text-default-600" />
+                    <div className="p-1.5 rounded-lg bg-primary-50 dark:bg-primary-900/30 shrink-0">
+                      <Icon icon={userRoundedBold} fontSize={ICON_SIZES.cardHeader} className="text-primary" />
                     </div>
                     <div className="min-w-0">
-                      <Link
-                        to={`/users/${encodeURIComponent(p.user_id)}`}
-                        className="font-semibold text-default-900 hover:text-primary transition-colors cursor-pointer"
-                      >
+                      <p className="font-semibold text-primary truncate">
                         {p.user_name || p.user_id}
-                      </Link>
-                      <p className="text-xs text-default-400 truncate">{p.user_id}</p>
+                      </p>
+                      <p className="text-xs text-default-400 truncate font-mono">{p.user_id}</p>
                     </div>
                   </div>
                   <Button
@@ -231,6 +236,7 @@ export default function UserProfilesPage() {
                     variant="light"
                     color="danger"
                     onPress={() => setDeleteTarget(p.user_id)}
+                    onClick={e => e.stopPropagation()}
                     aria-label={t('common.delete')}
                   >
                     <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />
@@ -252,7 +258,7 @@ export default function UserProfilesPage() {
                             color="secondary"
                             startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.chip} />}
                           >
-                            {i.topic}
+                            {i.topic} ({i.score.toFixed(1)})
                           </Chip>
                         ))}
                       </div>
@@ -302,6 +308,7 @@ export default function UserProfilesPage() {
                     </div>
                   )}
                 </CardBody>
+                </div>
               </Card>
             );
           })}
