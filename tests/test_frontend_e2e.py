@@ -69,10 +69,17 @@ def live_server():
         db_path = os.path.join(tmpdir, "e2e_test.sqlite")
         env = {**os.environ, "CHAT_GUARDIAN_DATABASE_URL": f"sqlite:///{db_path}"}
         proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        assert _wait_for_port("127.0.0.1", port), "Backend failed to start within 15 s"
-        yield f"http://127.0.0.1:{port}"
-        proc.terminate()
-        proc.wait(timeout=5)
+        try:
+            assert _wait_for_port("127.0.0.1", port), "Backend failed to start within 15 s"
+            yield f"http://127.0.0.1:{port}"
+        finally:
+            if proc.poll() is None:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait(timeout=5)
 
 
 # Key used by the frontend to persist the auth token in localStorage (see frontend/src/api/client.ts)
