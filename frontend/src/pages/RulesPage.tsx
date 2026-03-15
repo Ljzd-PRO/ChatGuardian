@@ -662,10 +662,9 @@ export default function RulesPage() {
               className="w-full border border-default-200 shadow-sm transition-shadow hover:shadow-md"
             >
               <CardBody
-                className="flex flex-col gap-3 md:flex-row md:items-start justify-between md:gap-6 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 rounded-md"
+                className="flex flex-col gap-3 md:flex-row md:items-start justify-between md:gap-6 cursor-pointer"
                 onClick={() => openEdit(rule)}
                 tabIndex={0}
-                role="button"
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(rule); } }}
               >
               <div className="flex items-start gap-3 flex-1 min-w-0">
