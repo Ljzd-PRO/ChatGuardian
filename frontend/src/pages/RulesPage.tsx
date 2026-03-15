@@ -71,17 +71,10 @@ export default function RulesPage() {
   useEffect(() => {
     if (!settings) return;
     setDetForm({
-      app_name: settings.app_name,
-      environment: settings.environment,
       context_message_limit: settings.context_message_limit,
       detection_cooldown_seconds: settings.detection_cooldown_seconds,
       detection_min_new_messages: settings.detection_min_new_messages,
       detection_wait_timeout_seconds: settings.detection_wait_timeout_seconds,
-      pending_queue_limit: settings.pending_queue_limit,
-      history_list_limit: settings.history_list_limit,
-      hook_timeout_seconds: settings.hook_timeout_seconds,
-      enable_internal_rule_generation: settings.enable_internal_rule_generation,
-      external_rule_generation_endpoint: settings.external_rule_generation_endpoint ?? '',
     });
   }, [settings]);
 
@@ -408,18 +401,6 @@ export default function RulesPage() {
             <CardBody className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <Input
-                  label={t('rules.appName')}
-                  startContent={<Icon icon={tagBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
-                  value={detForm.app_name ?? ''}
-                  isReadOnly
-                />
-                <Input
-                  label={t('rules.environment')}
-                  startContent={<Icon icon={magicStick2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
-                  value={detForm.environment ?? ''}
-                  isReadOnly
-                />
-                <Input
                   label={t('rules.contextMessageLimit')}
                   type="number"
                   startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
@@ -446,45 +427,6 @@ export default function RulesPage() {
                   startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={String(detForm.detection_wait_timeout_seconds ?? 30)}
                   onValueChange={v => setDetForm(f => ({ ...f, detection_wait_timeout_seconds: Number(v) }))}
-                />
-                <Input
-                  label={t('rules.pendingQueueLimit')}
-                  type="number"
-                  startContent={<Icon icon={listCheckBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
-                  value={String(detForm.pending_queue_limit ?? 200)}
-                  onValueChange={v => setDetForm(f => ({ ...f, pending_queue_limit: Number(v) }))}
-                />
-                <Input
-                  label={t('rules.historyListLimit')}
-                  type="number"
-                  startContent={<Icon icon={listCheckBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
-                  value={String(detForm.history_list_limit ?? 1000)}
-                  onValueChange={v => setDetForm(f => ({ ...f, history_list_limit: Number(v) }))}
-                />
-                <Input
-                  label={t('rules.hookTimeout')}
-                  type="number"
-                  startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
-                  value={String(detForm.hook_timeout_seconds ?? 8)}
-                  onValueChange={v => setDetForm(f => ({ ...f, hook_timeout_seconds: Number(v) }))}
-                />
-                <div className="flex items-center justify-between gap-3 rounded-lg border border-default-200 bg-default-50 px-3 py-2">
-                  <div className="flex items-center gap-2 text-sm text-default-700">
-                    <Icon icon={checkSquareBold} fontSize={ICON_SIZES.input} className="text-default-500" />
-                    <span>{t('rules.enableInternalRuleGen')}</span>
-                  </div>
-                  <Switch
-                    isSelected={detForm.enable_internal_rule_generation ?? false}
-                    onValueChange={v => setDetForm(f => ({ ...f, enable_internal_rule_generation: v }))}
-                    aria-label={t('rules.enableInternalRuleGen')}
-                  />
-                </div>
-                <Input
-                  label={t('rules.externalRuleEndpoint')}
-                  startContent={<Icon icon={alignLeftBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
-                  value={detForm.external_rule_generation_endpoint ?? ''}
-                  onValueChange={v => setDetForm(f => ({ ...f, external_rule_generation_endpoint: v }))}
-                  className="md:col-span-2"
                 />
               </div>
               <div className="flex items-center justify-end gap-3 flex-wrap">

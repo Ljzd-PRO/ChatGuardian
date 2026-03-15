@@ -67,7 +67,7 @@ from chat_guardian.services import (
 )
 from chat_guardian.settings import settings, Settings
 
-ENV_ONLY_KEYS = frozenset({"database_url", "app_name", "environment"})
+ENV_ONLY_KEYS = frozenset({"database_url"})
 PUBLIC_PATH_PREFIXES = ("/app/", "/app/assets", "/assets", "/mcp")
 PUBLIC_PATHS = {
     "/",
@@ -269,8 +269,8 @@ def create_app() -> FastAPI:
     app = FastAPI(title="ChatGuardian API", version="0.1.0", lifespan=_app_lifespan)
     app.state.container = container
 
-    # CORS: allow all origins in development; restrict in production via settings
-    cors_origins = ["*"] if settings.environment != "prod" else []
+    # CORS: configured via settings.cors_allow_origins (default ["*"])
+    cors_origins = settings.cors_allow_origins or ["*"]
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,

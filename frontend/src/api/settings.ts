@@ -1,8 +1,7 @@
 import { apiFetch } from './client';
 
 export interface AppSettings {
-  app_name: string;
-  environment: string;
+  cors_allow_origins: string[];
   llm_langchain_backend: string;
   llm_langchain_model: string;
   llm_langchain_api_base: string | null;
@@ -31,8 +30,6 @@ export interface AppSettings {
   smtp_password: string | null;
   smtp_sender: string | null;
   hook_timeout_seconds: number;
-  enable_internal_rule_generation: boolean;
-  external_rule_generation_endpoint: string | null;
   bark_notifier_enabled: boolean;
   bark_device_key: string | null;
   bark_device_keys: string[];
@@ -89,12 +86,8 @@ export interface LLMConfig {
 }
 
 export const fetchSettings          = () => apiFetch<AppSettings>('/api/settings');
-export const updateSettings = (s: Partial<AppSettings>) => {
-  // app_name and environment are injected via env (read-only); do not send to backend
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { app_name, environment, ...rest } = s;
-  return apiFetch<{ status: string }>('/api/settings', { method: 'POST', body: JSON.stringify(rest) });
-};
+export const updateSettings = (s: Partial<AppSettings>) =>
+  apiFetch<{ status: string }>('/api/settings', { method: 'POST', body: JSON.stringify(s) });
 export const fetchNotificationsConfig = () => apiFetch<NotificationsConfig>('/api/notifications/config');
 export const fetchLLMConfig           = () => apiFetch<LLMConfig>('/api/llm/config');
 export const fetchLLMHealth           = () => apiFetch<Record<string, unknown>>('/llm/health');

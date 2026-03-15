@@ -1,7 +1,7 @@
 """
 应用设置模块。
 
-此模块定义 `Settings` 配置类。`database_url`、`app_name`、`environment` 通过环境变量（前缀
+此模块定义 `Settings` 配置类。`database_url` 通过环境变量（前缀
 `CHAT_GUARDIAN_`）读取，其余配置项通过 SQLAlchemy SQLite 数据库保存与读取，并可通过前端 API 修改。
 """
 from typing import Literal, Optional
@@ -11,13 +11,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class _EnvConfig(BaseSettings):
-    """仅从环境变量读取 database_url 及只读的基础元信息（不会写回数据库）。"""
+    """仅从环境变量读取 database_url（不会写回数据库）。"""
 
     model_config = SettingsConfigDict(env_prefix="CHAT_GUARDIAN_", env_file=".env", extra="ignore")
 
     database_url: str = "sqlite:///./db.sqlite"
-    app_name: Optional[str] = None
-    environment: Optional[str] = None
 
 
 class Settings(BaseModel):
@@ -29,8 +27,7 @@ class Settings(BaseModel):
 
     Attributes:
         database_url: SQLAlchemy/数据库连接字符串（仅通过环境变量配置）。
-        app_name: 应用名称。
-        environment: 当前环境（如 dev、prod）。
+        cors_allow_origins: CORS 允许来源列表，默认 ``["*"]``。
         llm_timeout_seconds: LLM 单次调用超时时间（秒）。
         llm_max_parallel_batches: LLM 最大并行批次数。
         llm_rules_per_batch: 每批处理的规则数。
@@ -92,8 +89,7 @@ class Settings(BaseModel):
 
     # database_url 仅通过环境变量配置，不存储在数据库中
     database_url: str = "sqlite:///./db.sqlite"
-    app_name: str = "ChatGuardian"
-    environment: str = "dev"
+    cors_allow_origins: list[str] = ["*"]
 
     # LLM 与批处理相关设置
     llm_timeout_seconds: float = 30.0

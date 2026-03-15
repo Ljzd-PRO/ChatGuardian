@@ -529,7 +529,7 @@ class ChatGuardianMCPService:
         self.container = container
         self.operations = operations
         self.server = FastMCP(
-            name=settings.app_name or "ChatGuardian MCP",
+            name="ChatGuardian MCP",
             version="0.1.0",
             instructions=(
                 "ChatGuardian MCP 提供与 FastAPI 同步的工具集合，包括健康检查、鉴权、规则管理、"

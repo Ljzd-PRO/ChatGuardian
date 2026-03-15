@@ -90,7 +90,7 @@ const resources = {
       },
       rules: {
         loading: 'Loading rules…',
-        detectionSettings: 'Detection & General Settings',
+        detectionSettings: 'Detection Settings',
         detectionSettingsDesc: 'Applies to detection windows and buffering.',
         detectionSettingsHint: 'Tap to open',
         detectionSettingsHelper: 'Collapsed by default to keep the list tidy.',
@@ -521,7 +521,7 @@ const resources = {
       },
       rules: {
         loading: '正在加载规则…',
-        detectionSettings: '检测与通用设置',
+        detectionSettings: '检测设置',
         detectionSettingsDesc: '适用于检测窗口与缓冲行为。',
         detectionSettingsHint: '点击展开',
         detectionSettingsHelper: '默认折叠以保持列表简洁。',
@@ -949,7 +949,7 @@ const resources = {
       },
       rules: {
         loading: '正在載入規則…',
-        detectionSettings: '偵測與通用設定',
+        detectionSettings: '偵測設定',
         detectionSettingsDesc: '適用於偵測視窗與緩衝行為。',
         detectionSettingsHint: '點擊展開',
         detectionSettingsHelper: '預設收起以保持清爽。',
@@ -1377,7 +1377,7 @@ const resources = {
       },
       rules: {
         loading: 'ルールを読み込み中…',
-        detectionSettings: '検知・共通設定',
+        detectionSettings: '検知設定',
         detectionSettingsDesc: '検知ウィンドウとバッファリングに適用されます。',
         appName: 'アプリ名',
         environment: '環境',
@@ -1786,7 +1786,7 @@ const resources = {
       },
       rules: {
         loading: '규칙을 불러오는 중…',
-        detectionSettings: '탐지 및 일반 설정',
+        detectionSettings: '탐지 설정',
         detectionSettingsDesc: '탐지 창과 버퍼링에 적용됩니다.',
         appName: '앱 이름',
         environment: '환경',
@@ -2195,7 +2195,7 @@ const resources = {
       },
       rules: {
         loading: 'Chargement des règles…',
-        detectionSettings: 'Paramètres de détection et généraux',
+        detectionSettings: 'Paramètres de détection',
         detectionSettingsDesc: 'S’applique aux fenêtres de détection et au buffering.',
         appName: 'Nom de l’application',
         environment: 'Environnement',
@@ -2604,7 +2604,7 @@ const resources = {
       },
       rules: {
         loading: 'Regeln werden geladen…',
-        detectionSettings: 'Erkennungs- & Allgemeine Einstellungen',
+        detectionSettings: 'Erkennungseinstellungen',
         detectionSettingsDesc: 'Gilt für Erkennungsfenster und Pufferung.',
         appName: 'App-Name',
         environment: 'Umgebung',
@@ -3013,7 +3013,7 @@ const resources = {
       },
       rules: {
         loading: 'Загрузка правил…',
-        detectionSettings: 'Настройки детекции и общие',
+        detectionSettings: 'Настройки детекции',
         detectionSettingsDesc: 'Применяется к окну детекции и буферизации.',
         appName: 'Имя приложения',
         environment: 'Окружение',
