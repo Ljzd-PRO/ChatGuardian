@@ -28,4 +28,19 @@ export interface RuleStat {
 
 export interface RuleStatsData { stats: string; data: Record<string, RuleStat> }
 
+export interface RuleStatDetail {
+  rule_id: string;
+  rule_name: string;
+  description: string;
+  count: number;
+  records: RuleRecord[];
+}
+
 export const fetchRuleStats = () => apiFetch<RuleStatsData>('/api/rule_stats');
+export const fetchRuleStat = (ruleId: string) =>
+  apiFetch<RuleStatDetail>(`/api/rule_stats/${encodeURIComponent(ruleId)}`);
+export const deleteRuleRecords = (ruleId: string, recordIds?: string[]) =>
+  apiFetch<{ deleted: number }>(`/api/rule_stats/${encodeURIComponent(ruleId)}/records`, {
+    method: 'DELETE',
+    body: JSON.stringify({ record_ids: recordIds ?? null }),
+  });

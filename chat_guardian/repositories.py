@@ -15,7 +15,8 @@ from collections import defaultdict, deque
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, delete, select
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, delete, select, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from chat_guardian.domain import ChatMessage, ChatType, DetectionResult, DetectionRule, UserMemoryFact
@@ -56,6 +57,7 @@ class _DetectionResultRecord(_Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     rule_id: Mapped[str] = mapped_column(String(128), index=True)
+    result_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     generated_at: Mapped[datetime] = mapped_column(DateTime)
     triggered: Mapped[bool] = mapped_column(Boolean, index=True)
     trigger_suppressed: Mapped[bool] = mapped_column(Boolean, index=True)
@@ -108,6 +110,33 @@ class _RepositoryDatabase:
         self.engine = create_engine(normalized_url, **engine_kwargs)
         self.session_factory = sessionmaker(bind=self.engine, expire_on_commit=False)
         _Base.metadata.create_all(self.engine)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        """Apply incremental schema migrations for new columns added after initial creation."""
+        from loguru import logger
+        with self.engine.connect() as conn:
+            # Add result_id column to detection_results if it doesn't exist yet.
+            # OperationalError is raised when the column already exists; any other
+            # exception indicates a genuine failure that we should surface.
+            try:
+                conn.execute(text("ALTER TABLE detection_results ADD COLUMN result_id TEXT"))
+                conn.commit()
+            except OperationalError as exc:
+                if "duplicate column" not in str(exc).lower() and "already exists" not in str(exc).lower():
+                    logger.warning(f"⚠️ Migration: unexpected error adding result_id column: {exc}")
+            # Backfill result_id for rows that were inserted before this migration.
+            # json_extract is SQLite-specific; on other backends this is a no-op.
+            try:
+                conn.execute(
+                    text(
+                        "UPDATE detection_results SET result_id = json_extract(payload_json, '$.result_id')"
+                        " WHERE result_id IS NULL"
+                    )
+                )
+                conn.commit()
+            except OperationalError as exc:
+                logger.debug(f"Migration backfill skipped (DB may not support json_extract): {exc}")
 
 
 def normalize_database_url(database_url: str) -> str:
@@ -493,6 +522,19 @@ class MemoryRepository:
         """获取指定用户的画像，不存在则返回 None。"""
         return self.profiles.get(user_id)
 
+    async def delete_profile(self, user_id: str) -> bool:
+        """删除指定用户的画像，返回是否成功删除。"""
+        if user_id not in self.profiles:
+            return False
+        del self.profiles[user_id]
+        if self._db is not None:
+            with self._db.session_factory() as session:
+                session.execute(
+                    delete(_MemoryFactRecord).where(_MemoryFactRecord.user_id == user_id)
+                )
+                session.commit()
+        return True
+
 
 class DetectionResultRepository:
     """按规则索引检测结果，并维护最近触发结果的 O(1) 查询结构。"""
@@ -530,6 +572,7 @@ class DetectionResultRepository:
                 session.add(
                     _DetectionResultRecord(
                         rule_id=result.rule_id,
+                        result_id=result.result_id,
                         generated_at=result.generated_at,
                         triggered=result.decision.triggered,
                         trigger_suppressed=result.trigger_suppressed,
@@ -546,6 +589,57 @@ class DetectionResultRepository:
     async def list_by_rule(self, rule_id: str) -> list[DetectionResult]:
         """返回指定规则的全部检测结果。"""
         return list(self.results_by_rule.get(rule_id, []))
+
+    async def delete_by_rule(self, rule_id: str, result_ids: list[str] | None = None) -> int:
+        """删除指定规则的检测结果。若提供 result_ids 则只删除这些记录，否则删除该规则的全部记录。返回删除数量。"""
+        rule_results = self.results_by_rule.get(rule_id, [])
+        if not rule_results:
+            return 0
+
+        if result_ids is not None:
+            id_set = set(result_ids)
+            to_remove = [r for r in rule_results if r.result_id in id_set]
+        else:
+            to_remove = list(rule_results)
+
+        removed_ids = {r.result_id for r in to_remove}
+        if not removed_ids:
+            return 0
+
+        self.results = [r for r in self.results if r.result_id not in removed_ids]
+        self.results_by_rule[rule_id] = [r for r in rule_results if r.result_id not in removed_ids]
+        if not self.results_by_rule[rule_id]:
+            del self.results_by_rule[rule_id]
+            self.last_triggered_by_rule.pop(rule_id, None)
+            self.last_triggered_message_ids.pop(rule_id, None)
+        else:
+            remaining_triggered = [r for r in self.results_by_rule[rule_id]
+                                   if r.decision.triggered and not r.trigger_suppressed]
+            if remaining_triggered:
+                last = remaining_triggered[-1]
+                self.last_triggered_by_rule[rule_id] = last
+                self.last_triggered_message_ids[rule_id] = {m.message_id for m in last.context_messages}
+            else:
+                self.last_triggered_by_rule.pop(rule_id, None)
+                self.last_triggered_message_ids.pop(rule_id, None)
+
+        if self._db is not None:
+            with self._db.session_factory() as session:
+                if result_ids is not None:
+                    # Delete by result_id column (exact, indexed, single query)
+                    session.execute(
+                        delete(_DetectionResultRecord).where(
+                            _DetectionResultRecord.rule_id == rule_id,
+                            _DetectionResultRecord.result_id.in_(list(removed_ids)),
+                        )
+                    )
+                else:
+                    session.execute(
+                        delete(_DetectionResultRecord).where(_DetectionResultRecord.rule_id == rule_id)
+                    )
+                session.commit()
+
+        return len(removed_ids)
 
     async def contains_message_in_last_triggered(self, rule_id: str, message_id: str) -> bool:
         """O(1) 判断某消息是否在该规则最近一次“已触发且未抑制”的结果里。"""

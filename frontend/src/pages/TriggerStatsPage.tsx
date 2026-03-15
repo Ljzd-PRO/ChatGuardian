@@ -16,6 +16,7 @@ import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
 import hashtagCircleBold from '@iconify/icons-solar/hashtag-circle-bold';
 import usersGroupRoundedBold from '@iconify/icons-solar/users-group-rounded-bold';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { fetchRuleStats } from '../api/stats';
 import { fetchRules } from '../api/rules';
 import TriggerChart from '../components/charts/TriggerChart';
@@ -23,6 +24,21 @@ import type { RuleRecord } from '../api/stats';
 import { ICON_SIZES } from '../constants/iconSizes';
 
 type RuleRecordWithMetadata = RuleRecord & { ruleLabel: string; ruleDescription?: string };
+
+/* ── Helpers ────────────────────────────────────────────────────────── */
+
+function formatTriggerTime(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, {
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  });
+}
+
+const MAX_PREVIEW_MESSAGES = 5;
+const MAX_REASON_PREVIEW = 60;
 
 export default function TriggerStatsPage() {
   const { t } = useTranslation();
@@ -61,7 +77,6 @@ export default function TriggerStatsPage() {
   }, [query]);
 
   useEffect(() => {
-    // Clamp current page when filtered results shrink to avoid empty views
     setPage(p => Math.min(Math.max(1, p), pages));
   }, [pages]);
 
@@ -101,7 +116,12 @@ export default function TriggerStatsPage() {
                   <div className="flex items-center gap-2">
                     <Icon icon={chatDotsBold} fontSize={16} className="text-primary" />
                     <div>
-                      <span className="font-medium text-default-900">{r.name}</span>
+                      <Link
+                        to={`/stats/${encodeURIComponent(r.rule_id)}`}
+                        className="font-medium text-default-900 hover:text-primary transition-colors"
+                      >
+                        {r.name}
+                      </Link>
                       <p className="text-xs text-default-500">{r.description}</p>
                     </div>
                   </div>
@@ -116,12 +136,17 @@ export default function TriggerStatsPage() {
             {r.stat.records.length > 0 && (
               <CardBody className="pt-0 space-y-2">
                 <Accordion>
-                  {r.stat.records.slice(0, 5).map(rec => (
+                  {r.stat.records.slice(0, 5).map(rec => {
+                    const reasonPreview = rec.reason.length > MAX_REASON_PREVIEW
+                      ? rec.reason.slice(0, MAX_REASON_PREVIEW) + '…'
+                      : rec.reason;
+                    const previewMessages = rec.messages.slice(-MAX_PREVIEW_MESSAGES);
+                    return (
                     <AccordionItem
                       key={rec.id}
                       title={
                         <div className="flex flex-wrap items-center gap-2 text-sm">
-                          <span className="text-default-500">{rec.trigger_time}</span>
+                          <span className="text-default-500">{formatTriggerTime(rec.trigger_time)}</span>
                           <Progress
                             size="sm"
                             value={rec.confidence * 100}
@@ -163,16 +188,19 @@ export default function TriggerStatsPage() {
                               {rec.chat_id}
                             </Chip>
                           )}
+                          <span className="text-xs text-default-400 truncate max-w-[20rem]" title={rec.reason}>
+                            {reasonPreview}
+                          </span>
                         </div>
                       }
                     >
                       <div className="space-y-3">
                         <p className="text-sm text-default-700 whitespace-pre-wrap break-words">{rec.reason}</p>
                         <div className="space-y-2">
-                          {rec.messages.map((m, i) => (
+                          {previewMessages.map((m, i) => (
                             <div key={i} className="flex justify-start">
-                              <div className="max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm bg-primary-50 border-primary-100 text-primary-800">
-                                <p className="text-xs font-medium text-primary-600 mb-1">{m.sender}</p>
+                              <div className="max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm bg-primary-50 dark:bg-primary-900/30 border-primary-100 dark:border-primary-800 text-primary-800 dark:text-primary-200">
+                                <p className="text-xs font-medium text-primary-600 dark:text-primary-400 mb-1">{m.sender}</p>
                                 <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
                               </div>
                             </div>
@@ -189,7 +217,8 @@ export default function TriggerStatsPage() {
                         </Button>
                       </div>
                     </AccordionItem>
-                  ))}
+                    );
+                  })}
                 </Accordion>
               </CardBody>
             )}
@@ -230,7 +259,7 @@ export default function TriggerStatsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex items-center gap-2 text-sm text-default-700">
                     <Icon icon={clockCircleBold} fontSize={16} className="text-warning" />
-                    <span>{t('stats.triggeredAt', { time: selectedRecord.trigger_time })}</span>
+                    <span>{t('stats.triggeredAt', { time: formatTriggerTime(selectedRecord.trigger_time) })}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-default-700">
                     <Icon icon={chart2Bold} fontSize={16} className="text-warning" />
@@ -260,7 +289,7 @@ export default function TriggerStatsPage() {
                   </div>
                 </div>
                 {selectedRecord.trigger_suppressed && (
-                  <div className="rounded-lg border border-warning-200 bg-warning-50 p-3 text-sm text-warning-700 space-y-1">
+                  <div className="rounded-lg border border-warning-200 bg-warning-50 dark:bg-warning-900/20 p-3 text-sm text-warning-700 dark:text-warning-300 space-y-1">
                     <p className="font-semibold">{t('stats.suppressed')}</p>
                     {selectedRecord.suppression_reason && (
                       <p className="whitespace-pre-wrap break-words">{selectedRecord.suppression_reason}</p>
@@ -284,7 +313,7 @@ export default function TriggerStatsPage() {
                       {Object.entries(selectedRecord.extracted_params).map(([key, val]) => (
                         <div
                           key={key}
-                          className="flex items-center gap-2 justify-start rounded-lg border border-default-200 bg-default-50 px-3 py-2"
+                          className="flex items-center gap-2 justify-start rounded-lg border border-default-200 bg-default-50 dark:bg-default-100/50 px-3 py-2"
                         >
                           <Chip size="sm" variant="flat" color="secondary" className="shrink-0">{key}</Chip>
                           {val ? <Snippet
@@ -311,8 +340,8 @@ export default function TriggerStatsPage() {
                   <div className="space-y-3">
                     {selectedRecord.messages.map((m, idx) => (
                       <div key={idx} className="flex justify-start">
-                        <div className="max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm bg-primary-50 border-primary-100 text-primary-800">
-                          <p className="text-xs font-medium text-primary-600 mb-1">{m.sender}</p>
+                        <div className="max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm bg-primary-50 dark:bg-primary-900/30 border-primary-100 dark:border-primary-800 text-primary-800 dark:text-primary-200">
+                          <p className="text-xs font-medium text-primary-600 dark:text-primary-400 mb-1">{m.sender}</p>
                           <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
                         </div>
                       </div>
