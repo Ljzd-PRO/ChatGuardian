@@ -27,19 +27,20 @@ import { parseBackendDate } from '../utils/dates';
 const ROWS_PER_PAGE = 10;
 
 const INTEREST_COL_STYLES: Record<string, string> = {
-  topic:        'w-40 min-w-[10rem]',
-  score:        'w-24 min-w-[6rem]',
-  last_active:  'w-40 min-w-[10rem]',
-  related_chat: 'w-64 min-w-[16rem]',
-  keywords:     'w-64 min-w-[16rem]',
+  topic:        'w-28 min-w-[7rem]',
+  score:        'w-20 min-w-[5rem]',
+  last_active:  'w-28 min-w-[7rem]',
+  related_chat: 'w-40 min-w-[10rem]',
+  keywords:     'w-40 min-w-[10rem]',
 };
 
 const CONTACT_COL_STYLES: Record<string, string> = {
-  name:              'w-40 min-w-[10rem]',
-  interaction_count: 'w-32 min-w-[8rem]',
-  last_interact:     'w-40 min-w-[10rem]',
-  related_topics:    'w-64 min-w-[16rem]',
-  related_groups:    'w-48 min-w-[12rem]',
+  contact_id:        'w-28 min-w-[7rem]',
+  name:              'w-28 min-w-[7rem]',
+  interaction_count: 'w-24 min-w-[6rem]',
+  last_interact:     'w-28 min-w-[7rem]',
+  related_topics:    'w-40 min-w-[10rem]',
+  related_groups:    'w-36 min-w-[9rem]',
 };
 
 const INTEREST_COLUMNS: { key: string; labelKey: string; icon: IconifyIcon; sortable: boolean }[] = [
@@ -51,6 +52,7 @@ const INTEREST_COLUMNS: { key: string; labelKey: string; icon: IconifyIcon; sort
 ];
 
 const CONTACT_COLUMNS: { key: string; labelKey: string; icon: IconifyIcon; sortable: boolean }[] = [
+  { key: 'contact_id',        labelKey: 'users.contactId',        icon: userRoundedBold,       sortable: true },
   { key: 'name',              labelKey: 'users.contactName',      icon: userRoundedBold,       sortable: true },
   { key: 'interaction_count', labelKey: 'users.interactionCount', icon: chatDotsBold,          sortable: true },
   { key: 'last_interact',     labelKey: 'users.lastInteract',     icon: clockCircleBold,       sortable: false },
@@ -145,6 +147,8 @@ export default function UserProfileDetailPage() {
           return (a.interaction_count - b.interaction_count) * dir;
         case 'name':
           return a.name.localeCompare(b.name) * dir;
+        case 'contact_id':
+          return a.contactId.localeCompare(b.contactId) * dir;
         default:
           return 0;
       }
@@ -377,13 +381,16 @@ export default function UserProfileDetailPage() {
             <TableBody emptyContent={t('users.noContacts')}>
               {pagedContacts.map(row => (
                 <TableRow key={row.contactId}>
-                  <TableCell className={cn('text-sm font-medium', CONTACT_COL_STYLES.name)}>
+                  <TableCell className={cn('text-sm font-medium', CONTACT_COL_STYLES.contact_id)}>
                     <Link
                       to={`/users/${encodeURIComponent(userId!)}/contacts/${encodeURIComponent(row.contactId)}`}
-                      className="text-primary hover:underline"
+                      className="text-primary hover:underline font-mono text-xs"
                     >
-                      {row.name}
+                      {row.contactId}
                     </Link>
+                  </TableCell>
+                  <TableCell className={cn('text-sm text-default-700', CONTACT_COL_STYLES.name)}>
+                    {row.name || <span className="text-default-400 italic">—</span>}
                   </TableCell>
                   <TableCell className={cn('text-sm text-default-700', CONTACT_COL_STYLES.interaction_count)}>
                     {row.interaction_count}

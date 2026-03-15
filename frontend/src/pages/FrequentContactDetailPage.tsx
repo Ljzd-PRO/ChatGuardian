@@ -26,13 +26,13 @@ import { parseBackendDate } from '../utils/dates';
 const ROWS_PER_PAGE = 10;
 
 const TOPIC_COL_STYLES: Record<string, string> = {
-  topic:     'w-48 min-w-[12rem]',
-  score:     'w-24 min-w-[6rem]',
-  last_talk: 'w-44 min-w-[11rem]',
+  topic:     'w-32 min-w-[8rem]',
+  score:     'w-20 min-w-[5rem]',
+  last_talk: 'w-32 min-w-[8rem]',
 };
 
 const GROUP_COL_STYLES: Record<string, string> = {
-  group_id: 'w-64 min-w-[16rem]',
+  group_id: 'w-48 min-w-[12rem]',
 };
 
 const TOPIC_COLUMNS: { key: string; labelKey: string; icon: IconifyIcon; sortable: boolean }[] = [

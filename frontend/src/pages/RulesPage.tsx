@@ -657,15 +657,24 @@ export default function RulesPage() {
 
       <div className="space-y-4">
         {pagedRules.map(rule => (
-            <Card key={rule.rule_id} className="w-full border border-default-200 shadow-sm">
-              <CardBody className="flex flex-col gap-3 md:flex-row md:items-start justify-between md:gap-6">
+            <Card
+              key={rule.rule_id}
+              className="w-full border border-default-200 shadow-sm transition-shadow hover:shadow-md"
+            >
+              <CardBody
+                className="flex flex-col gap-3 md:flex-row md:items-start justify-between md:gap-6 cursor-pointer"
+                onClick={() => openEdit(rule)}
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(rule); } }}
+              >
               <div className="flex items-start gap-3 flex-1 min-w-0">
-                <Checkbox
-                  isSelected={!!selectedRules[rule.rule_id]}
-                  onValueChange={() => toggleSelect(rule.rule_id)}
-                  aria-label={t('rules.selectRule')}
-                  className="mt-1"
-                />
+                <div onClick={e => e.stopPropagation()} className="mt-1">
+                  <Checkbox
+                    isSelected={!!selectedRules[rule.rule_id]}
+                    onValueChange={() => toggleSelect(rule.rule_id)}
+                    aria-label={t('rules.selectRule')}
+                  />
+                </div>
                 <div className="flex-1 min-w-0 space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <button
@@ -723,31 +732,33 @@ export default function RulesPage() {
                       ))}
                     </div>
                   )}
-                  <Accordion
-                    selectionMode="single"
-                    defaultExpandedKeys={new Set()}
-                    variant="shadow"
-                    itemClasses={{
-                      title: 'text-sm font-semibold text-default-700',
-                      content: 'px-2 pb-2',
-                    }}
-                  >
-                    <AccordionItem
-                      key={`matcher-${rule.rule_id}`}
-                      aria-label={t('rules.matcherPreviewLabel')}
-                      title={(
-                        <div className="flex items-center gap-2">
-                          <Icon icon={eyeBold} fontSize={ICON_SIZES.button} className="text-primary" />
-                          <span>{t('rules.matcherPreviewLabel')}</span>
-                        </div>
-                      )}
+                  <div onClick={e => e.stopPropagation()}>
+                    <Accordion
+                      selectionMode="single"
+                      defaultExpandedKeys={new Set()}
+                      variant="shadow"
+                      itemClasses={{
+                        title: 'text-sm font-semibold text-default-700',
+                        content: 'px-2 pb-2',
+                      }}
                     >
-                      <div className="mt-1">{matcherPreview(rule)}</div>
-                    </AccordionItem>
-                  </Accordion>
+                      <AccordionItem
+                        key={`matcher-${rule.rule_id}`}
+                        aria-label={t('rules.matcherPreviewLabel')}
+                        title={(
+                          <div className="flex items-center gap-2">
+                            <Icon icon={eyeBold} fontSize={ICON_SIZES.button} className="text-primary" />
+                            <span>{t('rules.matcherPreviewLabel')}</span>
+                          </div>
+                        )}
+                      >
+                        <div className="mt-1">{matcherPreview(rule)}</div>
+                      </AccordionItem>
+                    </Accordion>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                 <Switch
                   size="md"
                   isSelected={rule.enabled}
