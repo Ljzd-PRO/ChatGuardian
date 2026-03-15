@@ -188,6 +188,37 @@ def test_change_password_can_optionally_change_username() -> None:
     assert new_login.status_code == 200, new_login.text
 
 
+def test_register_rejects_password_shorter_than_4(tmp_path, monkeypatch) -> None:
+    _setup_isolated_db(tmp_path, monkeypatch)
+    app = create_app()
+    client = TestClient(app)
+
+    resp = client.post(
+        "/api/auth/register",
+        json={"username": "admin", "password": "123"},
+    )
+    assert resp.status_code == 400
+    assert "at least 4 characters" in resp.text
+
+
+def test_change_password_rejects_new_password_shorter_than_4() -> None:
+    app = create_app()
+    client = TestClient(app)
+    headers = _register_and_login(client)
+
+    resp = client.post(
+        "/api/auth/change-password",
+        json={
+            "username": "admin",
+            "old_password": "pass",
+            "new_password": "123",
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 400
+    assert "at least 4 characters" in resp.text
+
+
 def test_agent_chat_accepts_json_body(monkeypatch) -> None:
     events: list[list[dict[str, str]]] = []
 

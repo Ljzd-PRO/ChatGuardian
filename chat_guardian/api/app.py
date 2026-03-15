@@ -77,6 +77,7 @@ PUBLIC_PATHS = {
     "/docs",
     "/openapi.json",
 }
+MIN_ADMIN_PASSWORD_LENGTH = 4
 
 
 class AgentChatRequest(BaseModel):
@@ -318,6 +319,11 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail="Admin credentials already configured")
         if not payload.username.strip() or not payload.password.strip():
             raise HTTPException(status_code=400, detail="Username and password must not be empty")
+        if len(payload.password) < MIN_ADMIN_PASSWORD_LENGTH:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Password must be at least {MIN_ADMIN_PASSWORD_LENGTH} characters",
+            )
         container.admin_credential_repository.set_credentials(payload.username.strip(), payload.password)
         return {"status": "ok"}
 
@@ -334,6 +340,11 @@ def create_app() -> FastAPI:
     @app.post("/api/auth/change-password")
     async def auth_change_password(payload: ChangePasswordRequest):
         """修改管理员密码。"""
+        if len(payload.new_password) < MIN_ADMIN_PASSWORD_LENGTH:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Password must be at least {MIN_ADMIN_PASSWORD_LENGTH} characters",
+            )
         if not container.admin_credential_repository.change_password(
                 payload.username, payload.old_password, payload.new_password, payload.new_username
         ):
