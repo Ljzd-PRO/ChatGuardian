@@ -335,7 +335,7 @@ def create_app() -> FastAPI:
     async def auth_change_password(payload: ChangePasswordRequest):
         """修改管理员密码。"""
         if not container.admin_credential_repository.change_password(
-                payload.username, payload.old_password, payload.new_password
+                payload.username, payload.old_password, payload.new_password, payload.new_username
         ):
             raise HTTPException(status_code=400, detail="Invalid current credentials")
         return {"status": "ok"}

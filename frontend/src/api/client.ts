@@ -1,6 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/';
 
 const TOKEN_KEY = 'cg_auth_token';
+const USERNAME_KEY = 'cg_auth_username';
 
 /** Thrown by apiFetch when the server returns a non-2xx status. */
 export class ApiError extends Error {
@@ -25,6 +26,18 @@ export function setToken(token: string): void {
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+}
+
+export function getSavedUsername(): string | null {
+  return localStorage.getItem(USERNAME_KEY);
+}
+
+export function setSavedUsername(username: string): void {
+  localStorage.setItem(USERNAME_KEY, username);
+}
+
+export function clearSavedUsername(): void {
+  localStorage.removeItem(USERNAME_KEY);
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {

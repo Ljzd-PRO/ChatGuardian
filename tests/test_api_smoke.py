@@ -158,6 +158,36 @@ def test_rule_list_and_delete_flow() -> None:
     assert all(item["rule_id"] != "rule-to-delete" for item in rules_after)
 
 
+def test_change_password_can_optionally_change_username() -> None:
+    app = create_app()
+    client = TestClient(app)
+    headers = _register_and_login(client)
+
+    resp = client.post(
+        "/api/auth/change-password",
+        json={
+            "username": "admin",
+            "old_password": "pass",
+            "new_password": "newpass123",
+            "new_username": "newadmin",
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+
+    old_login = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "newpass123"},
+    )
+    assert old_login.status_code == 401
+
+    new_login = client.post(
+        "/api/auth/login",
+        json={"username": "newadmin", "password": "newpass123"},
+    )
+    assert new_login.status_code == 200, new_login.text
+
+
 def test_agent_chat_accepts_json_body(monkeypatch) -> None:
     events: list[list[dict[str, str]]] = []
 

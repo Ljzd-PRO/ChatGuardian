@@ -72,3 +72,4 @@ class ChangePasswordRequest(BaseModel):
     username: str
     old_password: str
     new_password: str
+    new_username: str | None = None

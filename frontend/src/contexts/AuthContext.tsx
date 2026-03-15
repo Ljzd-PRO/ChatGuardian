@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { checkSetupRequired, login as apiLogin, register as apiRegister } from '../api/auth';
-import { getToken, setToken, clearToken } from '../api/client';
+import { getToken, setToken, clearToken, setSavedUsername } from '../api/client';
 
 interface AuthState {
   /** Whether we're still loading the initial auth state */
@@ -47,13 +47,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshSetupState]);
 
   const login = useCallback(async (username: string, password: string) => {
-    const { token } = await apiLogin(username, password);
+    const normalizedUsername = username.trim();
+    const { token } = await apiLogin(normalizedUsername, password);
     setToken(token);
+    setSavedUsername(normalizedUsername);
     setState(prev => ({ ...prev, authenticated: true }));
   }, []);
 
   const register = useCallback(async (username: string, password: string) => {
-    await apiRegister(username, password);
+    const normalizedUsername = username.trim();
+    await apiRegister(normalizedUsername, password);
+    setSavedUsername(normalizedUsername);
     setState(prev => ({ ...prev, setupRequired: false }));
   }, []);
 

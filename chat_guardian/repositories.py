@@ -789,11 +789,18 @@ class AdminCredentialRepository:
             row = session.scalars(select(_AdminCredentialRecord).limit(1)).first()
         return row.username if row else None
 
-    def change_password(self, username: str, old_password: str, new_password: str) -> bool:
+    def change_password(
+            self,
+            username: str,
+            old_password: str,
+            new_password: str,
+            new_username: str | None = None,
+    ) -> bool:
         """修改管理员密码，需验证旧密码。"""
         if not self.verify(username, old_password):
             return False
-        self.set_credentials(username, new_password)
+        target_username = (new_username or "").strip() or username
+        self.set_credentials(target_username, new_password)
         return True
 
 

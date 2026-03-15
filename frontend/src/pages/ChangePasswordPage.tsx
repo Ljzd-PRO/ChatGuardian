@@ -7,11 +7,12 @@ import lockPasswordBold from '@iconify/icons-solar/lock-password-bold';
 import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
 import { useTranslation } from 'react-i18next';
 import { changePassword } from '../api/auth';
+import { getSavedUsername } from '../api/client';
 import { ICON_SIZES } from '../constants/iconSizes';
 
 export default function ChangePasswordPage() {
   const { t } = useTranslation();
-  const [username, setUsername] = useState('');
+  const [newUsername, setNewUsername] = useState('');
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -25,7 +26,8 @@ export default function ChangePasswordPage() {
     setError('');
     setSuccess(false);
 
-    if (!username.trim()) { setError(t('setup.accountUsernameRequired')); return; }
+    const savedUsername = getSavedUsername()?.trim();
+    if (!savedUsername) { setError(t('auth.changePw.noSavedUsername')); return; }
     if (!oldPassword.trim()) { setError(t('auth.changePw.oldRequired')); return; }
     if (!newPassword.trim()) { setError(t('setup.accountPasswordRequired')); return; }
     if (newPassword !== confirm) { setError(t('setup.accountPasswordMismatch')); return; }
@@ -33,13 +35,18 @@ export default function ChangePasswordPage() {
 
     setLoading(true);
     try {
-      await changePassword(username.trim(), oldPassword, newPassword);
+      await changePassword(oldPassword, newPassword, newUsername);
       setSuccess(true);
+      setNewUsername('');
       setOldPassword('');
       setNewPassword('');
       setConfirm('');
-    } catch {
-      setError(t('auth.changePw.failed'));
+    } catch (err) {
+      if (err instanceof Error && err.message === 'NO_SAVED_USERNAME') {
+        setError(t('auth.changePw.noSavedUsername'));
+      } else {
+        setError(t('auth.changePw.failed'));
+      }
     } finally {
       setLoading(false);
     }
@@ -54,11 +61,11 @@ export default function ChangePasswordPage() {
         <CardBody>
           <form className="space-y-4" onSubmit={handleSubmit}>
             <Input
-              isRequired
-              label={t('auth.login.username')}
+              label={t('auth.changePw.newUsername')}
+              placeholder={t('auth.changePw.newUsernamePlaceholder')}
               variant="bordered"
-              value={username}
-              onValueChange={setUsername}
+              value={newUsername}
+              onValueChange={setNewUsername}
               startContent={<Icon icon={userRoundedBold} fontSize={ICON_SIZES.input} className="text-default-400" />}
               autoComplete="username"
             />
