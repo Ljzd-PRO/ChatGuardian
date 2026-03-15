@@ -15,7 +15,7 @@ import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
 import usersGroupRoundedBold from '@iconify/icons-solar/users-group-rounded-bold';
 import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { fetchUserProfiles, deleteUserProfile } from '../api/users';
 import { fetchSettings, updateSettings } from '../api/settings';
 import { ICON_SIZES } from '../constants/iconSizes';
@@ -214,11 +214,9 @@ export default function UserProfilesPage() {
                 key={p.user_id}
                 className="w-full transition-shadow hover:shadow-md"
               >
-                <div
-                  className="cursor-pointer"
-                  onClick={() => navigate(`/users/${encodeURIComponent(p.user_id)}`)}
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/users/${encodeURIComponent(p.user_id)}`); } }}
+                <Link
+                  className="cursor-pointer block"
+                  to={`/users/${encodeURIComponent(p.user_id)}`}
                 >
                 <CardHeader className="pb-0 gap-3 flex items-start justify-between">
                   <div className="flex items-center gap-3 min-w-0">
