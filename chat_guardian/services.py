@@ -96,9 +96,9 @@ def _messages_to_markdown(messages: list[ChatMessage]) -> str:
     tz = _resolve_llm_display_timezone()
     lines: list[str] = []
     for message in messages:
-        display_name = message.sender_name or message.sender_id or "未知发送者"
+        display_name = message.sender_name or "无名称"
         human_time = _format_human_timestamp(message.timestamp, tz)
-        lines.append(f"- [{human_time}] ({display_name}): {str(message)}")
+        lines.append(f"- [{human_time}] ({display_name}|{message.sender_id}): {str(message)}")
     return "\n".join(lines)
 
 
