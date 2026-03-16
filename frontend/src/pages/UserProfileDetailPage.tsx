@@ -36,6 +36,7 @@ import { parseBackendDate } from '../utils/dates';
 /* ── Constants ──────────────────────────────────────────────────────── */
 const MAX_VISIBLE_ACTIVE_GROUP_CHIPS = 20;
 
+const MAX_CONTACT_GROUP_CHIPS = 3;
 const ROWS_PER_PAGE = 10;
 
 const INTEREST_COL_STYLES: Record<string, string> = {
@@ -503,69 +504,82 @@ export default function UserProfileDetailPage() {
               )}
             </TableHeader>
             <TableBody emptyContent={t('users.noContacts')}>
-              {pagedContacts.map(row => (
-                <TableRow key={row.contactId}>
-                  <TableCell className={cn('text-sm font-medium', CONTACT_COL_STYLES.contact_id)}>
-                    <Link
-                      to={`/users/${encodeURIComponent(userId!)}/contacts/${encodeURIComponent(row.contactId)}`}
-                      className="text-primary hover:underline font-mono text-xs"
-                    >
-                      {row.contactId}
-                    </Link>
-                  </TableCell>
-                  <TableCell className={cn('text-sm text-default-700', CONTACT_COL_STYLES.name)}>
-                    {row.name || <span className="text-default-400 italic">—</span>}
-                  </TableCell>
-                  <TableCell className={cn('text-sm text-default-700', CONTACT_COL_STYLES.interaction_count)}>
-                    {row.interaction_count}
-                  </TableCell>
-                  <TableCell className={cn('text-xs text-default-400', CONTACT_COL_STYLES.last_interact)}>
-                    {parseBackendDate(row.last_interact).toLocaleString()}
-                  </TableCell>
-                  <TableCell className={CONTACT_COL_STYLES.related_topics}>
-                    <div className="flex flex-wrap gap-1">
-                      {row.sortedTopics.map(tp => (
-                        <Chip
-                          key={tp.topic}
-                          size="sm"
-                          variant="flat"
-                          startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.chip} />}
-                          onClose={() => setDeleteTarget({ kind: 'contact_topic', contactId: row.contactId, topic: tp.topic })}
-                        >
-                          {tp.topic}
-                        </Chip>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className={CONTACT_COL_STYLES.related_groups}>
-                    <div className="flex flex-wrap gap-1">
-                      {row.related_groups.map(g => (
-                        <Chip
-                          key={g}
-                          size="sm"
-                          variant="flat"
-                          startContent={<Icon icon={usersGroupRoundedBold} fontSize={ICON_SIZES.chip} />}
-                          onClose={() => setDeleteTarget({ kind: 'contact_group', contactId: row.contactId, groupId: g })}
-                        >
-                          {g}
-                        </Chip>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className={CONTACT_COL_STYLES.actions}>
-                    <Button
-                      isIconOnly
-                      size="sm"
-                      variant="light"
-                      color="danger"
-                      aria-label={t('common.delete')}
-                      onPress={() => setDeleteTarget({ kind: 'contact', contactId: row.contactId })}
-                    >
-                      <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {pagedContacts.map(row => {
+                const displayedGroups = row.related_groups.slice(0, MAX_CONTACT_GROUP_CHIPS);
+                const remainingGroupCount = row.related_groups.length - displayedGroups.length;
+
+                return (
+                  <TableRow key={row.contactId}>
+                    <TableCell className={cn('text-sm font-medium', CONTACT_COL_STYLES.contact_id)}>
+                      <Link
+                        to={`/users/${encodeURIComponent(userId!)}/contacts/${encodeURIComponent(row.contactId)}`}
+                        className="text-primary hover:underline font-mono text-xs"
+                      >
+                        {row.contactId}
+                      </Link>
+                    </TableCell>
+                    <TableCell className={cn('text-sm text-default-700', CONTACT_COL_STYLES.name)}>
+                      {row.name || <span className="text-default-400 italic">—</span>}
+                    </TableCell>
+                    <TableCell className={cn('text-sm text-default-700', CONTACT_COL_STYLES.interaction_count)}>
+                      {row.interaction_count}
+                    </TableCell>
+                    <TableCell className={cn('text-xs text-default-400', CONTACT_COL_STYLES.last_interact)}>
+                      {parseBackendDate(row.last_interact).toLocaleString()}
+                    </TableCell>
+                    <TableCell className={CONTACT_COL_STYLES.related_topics}>
+                      <div className="flex flex-wrap gap-1">
+                        {row.sortedTopics.map(tp => (
+                          <Chip
+                            key={tp.topic}
+                            size="sm"
+                            variant="flat"
+                            startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.chip} />}
+                            onClose={() => setDeleteTarget({ kind: 'contact_topic', contactId: row.contactId, topic: tp.topic })}
+                          >
+                            {tp.topic}
+                          </Chip>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className={CONTACT_COL_STYLES.related_groups}>
+                      <div className="flex flex-wrap gap-1">
+                        {displayedGroups.map(g => (
+                          <Chip
+                            key={g}
+                            size="sm"
+                            variant="flat"
+                            startContent={<Icon icon={usersGroupRoundedBold} fontSize={ICON_SIZES.chip} />}
+                            onClose={() => setDeleteTarget({ kind: 'contact_group', contactId: row.contactId, groupId: g })}
+                          >
+                            {g}
+                          </Chip>
+                        ))}
+                        {remainingGroupCount > 0 && (
+                          <Chip
+                            size="sm"
+                            variant="flat"
+                          >
+                            +{remainingGroupCount}
+                          </Chip>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className={CONTACT_COL_STYLES.actions}>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        color="danger"
+                        aria-label={t('common.delete')}
+                        onPress={() => setDeleteTarget({ kind: 'contact', contactId: row.contactId })}
+                      >
+                        <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardBody>
