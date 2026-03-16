@@ -107,26 +107,21 @@ export default function UserProfileDetailPage() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteError, setDeleteError] = useState(false);
 
-  const handleDeleteSuccess = useCallback(
-    (updatedProfile: Awaited<ReturnType<typeof fetchUserProfile>>) => {
-      if (userId) {
-        queryClient.setQueryData(['user_profile', userId], updatedProfile);
-      }
-      queryClient.invalidateQueries({ queryKey: ['user_profiles'] });
-      setDeleteTarget(null);
-      setDeleteError(false);
-    },
-    [queryClient, userId],
-  );
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['user_profile', userId] });
+    queryClient.invalidateQueries({ queryKey: ['user_profiles'] });
+    setDeleteTarget(null);
+    setDeleteError(false);
+  }, [queryClient, userId]);
 
   const onError = useCallback(() => setDeleteError(true), []);
 
-  const delInterest       = useMutation({ mutationFn: (topic: string)                              => deleteProfileInterest(userId!, topic),                       onSuccess: handleDeleteSuccess, onError });
-  const delGroup          = useMutation({ mutationFn: (groupId: string)                            => deleteProfileActiveGroup(userId!, groupId),                  onSuccess: handleDeleteSuccess, onError });
-  const delContact        = useMutation({ mutationFn: (contactId: string)                          => deleteProfileContact(userId!, contactId),                    onSuccess: handleDeleteSuccess, onError });
-  const delInterestChat   = useMutation({ mutationFn: ({ topic, chatId }: { topic: string; chatId: string })           => deleteProfileInterestChat(userId!, topic, chatId),           onSuccess: handleDeleteSuccess, onError });
-  const delInterestKw     = useMutation({ mutationFn: ({ topic, keyword }: { topic: string; keyword: string })         => deleteProfileInterestKeyword(userId!, topic, keyword),        onSuccess: handleDeleteSuccess, onError });
-  const delContactTopic   = useMutation({ mutationFn: ({ contactId, topic }: { contactId: string; topic: string })     => deleteProfileContactTopic(userId!, contactId, topic),         onSuccess: handleDeleteSuccess, onError });
+  const delInterest       = useMutation({ mutationFn: (topic: string)                              => deleteProfileInterest(userId!, topic),                       onSuccess: invalidate, onError });
+  const delGroup          = useMutation({ mutationFn: (groupId: string)                            => deleteProfileActiveGroup(userId!, groupId),                  onSuccess: invalidate, onError });
+  const delContact        = useMutation({ mutationFn: (contactId: string)                          => deleteProfileContact(userId!, contactId),                    onSuccess: invalidate, onError });
+  const delInterestChat   = useMutation({ mutationFn: ({ topic, chatId }: { topic: string; chatId: string })           => deleteProfileInterestChat(userId!, topic, chatId),           onSuccess: invalidate, onError });
+  const delInterestKw     = useMutation({ mutationFn: ({ topic, keyword }: { topic: string; keyword: string })         => deleteProfileInterestKeyword(userId!, topic, keyword),        onSuccess: invalidate, onError });
+  const delContactTopic   = useMutation({ mutationFn: ({ contactId, topic }: { contactId: string; topic: string })     => deleteProfileContactTopic(userId!, contactId, topic),         onSuccess: invalidate, onError });
   const delContactGroup   = useMutation({ mutationFn: ({ contactId, groupId }: { contactId: string; groupId: string }) => deleteProfileContactGroup(userId!, contactId, groupId),       onSuccess: invalidate, onError });
 
   const isDeletePending =
