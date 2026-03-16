@@ -4,11 +4,13 @@ import asyncio
 
 from chat_guardian.settings import Settings
 from .base import Adapter
+from .dingtalk import DingTalkAdapter, DingTalkAdapterConfig
+from .discord import DiscordAdapter, DiscordAdapterConfig
 from .feishu import FeishuAdapter
 from .onebot import OneBotAdapter, OneBotAdapterConfig
 from .telegram import TelegramAdapter, TelegramAdapterConfig
 from .virtual import VirtualAdapter, VirtualAdapterConfig, VirtualScriptedMessage, load_virtual_scripted_messages
-from .wechat import WeChatAdapter
+from .wechat import WeChatAdapter, WeChatAdapterConfig
 
 
 class AdapterManager:
@@ -51,8 +53,46 @@ def build_adapters_from_settings(app_settings: Settings) -> list[Adapter]:
                 )
             )
         )
+    if "discord" in enabled:
+        if not app_settings.discord_bot_token:
+            raise ValueError("Discord 适配器已启用，但 discord_bot_token 未配置")
+        adapters.append(
+            DiscordAdapter(
+                DiscordAdapterConfig(
+                    bot_token=app_settings.discord_bot_token,
+                    guild_ids=list(app_settings.discord_guild_ids),
+                )
+            )
+        )
     if "wechat" in enabled:
-        adapters.append(WeChatAdapter())
+        if not (app_settings.wechat_token and app_settings.wechat_encoding_aes_key and app_settings.wechat_corp_id):
+            raise ValueError(
+                "WeChat Work 适配器已启用，但 wechat_token / wechat_encoding_aes_key / wechat_corp_id 未完整配置"
+            )
+        adapters.append(
+            WeChatAdapter(
+                WeChatAdapterConfig(
+                    token=app_settings.wechat_token,
+                    encoding_aes_key=app_settings.wechat_encoding_aes_key,
+                    corp_id=app_settings.wechat_corp_id,
+                    host=app_settings.wechat_host,
+                    port=app_settings.wechat_port,
+                )
+            )
+        )
+    if "dingtalk" in enabled:
+        if not (app_settings.dingtalk_client_id and app_settings.dingtalk_client_secret):
+            raise ValueError(
+                "DingTalk 适配器已启用，但 dingtalk_client_id / dingtalk_client_secret 未配置"
+            )
+        adapters.append(
+            DingTalkAdapter(
+                DingTalkAdapterConfig(
+                    client_id=app_settings.dingtalk_client_id,
+                    client_secret=app_settings.dingtalk_client_secret,
+                )
+            )
+        )
     if "feishu" in enabled:
         adapters.append(FeishuAdapter())
     if "virtual" in enabled:

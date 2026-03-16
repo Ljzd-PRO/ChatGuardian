@@ -43,7 +43,15 @@ export interface AppSettings {
   telegram_bot_token: string | null;
   telegram_polling_timeout: number;
   telegram_drop_pending_updates: boolean;
-  wechat_endpoint: string | null;
+  discord_bot_token: string | null;
+  discord_guild_ids: number[];
+  wechat_token: string | null;
+  wechat_encoding_aes_key: string | null;
+  wechat_corp_id: string | null;
+  wechat_host: string;
+  wechat_port: number;
+  dingtalk_client_id: string | null;
+  dingtalk_client_secret: string | null;
   feishu_app_id: string | null;
   virtual_adapter_chat_count: number;
   virtual_adapter_members_per_chat: number;
