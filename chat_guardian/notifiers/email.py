@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 
 from aiosmtplib import SMTP
 from loguru import logger
 
 from chat_guardian.domain import ChatEvent, ChatMessage, RuleDecision
-from chat_guardian.notifiers.base import Notifier
+from chat_guardian.notifiers.base import Notifier, format_notification_text
 from chat_guardian.settings import settings
 
 
@@ -81,14 +80,7 @@ class EmailNotifier(Notifier):
         logger.debug(f"📧 准备发送邮件通知 | 收件人={self.config.to_email} | 规则={decision.rule_id}")
 
         subject = f"[ChatGuardian] Rule Triggered: {decision.rule_id}"
-        content = {
-            "chat_id": event.chat_id,
-            "message_id": event.message.message_id,
-            "reason": decision.reason,
-            "confidence": decision.confidence,
-            "params": decision.extracted_params,
-        }
-        body = json.dumps(content, ensure_ascii=False, indent=2)
+        body = format_notification_text(event, decision)
 
         try:
             smtp = SMTP(hostname=settings.smtp_host, port=settings.smtp_port, use_tls=False)
