@@ -78,23 +78,30 @@ export default function FrequentContactDetailPage() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteError, setDeleteError] = useState(false);
 
-  const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['user_profile', userId] });
-    queryClient.invalidateQueries({ queryKey: ['user_profiles'] });
-    setDeleteTarget(null);
-    setDeleteError(false);
-  }, [queryClient, userId]);
+  const handleDeleteSuccess = useCallback(
+    (updatedProfile: unknown) => {
+      if (userId) {
+        // Use the mutation result to update the cached user profile directly
+        queryClient.setQueryData(['user_profile', userId], updatedProfile);
+        // Invalidate any list of profiles that may depend on this data
+        queryClient.invalidateQueries({ queryKey: ['user_profiles'] });
+      }
+      setDeleteTarget(null);
+      setDeleteError(false);
+    },
+    [queryClient, userId],
+  );
 
   const onError = useCallback(() => setDeleteError(true), []);
 
   const delTopic = useMutation({
     mutationFn: (topic: string) => deleteProfileContactTopic(userId!, contactId!, topic),
-    onSuccess: invalidate,
+    onSuccess: (data) => handleDeleteSuccess(data),
     onError,
   });
   const delGroup = useMutation({
     mutationFn: (groupId: string) => deleteProfileContactGroup(userId!, contactId!, groupId),
-    onSuccess: invalidate,
+    onSuccess: (data) => handleDeleteSuccess(data),
     onError,
   });
 
