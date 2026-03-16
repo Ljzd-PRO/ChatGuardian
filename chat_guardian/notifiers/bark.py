@@ -1,13 +1,11 @@
 from __future__ import annotations
-
-import json
 from dataclasses import dataclass, field
 
 import httpx
 from loguru import logger
 
 from chat_guardian.domain import ChatEvent, ChatMessage, RuleDecision
-from chat_guardian.notifiers.base import Notifier
+from chat_guardian.notifiers.base import Notifier, format_notification_text
 from chat_guardian.settings import settings
 
 
@@ -91,16 +89,7 @@ class BarkNotifier(Notifier):
         endpoint = f"{self.config.server_url.rstrip('/')}/push"
         payload: dict[str, object] = {
             "title": f"{self.config.title_prefix} Rule Triggered: {decision.rule_id}",
-            "body": json.dumps(
-                {
-                    "chat_id": event.chat_id,
-                    "message_id": event.message.message_id,
-                    "reason": decision.reason,
-                    "confidence": decision.confidence,
-                    "params": decision.extracted_params,
-                },
-                ensure_ascii=False,
-            ),
+            "body": format_notification_text(event, decision),
         }
         if len(keys) == 1:
             payload["device_key"] = keys[0]

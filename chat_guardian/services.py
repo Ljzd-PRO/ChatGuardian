@@ -4,7 +4,7 @@
 此模块包含：
 - 服务接口（Repository、LLM 客户端等）的协议定义；
 - 开发阶段可用的内置实现（LangChain LLM、内存存储、外部 Hook 派发器）；
-- 检测引擎、上下文窗口、记忆写入与建议服务。
+- 检测引擎、上下文窗口与记忆写入。
 
 说明：
 - 通知器实现已迁移至 `chat_guardian.notifiers`；
@@ -1368,33 +1368,6 @@ class UserMemoryService:
         await self.memory_repository.upsert_profile(profile)
         logger.success(f"✅ 用户画像已更新 | 用户={user_id} | 话题总数={len(profile.interests)}")
         return 1
-
-
-class SuggestionService:
-    """基于用户记忆生成规则建议的简易服务。
-
-    当前实现为启发式聚合示例，后续可替换为依赖 LLM 的高级建议生成器。
-    """
-
-    def __init__(self, memory_repository: MemoryRepository):
-        self.memory_repository = memory_repository
-
-    async def suggest_new_rules(self, user_id: str) -> list[str]:
-        logger.debug(f"🔍 为用户 {user_id} 查找可建议的规则")
-        profile = await self.memory_repository.get_profile(user_id)
-        logger.debug(f"  ✓ 查询用户画像 | 话题数={len(profile.interests) if profile else 0}")
-
-        if not profile or not profile.interests:
-            logger.info(f"ℹ️ 用户 {user_id} 无画像数据，无法生成建议")
-            return []
-
-        ranked = sorted(profile.interests.items(), key=lambda item: item[1].score, reverse=True)
-        suggestions = [
-            f"为高频主题 '{topic}' 创建提醒规则（累计话题分 {stat.score}）"
-            for topic, stat in ranked[:5]
-        ]
-        logger.success(f"✅ 规则建议生成完成 | 数量={len(suggestions)}")
-        return suggestions
 
 
 class ExternalHookDispatcher:

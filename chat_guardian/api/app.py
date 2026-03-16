@@ -31,7 +31,6 @@ from chat_guardian.api.schemas import (
     ChangePasswordRequest,
     LoginRequest,
     RegisterRequest,
-    SuggestResponse,
 )
 from chat_guardian.domain import (
     ChatEvent,
@@ -63,7 +62,6 @@ from chat_guardian.services import (
     DetectionEngine,
     ExternalHookDispatcher,
     UserMemoryService,
-    SuggestionService,
 )
 from chat_guardian.settings import settings, Settings
 
@@ -213,7 +211,6 @@ class AppContainer:
         self.llm_client = build_llm_client()
         self.context_service = ContextWindowService(self.chat_history_store)
 
-        self.suggestion_service = SuggestionService(self.memory_repository)
         self.user_memory_service = UserMemoryService(self.llm_client, self.memory_repository,
                                                      self.context_service)
         notifiers = build_notifiers_from_settings()
@@ -405,16 +402,6 @@ def create_app() -> FastAPI:
             return await operations.delete_rule(rule_id)
         except OperationError as exc:
             raise _to_http_error(exc) from exc
-
-    @app.get("/suggestions/new-rules/{user_id}", response_model=SuggestResponse)
-    async def suggest_new_rules(user_id: str) -> SuggestResponse:
-        """
-        基于用户记忆生成新的规则建议。
-
-        Args:
-            user_id: 目标用户 ID。
-        """
-        return await operations.suggest_new_rules(user_id)
 
     @app.get("/api/rule_stats")
     async def get_rule_stats():

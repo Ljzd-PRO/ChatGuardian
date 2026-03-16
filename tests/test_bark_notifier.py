@@ -71,6 +71,11 @@ async def test_bark_notifier_uses_device_key_when_single_key(monkeypatch):
     payload = recorded[0]["json"]
     assert payload["device_key"] == "single-key"
     assert "device_keys" not in payload
+    assert isinstance(payload["body"], str)
+    assert "规则: r-1" in payload["body"]
+    assert "会话: g-1" in payload["body"]
+    assert "消息ID: m-1" in payload["body"]
+    assert "参数: k=v" in payload["body"]
 
 
 async def test_bark_notifier_uses_device_keys_when_multiple_keys(monkeypatch):

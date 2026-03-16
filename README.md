@@ -11,7 +11,6 @@
 - LLM 调用链：已接入 LangChain（`langchain_openai.ChatOpenAI`），支持 OpenAI 兼容 API 与本地/云端网关。
 - 通知链路：邮件通知抽象 + 外部 API Hook 调用抽象。
 - 本人发言识别：触发参与话题/相关群友记忆写入。
-- 建议系统：新规则建议（基于用户记忆）。
 - MVP WebUI 入口：`/ui`（轻量说明页，API联调入口）。
 
 > 设计原则：只做抽象能力，不把任何示例场景写死。
@@ -67,7 +66,6 @@ docker compose up --build
 
 - `POST /rules`：创建或更新结构化检测规则。
 - 检测触发：仅由 adapter 输入消息事件触发，不再提供手动 `/detect` 接口。
-- `GET /suggestions/new-rules/{user_id}`：生成新规则建议。
 - `GET /llm/health`：返回当前 LLM 后端诊断信息，并可执行最小 ping 探活（`do_ping` 参数）。
 - `POST /adapters/start`：按配置启动已启用 adapter（可反复调用）。
 - `POST /adapters/stop`：停止已启用 adapter。
