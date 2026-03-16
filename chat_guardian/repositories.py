@@ -13,7 +13,7 @@ import os
 import secrets
 from collections import defaultdict, deque
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, delete, select, text
 from sqlalchemy.exc import OperationalError
@@ -521,6 +521,17 @@ class MemoryRepository:
     async def get_profile(self, user_id: str) -> UserMemoryFact | None:
         """获取指定用户的画像，不存在则返回 None。"""
         return self.profiles.get(user_id)
+
+    async def update_profile(
+        self, user_id: str, updater: Callable[[UserMemoryFact], UserMemoryFact]
+    ) -> UserMemoryFact | None:
+        """对指定用户的画像应用 updater 函数并持久化，返回更新后的画像；用户不存在则返回 None。"""
+        profile = self.profiles.get(user_id)
+        if profile is None:
+            return None
+        updated = updater(profile)
+        await self.upsert_profile(updated)
+        return updated
 
     async def delete_profile(self, user_id: str) -> bool:
         """删除指定用户的画像，返回是否成功删除。"""
