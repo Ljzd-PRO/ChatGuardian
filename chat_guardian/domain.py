@@ -79,7 +79,7 @@ class MessageContent(BaseModel):
     mention_user: UserInfo | None = None
 
     @staticmethod
-    def _generate_short_id(s: str, length: int = 5) -> str:
+    def generate_short_id(s: str, length: int = 5) -> str:
         """
         为字符串生成固定长度的短标识符
 
@@ -100,7 +100,7 @@ class MessageContent(BaseModel):
         if self.type == ContentType.TEXT and self.text:
             return self.text
         elif self.type == ContentType.IMAGE and self.image_url:
-            return f"[image: {self._generate_short_id(self.image_url)}]"
+            return f"[image: {self.generate_short_id(self.image_url)}]"
         elif self.type == ContentType.MENTION and self.mention_user:
             return f"@{self.mention_user}"
         return ""
