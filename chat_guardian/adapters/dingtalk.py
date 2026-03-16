@@ -162,12 +162,6 @@ class DingTalkAdapter(Adapter):
                 if text:
                     # Separate @mentions from plain text
                     at_users: list[object] = getattr(msg, "at_users", []) or []
-                    # Build set of staff_ids for quick lookup
-                    at_staff_ids: set[str] = set()
-                    for u in at_users:
-                        sid = getattr(u, "staff_id", None) or getattr(u, "dingtalk_id", None)
-                        if sid:
-                            at_staff_ids.add(str(sid))
 
                     contents.append(MessageContent(type=ContentType.TEXT, text=text))
 
