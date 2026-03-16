@@ -343,19 +343,33 @@ class LangChainLLMClient:
             f"💬 开始提取用户 {event.message.sender_id} 的参与画像 | "
             f"上下文消息数={len(context)} | 已有话题数={len(existing_topics)}"
         )
-        payload = json.dumps(
-            {
-                "target_user": {
-                    "user_id": event.message.sender_id,
-                    "sender_name": event.message.sender_name or "",
-                    "chat_id": event.chat_id,
-                    "message": str(event.message),
-                },
-                "context": [str(message) for message in context],
-                "existing_topics": existing_topics,
-            },
-            ensure_ascii=False,
-        )
+        context_markdown = _messages_to_markdown(context)
+        topic_lines: list[str] = []
+        for topic in existing_topics:
+            if not isinstance(topic, dict):
+                continue
+            name = str(topic.get("name", "")).strip()
+            if not name:
+                continue
+            keywords = [str(k).strip() for k in topic.get("keywords", []) if str(k).strip()]
+            if keywords:
+                topic_lines.append(f"- {name}（关键词：{'、'.join(keywords)}）")
+            else:
+                topic_lines.append(f"- {name}")
+
+        existing_topics_markdown = "\n".join(topic_lines) if topic_lines else "- （无）"
+        payload = f"""
+## 目标用户
+- 用户ID: {event.message.sender_id}
+- 名称: {event.message.sender_name or ''}
+- 消息： {str(event.message)}
+
+## 上下文消息
+{context_markdown or '- （无）'}
+
+## 已有话题
+{existing_topics_markdown}
+"""
         image_blocks, image_block_count = await _build_image_content_blocks(context)
         content_blocks: list[dict[str, Any]] = [{"type": "text", "text": payload}, *image_blocks]
         try:
@@ -370,16 +384,13 @@ class LangChainLLMClient:
 分析目标用户在聊天记录中的参与情况，提取用户的话题偏好与社交互动关系，输出结构化 JSON。
 
 # 输入格式
-- `target_user`：目标用户信息，包含：
-  - `user_id`：用户 ID
-  - `sender_name`：本次消息的发送者名称（即目标用户当前昵称）
-  - `chat_id`：所在群聊/会话 ID
-  - `message`：目标用户本次发送的消息
-- `context`：按时间顺序排列的上下文消息列表，每条消息格式：
-  - `[YYYY-MM-DD HH:MM:SS TZ] (发送者): 消息内容`
-    - 若消息内包含 `[image: XXXXX]`，表示对应图片通过同一条 HumanMessage 的 image content block 传入，
-        其中 image block 的 `id` 与 `XXXXX` 一致
-- `existing_topics`：用户画像中已有的话题以及其关键词列表，用于去重
+- 输入是一个 Markdown 文本块，包含三个小节：
+    - `## 目标用户`
+    - `## 上下文消息`：按时间顺序排列的上下文消息，每行格式：
+        - `[YYYY-MM-DD HH:MM:SS TZ] (发送者|发送者ID): 消息内容`
+        - 若消息内包含 `[image: XXXXX]`，表示对应图片通过同一条 HumanMessage 的 image content block 传入，
+            其中 image block 的 `id` 与 `XXXXX` 一致
+    - `## 已有话题`：历史话题列表，格式为 `- 话题名（关键词：词1、词2）`
 
 # 分析原则
 - 仅分析目标用户参与的内容，不分析与目标用户无关的对话
