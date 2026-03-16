@@ -340,6 +340,9 @@ const LLMStep = forwardRef<StepHandle>(function LLMStep(_, ref) {
         >
           <SelectItem key="openai_compatible">{t('llm.openai')}</SelectItem>
           <SelectItem key="ollama">{t('llm.ollama')}</SelectItem>
+          <SelectItem key="gemini">Google Gemini</SelectItem>
+          <SelectItem key="anthropic">Anthropic Claude</SelectItem>
+          <SelectItem key="openrouter">OpenRouter</SelectItem>
         </Select>
         <Input
           label={t('llm.model')}
