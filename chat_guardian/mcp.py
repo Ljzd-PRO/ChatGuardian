@@ -12,7 +12,6 @@ from fastmcp.client.transports import FastMCPTransport
 from loguru import logger
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
-from chat_guardian.api.schemas import SuggestResponse
 from chat_guardian.domain import DetectionRule, UserMemoryFact
 from chat_guardian.services import build_llm_client
 from chat_guardian.settings import Settings, settings
@@ -133,10 +132,6 @@ class ChatGuardianOperations:
         if not deleted:
             raise OperationError(f"Rule not found: {rule_id}", status_code=404)
         return {"status": "deleted", "rule_id": rule_id, "deleted": True}
-
-    async def suggest_new_rules(self, user_id: str) -> SuggestResponse:
-        suggestions = await self.container.suggestion_service.suggest_new_rules(user_id)
-        return SuggestResponse(suggestions=suggestions)
 
     async def get_rule_stats(self) -> dict[str, Any]:
         stats: dict[str, Any] = {}
@@ -531,7 +526,7 @@ class ChatGuardianMCPService:
             version="0.1.0",
             instructions=(
                 "ChatGuardian MCP 提供与 FastAPI 同步的工具集合，包括健康检查、鉴权、规则管理、"
-                "建议、设置、日志等。所有工具直接调用内部服务而非 HTTP，返回值字段详见各函数文档。"
+                "设置、日志等。所有工具直接调用内部服务而非 HTTP，返回值字段详见各函数文档。"
             ),
         )
         self._http_task: asyncio.Task | None = None
@@ -681,19 +676,6 @@ class ChatGuardianMCPService:
                 return await self.operations.delete_rule(rule_id)
             except OperationError as exc:
                 raise ValueError(str(exc)) from exc
-
-        @self.server.tool(name="suggest_new_rules", description="生成新的规则建议。")
-        async def tool_suggest_new_rules(user_id: str) -> dict[str, Any]:
-            """
-            为用户生成规则建议。
-
-            Args:
-                user_id: 用户 ID。
-
-            Returns:
-                dict: ``suggestions`` 列表。
-            """
-            return self._serialize(await self.operations.suggest_new_rules(user_id))
 
         @self.server.tool(name="rule_stats", description="规则触发统计。")
         async def tool_rule_stats() -> dict[str, Any]:

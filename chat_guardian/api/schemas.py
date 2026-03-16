@@ -41,17 +41,6 @@ class DetectResponse(BaseModel):
     notified_count: int
 
 
-class SuggestResponse(BaseModel):
-    """
-    建议返回模型，包含若干建议文本。
-
-    Attributes:
-        suggestions: 建议文本列表。
-    """
-
-    suggestions: list[str]
-
-
 class LoginRequest(BaseModel):
     """登录请求模型。"""
 
