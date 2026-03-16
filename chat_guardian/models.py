@@ -13,14 +13,12 @@ class DiagnosticsModel(BaseModel):
         client_class: 客户端类名。
         api_base: API 基础地址。
         api_key_configured: API 密钥是否已配置。
-        ollama_base_url: Ollama 基础地址。
     """
     backend: str = Field(...)
     model: str = Field(...)
     client_class: str = Field(...)
     api_base: Optional[str] = Field(default=None)
     api_key_configured: bool = Field(...)
-    ollama_base_url: Optional[str] = Field(default=None)
 
 
 class RuleBatchSchedulerMetricsModel(BaseModel):

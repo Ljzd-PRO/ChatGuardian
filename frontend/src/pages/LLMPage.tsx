@@ -39,7 +39,6 @@ export default function LLMPage() {
         llm_timeout_seconds: settings.llm_timeout_seconds,
         llm_max_parallel_batches: settings.llm_max_parallel_batches,
         llm_rules_per_batch: settings.llm_rules_per_batch,
-        llm_ollama_base_url: settings.llm_ollama_base_url,
         llm_display_timezone: settings.llm_display_timezone,
         llm_batch_timeout_seconds: settings.llm_batch_timeout_seconds,
         llm_batch_max_retries: settings.llm_batch_max_retries,
@@ -194,12 +193,6 @@ export default function LLMPage() {
               value={String(form.llm_batch_idempotency_cache_size ?? 1024)}
               onValueChange={v => setForm(f => ({ ...f, llm_batch_idempotency_cache_size: Number(v) }))}
             />
-            <Input
-              label={t('llm.ollamaBaseUrl')}
-              startContent={<Icon icon={linkBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
-              value={form.llm_ollama_base_url ?? ''}
-              onValueChange={v => setForm(f => ({ ...f, llm_ollama_base_url: v }))}
-            />
           </div>
 
           {save.isSuccess && <p className="text-success text-sm">{t('common.saveSuccess')}</p>}
@@ -229,32 +222,32 @@ function LLMHealthCard() {
       <CardBody className="space-y-2">
         {sched
           ? Object.entries(sched).map(([k, v]) => (
-              <div key={k} className="py-2 border-b border-divider last:border-0 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-default-500">{k}</span>
-                  {typeof v === 'object' && v !== null ? (
-                    <Chip size="sm" variant="flat" color="secondary">
-                      {t('stats.viewDetails')}
-                    </Chip>
-                  ) : (
-                    <span className="text-sm font-medium text-default-800">{String(v)}</span>
-                  )}
-                </div>
-                {typeof v === 'object' && v !== null && (
-                  <details className="rounded-medium border border-default-200 bg-default-50 p-3 text-sm text-default-700">
-                    <summary className="cursor-pointer text-primary text-sm">{t('stats.viewDetails')}</summary>
-                    <div className="mt-2 space-y-1">
-                      {Object.entries(v as Record<string, unknown>).map(([mk, mv]) => (
-                        <div key={mk} className="flex items-center justify-between gap-2 text-xs">
-                          <span className="text-default-500">{mk}</span>
-                          <span className="font-mono text-default-800 break-all">{typeof mv === 'object' && mv !== null ? JSON.stringify(mv) : String(mv)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </details>
+            <div key={k} className="py-2 border-b border-divider last:border-0 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-default-500">{k}</span>
+                {typeof v === 'object' && v !== null ? (
+                  <Chip size="sm" variant="flat" color="secondary">
+                    {t('stats.viewDetails')}
+                  </Chip>
+                ) : (
+                  <span className="text-sm font-medium text-default-800">{String(v)}</span>
                 )}
               </div>
-            ))
+              {typeof v === 'object' && v !== null && (
+                <details className="rounded-medium border border-default-200 bg-default-50 p-3 text-sm text-default-700">
+                  <summary className="cursor-pointer text-primary text-sm">{t('stats.viewDetails')}</summary>
+                  <div className="mt-2 space-y-1">
+                    {Object.entries(v as Record<string, unknown>).map(([mk, mv]) => (
+                      <div key={mk} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-default-500">{mk}</span>
+                        <span className="font-mono text-default-800 break-all">{typeof mv === 'object' && mv !== null ? JSON.stringify(mv) : String(mv)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </div>
+          ))
           : <p className="text-sm text-default-400">{t('llm.noScheduler')}</p>}
         <div className="flex items-center justify-between py-1">
           <span className="text-sm text-default-500">{t('llm.status')}</span>

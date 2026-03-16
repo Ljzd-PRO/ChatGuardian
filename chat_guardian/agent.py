@@ -333,7 +333,7 @@ def _build_chat_model() -> Union[ChatOpenAI, ChatOllama]:
         return ChatOllama(
             model=settings.llm_langchain_model,
             temperature=settings.llm_langchain_temperature,
-            base_url=settings.llm_ollama_base_url,
+            base_url=settings.llm_langchain_api_base or "http://localhost:11434",
         )
     raise ValueError(f"Unsupported llm_langchain_backend: {settings.llm_langchain_backend}")
 

@@ -461,7 +461,6 @@ class ChatGuardianOperations:
             "llm_langchain_api_base",
             "llm_langchain_api_key",
             "llm_langchain_temperature",
-            "llm_ollama_base_url",
             "llm_timeout_seconds",
         }
         llm_updates = llm_related_keys & update_keys
@@ -518,7 +517,6 @@ class ChatGuardianOperations:
             "timeout_seconds": s.llm_timeout_seconds,
             "max_parallel_batches": s.llm_max_parallel_batches,
             "rules_per_batch": s.llm_rules_per_batch,
-            "ollama_base_url": s.llm_ollama_base_url,
         }
 
 

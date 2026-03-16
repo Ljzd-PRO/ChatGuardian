@@ -27,11 +27,11 @@ def test_build_llm_client_openai_compatible_backend() -> None:
 def test_build_llm_client_ollama_backend() -> None:
     old_backend = settings.llm_langchain_backend
     old_model = settings.llm_langchain_model
-    old_ollama_base = settings.llm_ollama_base_url
+    old_api_base = settings.llm_langchain_api_base
 
     settings.llm_langchain_backend = "ollama"
     settings.llm_langchain_model = "qwen2.5:7b"
-    settings.llm_ollama_base_url = "http://localhost:11434"
+    settings.llm_langchain_api_base = "http://localhost:11434"
 
     client = build_llm_client()
 
@@ -40,4 +40,4 @@ def test_build_llm_client_ollama_backend() -> None:
 
     settings.llm_langchain_backend = old_backend
     settings.llm_langchain_model = old_model
-    settings.llm_ollama_base_url = old_ollama_base
+    settings.llm_langchain_api_base = old_api_base

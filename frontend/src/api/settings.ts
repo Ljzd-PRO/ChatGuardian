@@ -7,7 +7,6 @@ export interface AppSettings {
   llm_langchain_api_base: string | null;
   llm_langchain_api_key: string | null;
   llm_langchain_temperature: number;
-  llm_ollama_base_url: string;
   llm_display_timezone: string;
   llm_batch_timeout_seconds: number;
   llm_batch_max_retries: number;
@@ -85,11 +84,11 @@ export interface LLMConfig {
   ollama_base_url: string;
 }
 
-export const fetchSettings          = () => apiFetch<AppSettings>('/api/settings');
+export const fetchSettings = () => apiFetch<AppSettings>('/api/settings');
 export const updateSettings = (s: Partial<AppSettings>) =>
   apiFetch<{ status: string }>('/api/settings', { method: 'POST', body: JSON.stringify(s) });
 export const fetchNotificationsConfig = () => apiFetch<NotificationsConfig>('/api/notifications/config');
-export const fetchLLMConfig           = () => apiFetch<LLMConfig>('/api/llm/config');
-export const fetchLLMHealth           = () => apiFetch<Record<string, unknown>>('/llm/health');
+export const fetchLLMConfig = () => apiFetch<LLMConfig>('/api/llm/config');
+export const fetchLLMHealth = () => apiFetch<Record<string, unknown>>('/llm/health');
 export const testNotification = (type: 'email' | 'bark') =>
   apiFetch<{ ok: boolean }>(`/api/notifications/test/${type}`, { method: 'POST' });

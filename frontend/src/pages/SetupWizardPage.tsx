@@ -310,7 +310,6 @@ const LLMStep = forwardRef<StepHandle>(function LLMStep(_, ref) {
           llm_timeout_seconds: s.llm_timeout_seconds,
           llm_max_parallel_batches: s.llm_max_parallel_batches,
           llm_rules_per_batch: s.llm_rules_per_batch,
-          llm_ollama_base_url: s.llm_ollama_base_url,
           llm_display_timezone: s.llm_display_timezone,
           llm_batch_timeout_seconds: s.llm_batch_timeout_seconds,
           llm_batch_max_retries: s.llm_batch_max_retries,
@@ -423,12 +422,6 @@ const LLMStep = forwardRef<StepHandle>(function LLMStep(_, ref) {
           startContent={<Icon icon={databaseBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
           value={String(form.llm_batch_idempotency_cache_size ?? 1024)}
           onValueChange={v => setForm(f => ({ ...f, llm_batch_idempotency_cache_size: Number(v) }))}
-        />
-        <Input
-          label={t('llm.ollamaBaseUrl')}
-          startContent={<Icon icon={linkBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
-          value={form.llm_ollama_base_url ?? ''}
-          onValueChange={v => setForm(f => ({ ...f, llm_ollama_base_url: v }))}
         />
       </div>
     </div>

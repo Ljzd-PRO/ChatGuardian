@@ -26,6 +26,9 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_anthropic import ChatAnthropic
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from loguru import logger
@@ -108,19 +111,17 @@ class LangChainLLMClient:
 
     def __init__(
             self,
-            chat_model: Union[ChatOpenAI | ChatOllama],
+            chat_model: BaseChatModel,
             backend: str,
             model_name: str,
             api_base: str | None,
             api_key_configured: bool,
-            ollama_base_url: str | None,
     ):
         self.model = chat_model
         self.backend = backend
         self.model_name = model_name
         self.api_base = api_base
         self.api_key_configured = api_key_configured
-        self.ollama_base_url = ollama_base_url
         logger.info(
             f"🤖 LLM 客户端已初始化 | backend={backend} | model={model_name} | api_key_configured={api_key_configured}")
 
@@ -407,7 +408,6 @@ class LangChainLLMClient:
             client_class=self.model.__class__.__name__,
             api_base=self.api_base,
             api_key_configured=self.api_key_configured,
-            ollama_base_url=self.ollama_base_url,
         )
 
     async def ping(self) -> tuple[bool, str | None, float]:
@@ -430,7 +430,15 @@ class LangChainLLMClient:
 
 
 def build_llm_client() -> LangChainLLMClient:
-    """创建 LangChain LLM 客户端实例。支持 OpenAI 兼容与 Ollama 后端。"""
+    """创建 LangChain LLM 客户端实例。
+
+    支持的后端（llm_langchain_backend）：
+    - ``openai_compatible``：OpenAI API 或同协议网关，可通过 llm_langchain_api_base 指定端点；
+    - ``ollama``：本地 Ollama 服务；
+    - ``gemini``：Google Gemini，使用 langchain-google-genai；
+    - ``anthropic``：Anthropic Claude，使用 langchain-anthropic；
+    - ``openrouter``：OpenRouter（OpenAI 兼容端点 https://openrouter.ai/api/v1）。
+    """
     backend = settings.llm_langchain_backend.strip().lower()
     logger.info(f"🔧 正在构建 LLM 客户端 | backend={backend}")
 
@@ -451,24 +459,79 @@ def build_llm_client() -> LangChainLLMClient:
             model_name=settings.llm_langchain_model,
             api_base=settings.llm_langchain_api_base,
             api_key_configured=bool(settings.llm_langchain_api_key),
-            ollama_base_url=None,
         )
 
     elif backend == "ollama":
-        logger.info(f"  🦙 Ollama 后端 | base_url={settings.llm_ollama_base_url}")
+        ollama_base = settings.llm_langchain_api_base or "http://localhost:11434"
+        logger.info(f"  🦙 Ollama 后端 | base_url={ollama_base}")
         chat_model = ChatOllama(
             model=settings.llm_langchain_model,
             temperature=settings.llm_langchain_temperature,
-            base_url=settings.llm_ollama_base_url,
+            base_url=ollama_base,
         )
         logger.success(f"✅ Ollama LLM 客户端已创建 | model={settings.llm_langchain_model}")
         return LangChainLLMClient(
             chat_model=chat_model,
             backend="ollama",
             model_name=settings.llm_langchain_model,
-            api_base=None,
+            api_base=ollama_base,
             api_key_configured=False,
-            ollama_base_url=settings.llm_ollama_base_url,
+        )
+
+    elif backend == "gemini":
+        api_key = settings.llm_langchain_api_key
+        logger.info(f"  🌐 Google Gemini 后端 | model={settings.llm_langchain_model}")
+        chat_model = ChatGoogleGenerativeAI(
+            model=settings.llm_langchain_model,
+            temperature=settings.llm_langchain_temperature,
+            timeout=settings.llm_timeout_seconds,
+            google_api_key=api_key,
+        )
+        logger.success(f"✅ Google Gemini LLM 客户端已创建 | model={settings.llm_langchain_model}")
+        return LangChainLLMClient(
+            chat_model=chat_model,
+            backend="gemini",
+            model_name=settings.llm_langchain_model,
+            api_base=None,
+            api_key_configured=bool(api_key),
+        )
+
+    elif backend == "anthropic":
+        api_key = settings.llm_langchain_api_key
+        logger.info(f"  🔵 Anthropic 后端 | model={settings.llm_langchain_model}")
+        chat_model = ChatAnthropic(
+            model=settings.llm_langchain_model,
+            temperature=settings.llm_langchain_temperature,
+            timeout=settings.llm_timeout_seconds,
+            api_key=api_key,
+        )
+        logger.success(f"✅ Anthropic LLM 客户端已创建 | model={settings.llm_langchain_model}")
+        return LangChainLLMClient(
+            chat_model=chat_model,
+            backend="anthropic",
+            model_name=settings.llm_langchain_model,
+            api_base=None,
+            api_key_configured=bool(api_key),
+        )
+
+    elif backend == "openrouter":
+        api_key = settings.llm_langchain_api_key or ""
+        openrouter_base = "https://openrouter.ai/api/v1"
+        logger.info(f"  🔀 OpenRouter 后端 | model={settings.llm_langchain_model}")
+        chat_model = ChatOpenAI(
+            model=settings.llm_langchain_model,
+            temperature=settings.llm_langchain_temperature,
+            timeout=settings.llm_timeout_seconds,
+            base_url=openrouter_base,
+            api_key=api_key,
+        )
+        logger.success(f"✅ OpenRouter LLM 客户端已创建 | model={settings.llm_langchain_model}")
+        return LangChainLLMClient(
+            chat_model=chat_model,
+            backend="openrouter",
+            model_name=settings.llm_langchain_model,
+            api_base=openrouter_base,
+            api_key_configured=bool(settings.llm_langchain_api_key),
         )
 
     logger.error(f"❌ 不支持的 LLM 后端: {settings.llm_langchain_backend}")
