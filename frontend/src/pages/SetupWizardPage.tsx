@@ -450,7 +450,11 @@ const AdapterStep = forwardRef<StepHandle>(function AdapterStep(_, ref) {
           telegram_bot_token: s.telegram_bot_token ?? '',
           telegram_polling_timeout: s.telegram_polling_timeout,
           telegram_drop_pending_updates: s.telegram_drop_pending_updates,
-          wechat_endpoint: s.wechat_endpoint ?? '',
+          wechat_token: s.wechat_token ?? '',
+          wechat_encoding_aes_key: s.wechat_encoding_aes_key ?? '',
+          wechat_corp_id: s.wechat_corp_id ?? '',
+          wechat_host: s.wechat_host ?? '0.0.0.0',
+          wechat_port: s.wechat_port ?? 8082,
           feishu_app_id: s.feishu_app_id ?? '',
         });
       })
@@ -475,7 +479,7 @@ const AdapterStep = forwardRef<StepHandle>(function AdapterStep(_, ref) {
         selectedKeys={new Set(form.enabled_adapters ?? [])}
         onSelectionChange={keys => setForm(f => ({ ...f, enabled_adapters: Array.from(keys) as string[] }))}
       >
-        {['onebot', 'telegram', 'wechat', 'feishu', 'virtual'].map(a => (
+        {['onebot', 'telegram', 'discord', 'wechat', 'dingtalk', 'feishu', 'virtual'].map(a => (
           <SelectItem key={a}>{a}</SelectItem>
         ))}
       </Select>
@@ -523,10 +527,20 @@ const AdapterStep = forwardRef<StepHandle>(function AdapterStep(_, ref) {
         <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
           <div className="flex items-center gap-2 font-semibold text-default-900">
             <Icon icon={plugCircleBold} fontSize={ICON_SIZES.cardHeader} />
-            <span>WeChat</span>
+            <span>{t('adapters.wechatTitle')}</span>
           </div>
-          <Input label="Endpoint" startContent={<Icon icon={linkBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
-            value={form.wechat_endpoint ?? ''} onValueChange={v => setForm(f => ({ ...f, wechat_endpoint: v.trim() === '' ? null : v }))} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input label={t('adapters.wechatToken')} startContent={<Icon icon={keyBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
+              value={form.wechat_token ?? ''} onValueChange={v => setForm(f => ({ ...f, wechat_token: v.trim() === '' ? null : v }))} />
+            <Input label={t('adapters.wechatEncodingAesKey')} startContent={<Icon icon={keyBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
+              value={form.wechat_encoding_aes_key ?? ''} onValueChange={v => setForm(f => ({ ...f, wechat_encoding_aes_key: v.trim() === '' ? null : v }))} />
+            <Input label={t('adapters.wechatCorpId')} startContent={<Icon icon={linkBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
+              value={form.wechat_corp_id ?? ''} onValueChange={v => setForm(f => ({ ...f, wechat_corp_id: v.trim() === '' ? null : v }))} />
+            <Input label={t('adapters.wechatCallbackHost')} startContent={<Icon icon={server2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
+              value={form.wechat_host ?? '0.0.0.0'} onValueChange={v => setForm(f => ({ ...f, wechat_host: v }))} />
+            <Input label={t('adapters.wechatCallbackPort')} type="number" startContent={<Icon icon={hashtagBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
+              value={String(form.wechat_port ?? 8082)} onValueChange={v => setForm(f => ({ ...f, wechat_port: Number(v) }))} />
+          </div>
         </div>
 
         {/* Feishu */}
