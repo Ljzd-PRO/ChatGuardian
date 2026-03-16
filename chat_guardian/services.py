@@ -102,26 +102,9 @@ def _messages_to_markdown(messages: list[ChatMessage]) -> str:
     return "\n".join(lines)
 
 
-async def _build_rule_detection_content_blocks(
-        messages: list[ChatMessage],
-        rules_payload: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], str, int]:
-    """构建规则检测用的多模态 HumanMessage content blocks。
-
-    Returns:
-        (content_blocks, text_payload, image_block_count)
-    """
-    messages_payload = _messages_to_markdown(messages)
-    text_payload = f"""
-## 聊天消息
-{messages_payload}
-
-## 规则列表
-{json.dumps(rules_payload, ensure_ascii=False, indent=4)}
-"""
-
-    content_blocks: list[dict[str, Any]] = [{"type": "text", "text": text_payload}]
-    image_block_count = 0
+async def _build_image_content_blocks(messages: list[ChatMessage]) -> tuple[list[dict[str, Any]], int]:
+    """从消息列表中提取图片并转换为可直接发送给 LLM 的 base64 image blocks。"""
+    image_blocks: list[dict[str, Any]] = []
     image_cache: dict[str, tuple[str, str] | None] = {}
 
     async def _load_image_as_base64(url: str) -> tuple[str, str] | None:
@@ -163,8 +146,7 @@ async def _build_rule_detection_content_blocks(
             if loaded is None:
                 continue
             image_base64, mime_type = loaded
-            image_block_count += 1
-            content_blocks.append(
+            image_blocks.append(
                 {
                     "type": "image",
                     "id": item.generate_short_id(image_url),
@@ -172,6 +154,30 @@ async def _build_rule_detection_content_blocks(
                     "mime_type": mime_type,
                 }
             )
+
+    return image_blocks, len(image_blocks)
+
+
+async def _build_rule_detection_content_blocks(
+        messages: list[ChatMessage],
+        rules_payload: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], str, int]:
+    """构建规则检测用的多模态 HumanMessage content blocks。
+
+    Returns:
+        (content_blocks, text_payload, image_block_count)
+    """
+    messages_payload = _messages_to_markdown(messages)
+    text_payload = f"""
+## 聊天消息
+{messages_payload}
+
+## 规则列表
+{json.dumps(rules_payload, ensure_ascii=False, indent=4)}
+"""
+
+    image_blocks, image_block_count = await _build_image_content_blocks(messages)
+    content_blocks: list[dict[str, Any]] = [{"type": "text", "text": text_payload}, *image_blocks]
 
     return content_blocks, text_payload, image_block_count
 
@@ -350,6 +356,8 @@ class LangChainLLMClient:
             },
             ensure_ascii=False,
         )
+        image_blocks, image_block_count = await _build_image_content_blocks(context)
+        content_blocks: list[dict[str, Any]] = [{"type": "text", "text": payload}, *image_blocks]
         try:
             response = await self.model.ainvoke(
                 [
@@ -369,6 +377,8 @@ class LangChainLLMClient:
   - `message`：目标用户本次发送的消息
 - `context`：按时间顺序排列的上下文消息列表，每条消息格式：
   - `[YYYY-MM-DD HH:MM:SS TZ] (发送者): 消息内容`
+    - 若消息内包含 `[image: XXXXX]`，表示对应图片通过同一条 HumanMessage 的 image content block 传入，
+        其中 image block 的 `id` 与 `XXXXX` 一致
 - `existing_topics`：用户画像中已有的话题以及其关键词列表，用于去重
 
 # 分析原则
@@ -401,9 +411,10 @@ class LangChainLLMClient:
 ```
 """
                     ),
-                    HumanMessage(content=payload),
+                    HumanMessage(content=content_blocks),
                 ]
             )
+            logger.debug(f"💬 用户画像 LLM 输入 | 文本长度={len(payload)} | 图片块数={image_block_count}")
             content = self._response_text(response.content)
             parsed = _extract_json_payload(content)
 
