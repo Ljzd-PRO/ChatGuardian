@@ -43,6 +43,13 @@
 - [x] 数据层与可扩展 ORM（需求 11）：先落地 SQLite + SQLAlchemy/Alembic；定义 Repository 接口与迁移规范，保证后续可替换 PostgreSQL 或自定义数据库实现。
 - [x] 测试与交付：补齐单元测试（规则解析、批处理调度、参数提取）、集成测试（消息→检测→通知→反馈闭环）、Docker Compose 本地运行、README 完整使用说明与示例规则。
 
+### 完善计划
+
+- [ ] 前端AI助手页面工具列表中工具名称需要实现为前端多语言，而非简单的后端提供两种语言的文本
+- [ ] 前端AI助手页面补充AI管理智能体的其他配置，如是否开启HTTP MCP等，默认折叠。参考规则页面的检测设置实现。后端如果需要也要补充相关API。
+- [ ] 用户可自定义通知文本格式（用python .format 实现）且所有通知服务共用一个文本格式设置, 不要每个单独实现
+- [ ] 前端AI助手页面, 消息气泡的复制按钮改为内置在消息气泡内的角落, 且除了生成时间, 还要显示消耗的token量
+
 ## Verification
 
 - 运行基础质量门禁：poetry run pytest、poetry run ruff check .、poetry run mypy chat_guardian
