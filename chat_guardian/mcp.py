@@ -296,6 +296,118 @@ class ChatGuardianOperations:
             raise OperationError(f"User not found: {user_id}", status_code=404)
         return {"status": "deleted", "user_id": user_id}
 
+    async def _get_profile_or_raise(self, user_id: str) -> "UserMemoryFact":
+        profile = await self.container.memory_repository.get_profile(user_id)
+        if not profile:
+            raise OperationError(f"User not found: {user_id}", status_code=404)
+        return profile
+
+    async def delete_profile_interest(self, user_id: str, topic: str) -> "UserMemoryFact":
+        """删除用户画像中指定的兴趣话题。"""
+
+        def updater(profile: UserMemoryFact) -> UserMemoryFact:
+            if topic not in profile.interests:
+                raise OperationError(
+                    f"Interest '{topic}' not found for user {user_id}",
+                    status_code=404,
+                )
+            del profile.interests[topic]
+            return profile
+
+        updated = await self.container.memory_repository.update_profile(user_id, updater)
+        if not updated:
+            raise OperationError(f"User not found: {user_id}", status_code=404)
+        return updated
+
+    async def delete_profile_interest_chat(self, user_id: str, topic: str, chat_id: str) -> "UserMemoryFact":
+        """删除用户兴趣话题中的指定相关聊天记录。"""
+
+        def updater(profile: UserMemoryFact) -> UserMemoryFact:
+            if topic not in profile.interests:
+                raise OperationError(
+                    f"Interest '{topic}' not found for user {user_id}",
+                    status_code=404,
+                )
+            stat = profile.interests[topic]
+            if chat_id not in stat.related_chat:
+                raise OperationError(
+                    f"Chat '{chat_id}' not found in interest '{topic}'",
+                    status_code=404,
+                )
+            stat.related_chat = [c for c in stat.related_chat if c != chat_id]
+            return profile
+
+        updated = await self.container.memory_repository.update_profile(user_id, updater)
+        if not updated:
+            raise OperationError(f"User not found: {user_id}", status_code=404)
+        return updated
+
+    async def delete_profile_interest_keyword(self, user_id: str, topic: str, keyword: str) -> "UserMemoryFact":
+        """删除用户兴趣话题中的指定关键词。"""
+
+        def updater(profile: UserMemoryFact) -> UserMemoryFact:
+            if topic not in profile.interests:
+                raise OperationError(
+                    f"Interest '{topic}' not found for user {user_id}",
+                    status_code=404,
+                )
+            stat = profile.interests[topic]
+            if keyword not in stat.keywords:
+                raise OperationError(
+                    f"Keyword '{keyword}' not found in interest '{topic}'",
+                    status_code=404,
+                )
+            stat.keywords = [k for k in stat.keywords if k != keyword]
+            return profile
+
+        updated = await self.container.memory_repository.update_profile(user_id, updater)
+        if not updated:
+            raise OperationError(f"User not found: {user_id}", status_code=404)
+        return updated
+
+    async def delete_profile_active_group(self, user_id: str, group_id: str) -> "UserMemoryFact":
+        """删除用户画像中指定的活跃群组。"""
+        profile = await self._get_profile_or_raise(user_id)
+        original_len = len(profile.active_groups)
+        profile.active_groups = [g for g in profile.active_groups if g.group_id != group_id]
+        if len(profile.active_groups) == original_len:
+            raise OperationError(f"Active group '{group_id}' not found for user {user_id}", status_code=404)
+        await self.container.memory_repository.upsert_profile(profile)
+        return profile
+
+    async def delete_profile_contact(self, user_id: str, contact_id: str) -> "UserMemoryFact":
+        """删除用户画像中指定的常联系人。"""
+        profile = await self._get_profile_or_raise(user_id)
+        if contact_id not in profile.frequent_contacts:
+            raise OperationError(f"Contact '{contact_id}' not found for user {user_id}", status_code=404)
+        del profile.frequent_contacts[contact_id]
+        await self.container.memory_repository.upsert_profile(profile)
+        return profile
+
+    async def delete_profile_contact_topic(self, user_id: str, contact_id: str, topic: str) -> "UserMemoryFact":
+        """删除用户常联系人中指定的相关话题。"""
+        profile = await self._get_profile_or_raise(user_id)
+        if contact_id not in profile.frequent_contacts:
+            raise OperationError(f"Contact '{contact_id}' not found for user {user_id}", status_code=404)
+        contact = profile.frequent_contacts[contact_id]
+        if topic not in contact.related_topics:
+            raise OperationError(f"Topic '{topic}' not found in contact '{contact_id}'", status_code=404)
+        del contact.related_topics[topic]
+        await self.container.memory_repository.upsert_profile(profile)
+        return profile
+
+    async def delete_profile_contact_group(self, user_id: str, contact_id: str, group_id: str) -> "UserMemoryFact":
+        """删除用户常联系人中指定的相关群组。"""
+        profile = await self._get_profile_or_raise(user_id)
+        if contact_id not in profile.frequent_contacts:
+            raise OperationError(f"Contact '{contact_id}' not found for user {user_id}", status_code=404)
+        contact = profile.frequent_contacts[contact_id]
+        if group_id not in contact.related_groups:
+            raise OperationError(f"Group '{group_id}' not found in contact '{contact_id}'", status_code=404)
+        contact.related_groups = [g for g in contact.related_groups if g != group_id]
+        await self.container.memory_repository.upsert_profile(profile)
+        return profile
+
     async def get_rule_stat(self, rule_id: str) -> dict[str, Any]:
         """获取指定规则的触发统计数据（包含完整记录）。"""
         rule = await self.container.rule_repository.get(rule_id)
