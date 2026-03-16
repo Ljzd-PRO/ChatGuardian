@@ -105,15 +105,41 @@ class DiscordAdapter(Adapter):
             intents.messages = True
             intents.dm_messages = True
             self._client = _DiscordClient(adapter=self, intents=intents)
+
+            # 先执行登录，以便在 token / intents 配置错误时同步失败
+            await self._client.login(self.config.bot_token)
+
+            # 登录成功后再标记为运行中，并启动网关连接任务
             self._running = True
-            self._client_task = asyncio.create_task(
-                self._client.start(self.config.bot_token)
-            )
+            self._client_task = asyncio.create_task(self._client.connect())
+            self._client_task.add_done_callback(self._on_client_task_done)
+
             logger.success("✅ Discord 适配器已启动（Gateway 模式）")
         except Exception as exc:
             logger.error(f"❌ Discord 适配器启动失败: {exc}")
             self._running = False
+            # 确保在启动失败时不保留半初始化的 client
+            self._client = None
             raise
+
+    def _on_client_task_done(self, task: asyncio.Task[None]) -> None:
+        """Discord 客户端网关任务结束时的回调，用于更新状态并记录异常。"""
+        try:
+            # 将在此处重新抛出任务中的异常（如果有）
+            task.result()
+        except asyncio.CancelledError:
+            logger.info("🛑 Discord 网关连接任务已取消")
+        except Exception as exc:
+            logger.error(f"❌ Discord 网关连接任务异常结束: {exc}")
+            self._running = False
+        else:
+            # 正常结束（通常意味着连接被关闭）
+            logger.info("ℹ️ Discord 网关连接任务已结束")
+            self._running = False
+        finally:
+            # 仅当当前保存的 task 与回调中的 task 相同时才清理引用
+            if self._client_task is task:
+                self._client_task = None
 
     async def stop(self) -> None:
         """停止 Discord 适配器，断开 Gateway 连接"""
