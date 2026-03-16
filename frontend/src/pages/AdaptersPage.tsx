@@ -4,13 +4,14 @@ import {
   Button, Card, CardBody, CardHeader, Chip, Divider, Input, Select, SelectItem, Spinner, Switch,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import chartBold from '@iconify/icons-solar/chart-2-bold';
 import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
-import chart2Bold from '@iconify/icons-solar/chart-2-bold';
 import cloudBold from '@iconify/icons-solar/cloud-bold';
 import code2Bold from '@iconify/icons-solar/code-2-bold';
 import cpuBoltBold from '@iconify/icons-solar/cpu-bolt-bold';
 import clockCircleBold from '@iconify/icons-solar/clock-circle-bold';
-import hashtagBold from '@iconify/icons-solar/hashtag-bold';
+import globeLinear from '@iconify/icons-solar/globe-linear';
+import hashtagBold from '@iconify/icons-solar/hash-bold';
 import keyBold from '@iconify/icons-solar/key-bold';
 import magicStick2Bold from '@iconify/icons-solar/magic-stick-2-bold';
 import playBold from '@iconify/icons-solar/play-bold';
@@ -47,7 +48,15 @@ export default function AdaptersPage() {
       telegram_bot_token: settings.telegram_bot_token ?? '',
       telegram_polling_timeout: settings.telegram_polling_timeout,
       telegram_drop_pending_updates: settings.telegram_drop_pending_updates,
-      wechat_endpoint: settings.wechat_endpoint ?? '',
+      discord_bot_token: settings.discord_bot_token ?? '',
+      discord_guild_ids: settings.discord_guild_ids ?? [],
+      wechat_token: settings.wechat_token ?? '',
+      wechat_encoding_aes_key: settings.wechat_encoding_aes_key ?? '',
+      wechat_corp_id: settings.wechat_corp_id ?? '',
+      wechat_host: settings.wechat_host ?? '0.0.0.0',
+      wechat_port: settings.wechat_port ?? 8082,
+      dingtalk_client_id: settings.dingtalk_client_id ?? '',
+      dingtalk_client_secret: settings.dingtalk_client_secret ?? '',
       feishu_app_id: settings.feishu_app_id ?? '',
       virtual_adapter_chat_count: settings.virtual_adapter_chat_count,
       virtual_adapter_members_per_chat: settings.virtual_adapter_members_per_chat,
@@ -72,6 +81,7 @@ export default function AdaptersPage() {
 
   return (
     <div className="space-y-5 lg:space-y-6">
+      {/* ── Adapter Controls ── */}
       <Card>
         <CardHeader className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-default-900">
@@ -125,6 +135,7 @@ export default function AdaptersPage() {
         </CardBody>
       </Card>
 
+      {/* ── Adapter Settings ── */}
       <Card>
         <CardHeader className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-default-900">
@@ -137,6 +148,8 @@ export default function AdaptersPage() {
         </CardHeader>
         <Divider />
         <CardBody className="space-y-5">
+
+          {/* ── Enabled Adapters multi-select ── */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-default-700">
               <Icon icon={plugCircleBold} fontSize={ICON_SIZES.input} aria-hidden="true" />
@@ -149,13 +162,15 @@ export default function AdaptersPage() {
               onSelectionChange={keys => setForm(f => ({ ...f, enabled_adapters: Array.from(keys) as string[] }))}
               className="max-w-xl"
             >
-              {['onebot', 'telegram', 'wechat', 'feishu', 'virtual'].map(a => (
+              {['onebot', 'telegram', 'discord', 'wechat', 'dingtalk', 'feishu', 'virtual'].map(a => (
                 <SelectItem key={a}>{a}</SelectItem>
               ))}
             </Select>
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
+
+            {/* ── OneBot ── */}
             <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
               <div className="flex items-center gap-2 font-semibold text-default-900">
                 <Icon icon={cpuBoltBold} fontSize={ICON_SIZES.cardHeader} aria-hidden="true" />
@@ -185,6 +200,7 @@ export default function AdaptersPage() {
               </div>
             </div>
 
+            {/* ── Telegram ── */}
             <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
               <div className="flex items-center gap-2 font-semibold text-default-900">
                 <Icon icon={sendSquareBold} fontSize={ICON_SIZES.cardHeader} aria-hidden="true" />
@@ -198,7 +214,7 @@ export default function AdaptersPage() {
                   onValueChange={v => setForm(f => ({ ...f, telegram_bot_token: v.trim() === '' ? null : v }))}
                 />
                 <Input
-                  label="Polling Timeout (s)"
+                  label={t('adapters.telegramPollingTimeout')}
                   startContent={<Icon icon={clockCircleBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                   type="number"
                   value={String(form.telegram_polling_timeout ?? 10)}
@@ -215,19 +231,102 @@ export default function AdaptersPage() {
               </div>
             </div>
 
+            {/* ── Discord ── */}
             <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
               <div className="flex items-center gap-2 font-semibold text-default-900">
                 <Icon icon={chatDotsBold} fontSize={ICON_SIZES.cardHeader} aria-hidden="true" />
-                <span>WeChat</span>
+                <span>Discord</span>
               </div>
-              <Input
-                label="Endpoint"
-                startContent={<Icon icon={cloudBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
-                value={form.wechat_endpoint ?? ''}
-                onValueChange={v => setForm(f => ({ ...f, wechat_endpoint: v.trim() === '' ? null : v }))}
-              />
+              <p className="text-xs text-default-500">{t('adapters.discordDesc')}</p>
+              <div className="grid gap-3">
+                <Input
+                  label={t('adapters.discordBotToken')}
+                  startContent={<Icon icon={keyBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
+                  value={form.discord_bot_token ?? ''}
+                  onValueChange={v => setForm(f => ({ ...f, discord_bot_token: v.trim() === '' ? null : v }))}
+                />
+                <Input
+                  label={t('adapters.discordGuildIds')}
+                  startContent={<Icon icon={globeLinear} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
+                  value={(form.discord_guild_ids ?? []).join(',')}
+                  onValueChange={v => {
+                    const ids = v.split(',').map(s => s.trim()).filter(Boolean).map(Number).filter(n => !isNaN(n));
+                    setForm(f => ({ ...f, discord_guild_ids: ids }));
+                  }}
+                  description={t('adapters.discordGuildIdsHint')}
+                />
+              </div>
             </div>
 
+            {/* ── WeChat Work（企业微信）── */}
+            <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
+              <div className="flex items-center gap-2 font-semibold text-default-900">
+                <Icon icon={chatDotsBold} fontSize={ICON_SIZES.cardHeader} aria-hidden="true" />
+                <span>{t('adapters.wechatTitle')}</span>
+              </div>
+              <p className="text-xs text-default-500">{t('adapters.wechatDesc')}</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  label={t('adapters.wechatToken')}
+                  startContent={<Icon icon={keyBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
+                  value={form.wechat_token ?? ''}
+                  onValueChange={v => setForm(f => ({ ...f, wechat_token: v.trim() === '' ? null : v }))}
+                  className="sm:col-span-2"
+                />
+                <Input
+                  label={t('adapters.wechatEncodingAesKey')}
+                  startContent={<Icon icon={keyBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
+                  value={form.wechat_encoding_aes_key ?? ''}
+                  onValueChange={v => setForm(f => ({ ...f, wechat_encoding_aes_key: v.trim() === '' ? null : v }))}
+                  className="sm:col-span-2"
+                />
+                <Input
+                  label={t('adapters.wechatCorpId')}
+                  startContent={<Icon icon={cloudBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
+                  value={form.wechat_corp_id ?? ''}
+                  onValueChange={v => setForm(f => ({ ...f, wechat_corp_id: v.trim() === '' ? null : v }))}
+                  className="sm:col-span-2"
+                />
+                <Input
+                  label={t('adapters.wechatCallbackHost')}
+                  startContent={<Icon icon={server2Bold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
+                  value={form.wechat_host ?? '0.0.0.0'}
+                  onValueChange={v => setForm(f => ({ ...f, wechat_host: v }))}
+                />
+                <Input
+                  label={t('adapters.wechatCallbackPort')}
+                  type="number"
+                  startContent={<Icon icon={hashtagBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
+                  value={String(form.wechat_port ?? 8082)}
+                  onValueChange={v => setForm(f => ({ ...f, wechat_port: Number(v) }))}
+                />
+              </div>
+            </div>
+
+            {/* ── DingTalk（钉钉）── */}
+            <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
+              <div className="flex items-center gap-2 font-semibold text-default-900">
+                <Icon icon={chatDotsBold} fontSize={ICON_SIZES.cardHeader} aria-hidden="true" />
+                <span>{t('adapters.dingtalkTitle')}</span>
+              </div>
+              <p className="text-xs text-default-500">{t('adapters.dingtalkDesc')}</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  label={t('adapters.dingtalkClientId')}
+                  startContent={<Icon icon={keyBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
+                  value={form.dingtalk_client_id ?? ''}
+                  onValueChange={v => setForm(f => ({ ...f, dingtalk_client_id: v.trim() === '' ? null : v }))}
+                />
+                <Input
+                  label={t('adapters.dingtalkClientSecret')}
+                  startContent={<Icon icon={keyBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
+                  value={form.dingtalk_client_secret ?? ''}
+                  onValueChange={v => setForm(f => ({ ...f, dingtalk_client_secret: v.trim() === '' ? null : v }))}
+                />
+              </div>
+            </div>
+
+            {/* ── Feishu ── */}
             <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
               <div className="flex items-center gap-2 font-semibold text-default-900">
                 <Icon icon={chatDotsBold} fontSize={ICON_SIZES.cardHeader} aria-hidden="true" />
@@ -240,8 +339,10 @@ export default function AdaptersPage() {
                 onValueChange={v => setForm(f => ({ ...f, feishu_app_id: v.trim() === '' ? null : v }))}
               />
             </div>
+
           </div>
 
+          {/* ── Virtual Adapter ── */}
           <div className="rounded-2xl border border-default-200 bg-default-50 p-4 space-y-3 shadow-sm">
             <div className="flex items-center gap-2 font-semibold text-default-900">
               <Icon icon={magicStick2Bold} fontSize={ICON_SIZES.cardHeader} aria-hidden="true" />
@@ -251,7 +352,7 @@ export default function AdaptersPage() {
               <Input
                 label={t('adapters.chatCount')}
                 type="number"
-                startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
+                startContent={<Icon icon={chartBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                 value={String(form.virtual_adapter_chat_count ?? 3)}
                 onValueChange={v => setForm(f => ({ ...f, virtual_adapter_chat_count: Number(v) }))}
               />
@@ -272,14 +373,14 @@ export default function AdaptersPage() {
               <Input
                 label={t('adapters.intervalMin')}
                 type="number"
-                startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
+                startContent={<Icon icon={chartBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                 value={String(form.virtual_adapter_interval_min_seconds ?? 0.1)}
                 onValueChange={v => setForm(f => ({ ...f, virtual_adapter_interval_min_seconds: Number(v) }))}
               />
               <Input
                 label={t('adapters.intervalMax')}
                 type="number"
-                startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
+                startContent={<Icon icon={chartBold} fontSize={ICON_SIZES.input} className="text-default-500" aria-hidden="true" />}
                 value={String(form.virtual_adapter_interval_max_seconds ?? 0.6)}
                 onValueChange={v => setForm(f => ({ ...f, virtual_adapter_interval_max_seconds: Number(v) }))}
               />
@@ -291,6 +392,7 @@ export default function AdaptersPage() {
               />
             </div>
           </div>
+
           {save.isSuccess && <p className="text-success text-sm">{t('common.saveSuccess')}</p>}
           {save.isError && <p className="text-danger text-sm">{t('common.saveFailed')}</p>}
         </CardBody>

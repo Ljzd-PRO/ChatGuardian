@@ -69,7 +69,15 @@ class Settings(BaseModel):
         telegram_bot_token: Telegram Bot Token。
         telegram_polling_timeout: Telegram 长轮询超时时间（秒）。
         telegram_drop_pending_updates: 启动时是否丢弃待处理的 Telegram 更新。
-        wechat_endpoint: WeChat 端点。
+        discord_bot_token: Discord Bot Token。
+        discord_guild_ids: Discord 服务器 ID 过滤列表（留空监听所有服务器）。
+        wechat_token: 企业微信应用回调 Token（用于签名验证）。
+        wechat_encoding_aes_key: 企业微信应用 EncodingAESKey（用于消息加解密，43 字符）。
+        wechat_corp_id: 企业微信 CorpID（企业 ID）。
+        wechat_host: WeChat Work 回调服务器监听地址。
+        wechat_port: WeChat Work 回调服务器监听端口。
+        dingtalk_client_id: 钉钉应用 Client ID（AppKey）。
+        dingtalk_client_secret: 钉钉应用 Client Secret（AppSecret）。
         feishu_app_id: 飞书 App ID。
         virtual_adapter_chat_count: 虚拟 adapter 聊天数。
         virtual_adapter_members_per_chat: 虚拟 adapter 每个聊天成员数。
@@ -152,7 +160,22 @@ class Settings(BaseModel):
     telegram_bot_token: Optional[str] = None
     telegram_polling_timeout: int = 10
     telegram_drop_pending_updates: bool = False
-    wechat_endpoint: Optional[str] = None
+
+    # Discord
+    discord_bot_token: Optional[str] = None
+    discord_guild_ids: list[int] = []
+
+    # WeChat Work（企业微信）
+    wechat_token: Optional[str] = None
+    wechat_encoding_aes_key: Optional[str] = None
+    wechat_corp_id: Optional[str] = None
+    wechat_host: str = "0.0.0.0"
+    wechat_port: int = 8082
+
+    # DingTalk（钉钉）
+    dingtalk_client_id: Optional[str] = None
+    dingtalk_client_secret: Optional[str] = None
+
     feishu_app_id: Optional[str] = None
 
     # Virtual Adapter（测试用）配置
