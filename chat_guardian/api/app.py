@@ -523,6 +523,62 @@ def create_app() -> FastAPI:
         except OperationError as exc:
             raise _to_http_error(exc) from exc
 
+    @app.delete("/api/user_profiles/{user_id}/interests/{topic}")
+    async def delete_profile_interest(user_id: str, topic: str):
+        """删除用户画像中指定的兴趣话题。"""
+        try:
+            return await operations.delete_profile_interest(user_id, topic)
+        except OperationError as exc:
+            raise _to_http_error(exc) from exc
+
+    @app.delete("/api/user_profiles/{user_id}/interests/{topic}/related_chat/{chat_id}")
+    async def delete_profile_interest_chat(user_id: str, topic: str, chat_id: str):
+        """删除用户兴趣话题中的指定相关聊天记录。"""
+        try:
+            return await operations.delete_profile_interest_chat(user_id, topic, chat_id)
+        except OperationError as exc:
+            raise _to_http_error(exc) from exc
+
+    @app.delete("/api/user_profiles/{user_id}/interests/{topic}/keywords/{keyword}")
+    async def delete_profile_interest_keyword(user_id: str, topic: str, keyword: str):
+        """删除用户兴趣话题中的指定关键词。"""
+        try:
+            return await operations.delete_profile_interest_keyword(user_id, topic, keyword)
+        except OperationError as exc:
+            raise _to_http_error(exc) from exc
+
+    @app.delete("/api/user_profiles/{user_id}/active_groups/{group_id}")
+    async def delete_profile_active_group(user_id: str, group_id: str):
+        """删除用户画像中指定的活跃群组。"""
+        try:
+            return await operations.delete_profile_active_group(user_id, group_id)
+        except OperationError as exc:
+            raise _to_http_error(exc) from exc
+
+    @app.delete("/api/user_profiles/{user_id}/frequent_contacts/{contact_id}")
+    async def delete_profile_contact(user_id: str, contact_id: str):
+        """删除用户画像中指定的常联系人。"""
+        try:
+            return await operations.delete_profile_contact(user_id, contact_id)
+        except OperationError as exc:
+            raise _to_http_error(exc) from exc
+
+    @app.delete("/api/user_profiles/{user_id}/frequent_contacts/{contact_id}/related_topics/{topic}")
+    async def delete_profile_contact_topic(user_id: str, contact_id: str, topic: str):
+        """删除用户常联系人中指定的相关话题。"""
+        try:
+            return await operations.delete_profile_contact_topic(user_id, contact_id, topic)
+        except OperationError as exc:
+            raise _to_http_error(exc) from exc
+
+    @app.delete("/api/user_profiles/{user_id}/frequent_contacts/{contact_id}/related_groups/{group_id}")
+    async def delete_profile_contact_group(user_id: str, contact_id: str, group_id: str):
+        """删除用户常联系人中指定的相关群组。"""
+        try:
+            return await operations.delete_profile_contact_group(user_id, contact_id, group_id)
+        except OperationError as exc:
+            raise _to_http_error(exc) from exc
+
     # ── Rule Stats (per-rule) ────────────────────────────────────────────────
 
     @app.get("/api/rule_stats/{rule_id}")

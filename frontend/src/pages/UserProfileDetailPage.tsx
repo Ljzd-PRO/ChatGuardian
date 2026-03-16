@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button, Card, CardBody, CardHeader, Chip,
+  Modal, ModalBody, ModalContent, ModalFooter, ModalHeader,
   Pagination, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
   cn,
@@ -16,9 +17,19 @@ import tagBold from '@iconify/icons-solar/tag-bold';
 import clockCircleBold from '@iconify/icons-solar/clock-circle-bold';
 import starBold from '@iconify/icons-solar/star-bold';
 import altArrowLeftBold from '@iconify/icons-solar/alt-arrow-left-bold';
+import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { fetchUserProfile } from '../api/users';
+import {
+  fetchUserProfile,
+  deleteProfileInterest,
+  deleteProfileInterestChat,
+  deleteProfileInterestKeyword,
+  deleteProfileActiveGroup,
+  deleteProfileContact,
+  deleteProfileContactTopic,
+  deleteProfileContactGroup,
+} from '../api/users';
 import { ICON_SIZES } from '../constants/iconSizes';
 import { parseBackendDate } from '../utils/dates';
 
@@ -32,6 +43,7 @@ const INTEREST_COL_STYLES: Record<string, string> = {
   last_active:  'w-28 min-w-[7rem]',
   related_chat: 'w-40 min-w-[10rem]',
   keywords:     'w-40 min-w-[10rem]',
+  actions:      'w-16 min-w-[4rem]',
 };
 
 const CONTACT_COL_STYLES: Record<string, string> = {
@@ -41,6 +53,7 @@ const CONTACT_COL_STYLES: Record<string, string> = {
   last_interact:     'w-28 min-w-[7rem]',
   related_topics:    'w-40 min-w-[10rem]',
   related_groups:    'w-36 min-w-[9rem]',
+  actions:           'w-16 min-w-[4rem]',
 };
 
 const INTEREST_COLUMNS: { key: string; labelKey: string; icon: IconifyIcon; sortable: boolean }[] = [
@@ -49,6 +62,7 @@ const INTEREST_COLUMNS: { key: string; labelKey: string; icon: IconifyIcon; sort
   { key: 'last_active',  labelKey: 'users.lastActive',  icon: clockCircleBold,   sortable: true },
   { key: 'related_chat', labelKey: 'users.relatedChat', icon: chatDotsBold,      sortable: false },
   { key: 'keywords',     labelKey: 'users.keywords',    icon: tagBold,           sortable: false },
+  { key: 'actions',      labelKey: 'common.actions',    icon: trashBin2Bold,     sortable: false },
 ];
 
 const CONTACT_COLUMNS: { key: string; labelKey: string; icon: IconifyIcon; sortable: boolean }[] = [
@@ -58,7 +72,19 @@ const CONTACT_COLUMNS: { key: string; labelKey: string; icon: IconifyIcon; sorta
   { key: 'last_interact',     labelKey: 'users.lastInteract',     icon: clockCircleBold,       sortable: false },
   { key: 'related_topics',    labelKey: 'users.relatedTopics',    icon: hashtagCircleBold,     sortable: false },
   { key: 'related_groups',    labelKey: 'users.relatedGroups',    icon: usersGroupRoundedBold, sortable: false },
+  { key: 'actions',           labelKey: 'common.actions',         icon: trashBin2Bold,         sortable: false },
 ];
+
+/* ── Delete target type ─────────────────────────────────────────────── */
+
+type DeleteTarget =
+  | { kind: 'interest';        topic: string }
+  | { kind: 'group';           groupId: string }
+  | { kind: 'contact';         contactId: string }
+  | { kind: 'interest_chat';   topic: string; chatId: string }
+  | { kind: 'interest_kw';     topic: string; keyword: string }
+  | { kind: 'contact_topic';   contactId: string; topic: string }
+  | { kind: 'contact_group';   contactId: string; groupId: string };
 
 /* ── Component ──────────────────────────────────────────────────────── */
 
@@ -66,12 +92,67 @@ export default function UserProfileDetailPage() {
   const { t } = useTranslation();
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: profile, isLoading, isError } = useQuery({
     queryKey: ['user_profile', userId],
     queryFn: () => fetchUserProfile(userId!),
     enabled: !!userId,
   });
+
+  /* ── Delete state ───────────────────────────────────────────────── */
+
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleteError, setDeleteError] = useState(false);
+
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['user_profile', userId] });
+    queryClient.invalidateQueries({ queryKey: ['user_profiles'] });
+    setDeleteTarget(null);
+    setDeleteError(false);
+  }, [queryClient, userId]);
+
+  const onError = useCallback(() => setDeleteError(true), []);
+
+  const delInterest       = useMutation({ mutationFn: (topic: string)                              => deleteProfileInterest(userId!, topic),                       onSuccess: invalidate, onError });
+  const delGroup          = useMutation({ mutationFn: (groupId: string)                            => deleteProfileActiveGroup(userId!, groupId),                  onSuccess: invalidate, onError });
+  const delContact        = useMutation({ mutationFn: (contactId: string)                          => deleteProfileContact(userId!, contactId),                    onSuccess: invalidate, onError });
+  const delInterestChat   = useMutation({ mutationFn: ({ topic, chatId }: { topic: string; chatId: string })           => deleteProfileInterestChat(userId!, topic, chatId),           onSuccess: invalidate, onError });
+  const delInterestKw     = useMutation({ mutationFn: ({ topic, keyword }: { topic: string; keyword: string })         => deleteProfileInterestKeyword(userId!, topic, keyword),        onSuccess: invalidate, onError });
+  const delContactTopic   = useMutation({ mutationFn: ({ contactId, topic }: { contactId: string; topic: string })     => deleteProfileContactTopic(userId!, contactId, topic),         onSuccess: invalidate, onError });
+  const delContactGroup   = useMutation({ mutationFn: ({ contactId, groupId }: { contactId: string; groupId: string }) => deleteProfileContactGroup(userId!, contactId, groupId),       onSuccess: invalidate, onError });
+
+  const isDeletePending =
+    delInterest.isPending || delGroup.isPending || delContact.isPending ||
+    delInterestChat.isPending || delInterestKw.isPending ||
+    delContactTopic.isPending || delContactGroup.isPending;
+
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleteError(false);
+    switch (deleteTarget.kind) {
+      case 'interest':       delInterest.mutate(deleteTarget.topic);                                                                     break;
+      case 'group':          delGroup.mutate(deleteTarget.groupId);                                                                      break;
+      case 'contact':        delContact.mutate(deleteTarget.contactId);                                                                  break;
+      case 'interest_chat':  delInterestChat.mutate({ topic: deleteTarget.topic, chatId: deleteTarget.chatId });                        break;
+      case 'interest_kw':    delInterestKw.mutate({ topic: deleteTarget.topic, keyword: deleteTarget.keyword });                        break;
+      case 'contact_topic':  delContactTopic.mutate({ contactId: deleteTarget.contactId, topic: deleteTarget.topic });                  break;
+      case 'contact_group':  delContactGroup.mutate({ contactId: deleteTarget.contactId, groupId: deleteTarget.groupId });              break;
+    }
+  }
+
+  function deleteConfirmText(): string {
+    if (!deleteTarget) return '';
+    switch (deleteTarget.kind) {
+      case 'interest':       return t('users.deleteInterestConfirm',      { item: deleteTarget.topic });
+      case 'group':          return t('users.deleteGroupConfirm',         { item: deleteTarget.groupId });
+      case 'contact':        return t('users.deleteContactConfirm',       { item: deleteTarget.contactId });
+      case 'interest_chat':  return t('users.deleteChatConfirm',         { item: deleteTarget.chatId,  parent: deleteTarget.topic });
+      case 'interest_kw':    return t('users.deleteKeywordConfirm',      { item: deleteTarget.keyword, parent: deleteTarget.topic });
+      case 'contact_topic':  return t('users.deleteContactTopicConfirm', { item: deleteTarget.topic,   parent: deleteTarget.contactId });
+      case 'contact_group':  return t('users.deleteContactGroupConfirm', { item: deleteTarget.groupId, parent: deleteTarget.contactId });
+    }
+  }
 
   /* ── Interest table state ───────────────────────────────────────── */
 
@@ -262,12 +343,13 @@ export default function UserProfileDetailPage() {
           </CardHeader>
           <CardBody>
             <div className="flex flex-wrap gap-2">
-              {profile.active_groups.slice(0, 10).map(g => (
+              {profile.active_groups.map(g => (
                 <Chip
                   key={g.group_id}
                   size="sm"
                   variant="flat"
                   startContent={<Icon icon={usersGroupRoundedBold} fontSize={ICON_SIZES.chip} className="text-default-500" />}
+                  onClose={() => setDeleteTarget({ kind: 'group', groupId: g.group_id })}
                 >
                   {g.group_id}
                 </Chip>
@@ -323,8 +405,14 @@ export default function UserProfileDetailPage() {
                   </TableCell>
                   <TableCell className={INTEREST_COL_STYLES.related_chat}>
                     <div className="flex flex-wrap gap-1">
-                      {row.related_chat.slice(0, 5).map(chat => (
-                        <Chip key={chat} size="sm" variant="flat" startContent={<Icon icon={chatDotsBold} fontSize={ICON_SIZES.chip} />}>
+                      {row.related_chat.map(chat => (
+                        <Chip
+                          key={chat}
+                          size="sm"
+                          variant="flat"
+                          startContent={<Icon icon={chatDotsBold} fontSize={ICON_SIZES.chip} />}
+                          onClose={() => setDeleteTarget({ kind: 'interest_chat', topic: row.topic, chatId: chat })}
+                        >
                           {chat}
                         </Chip>
                       ))}
@@ -332,12 +420,31 @@ export default function UserProfileDetailPage() {
                   </TableCell>
                   <TableCell className={INTEREST_COL_STYLES.keywords}>
                     <div className="flex flex-wrap gap-1">
-                      {row.keywords.slice(0, 5).map(kw => (
-                        <Chip key={kw} size="sm" variant="flat" color="secondary" startContent={<Icon icon={tagBold} fontSize={ICON_SIZES.chip} />}>
+                      {row.keywords.map(kw => (
+                        <Chip
+                          key={kw}
+                          size="sm"
+                          variant="flat"
+                          color="secondary"
+                          startContent={<Icon icon={tagBold} fontSize={ICON_SIZES.chip} />}
+                          onClose={() => setDeleteTarget({ kind: 'interest_kw', topic: row.topic, keyword: kw })}
+                        >
                           {kw}
                         </Chip>
                       ))}
                     </div>
+                  </TableCell>
+                  <TableCell className={INTEREST_COL_STYLES.actions}>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      color="danger"
+                      aria-label={t('common.delete')}
+                      onPress={() => setDeleteTarget({ kind: 'interest', topic: row.topic })}
+                    >
+                      <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -400,8 +507,14 @@ export default function UserProfileDetailPage() {
                   </TableCell>
                   <TableCell className={CONTACT_COL_STYLES.related_topics}>
                     <div className="flex flex-wrap gap-1">
-                      {row.sortedTopics.slice(0, 5).map(tp => (
-                        <Chip key={tp.topic} size="sm" variant="flat" startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.chip} />}>
+                      {row.sortedTopics.map(tp => (
+                        <Chip
+                          key={tp.topic}
+                          size="sm"
+                          variant="flat"
+                          startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.chip} />}
+                          onClose={() => setDeleteTarget({ kind: 'contact_topic', contactId: row.contactId, topic: tp.topic })}
+                        >
                           {tp.topic}
                         </Chip>
                       ))}
@@ -409,12 +522,30 @@ export default function UserProfileDetailPage() {
                   </TableCell>
                   <TableCell className={CONTACT_COL_STYLES.related_groups}>
                     <div className="flex flex-wrap gap-1">
-                      {row.related_groups.slice(0, 3).map(g => (
-                        <Chip key={g} size="sm" variant="flat" startContent={<Icon icon={usersGroupRoundedBold} fontSize={ICON_SIZES.chip} />}>
+                      {row.related_groups.map(g => (
+                        <Chip
+                          key={g}
+                          size="sm"
+                          variant="flat"
+                          startContent={<Icon icon={usersGroupRoundedBold} fontSize={ICON_SIZES.chip} />}
+                          onClose={() => setDeleteTarget({ kind: 'contact_group', contactId: row.contactId, groupId: g })}
+                        >
                           {g}
                         </Chip>
                       ))}
                     </div>
+                  </TableCell>
+                  <TableCell className={CONTACT_COL_STYLES.actions}>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      color="danger"
+                      aria-label={t('common.delete')}
+                      onPress={() => setDeleteTarget({ kind: 'contact', contactId: row.contactId })}
+                    >
+                      <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -422,6 +553,44 @@ export default function UserProfileDetailPage() {
           </Table>
         </CardBody>
       </Card>
+
+      {/* Delete confirmation modal */}
+      <Modal
+        isOpen={!!deleteTarget}
+        onClose={() => { setDeleteTarget(null); setDeleteError(false); }}
+        size="md"
+      >
+        <ModalContent>
+          <ModalHeader className="flex items-center gap-2 text-danger">
+            <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.cardHeader} />
+            {t('users.deleteItemTitle')}
+          </ModalHeader>
+          <ModalBody>
+            <p className="text-default-600">{deleteConfirmText()}</p>
+            {deleteError && (
+              <p className="text-danger text-sm mt-2">{t('users.deleteFailed')}</p>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="flat"
+              onPress={() => { setDeleteTarget(null); setDeleteError(false); }}
+              isDisabled={isDeletePending}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              color="danger"
+              startContent={<Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />}
+              isLoading={isDeletePending}
+              onPress={confirmDelete}
+            >
+              {t('common.delete')}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }
+

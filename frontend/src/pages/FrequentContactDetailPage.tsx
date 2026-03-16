@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button, Card, CardBody, CardHeader, Chip,
+  Modal, ModalBody, ModalContent, ModalFooter, ModalHeader,
   Pagination, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
   cn,
@@ -15,9 +16,10 @@ import chatDotsBold from '@iconify/icons-solar/chat-dots-bold';
 import clockCircleBold from '@iconify/icons-solar/clock-circle-bold';
 import starBold from '@iconify/icons-solar/star-bold';
 import altArrowLeftBold from '@iconify/icons-solar/alt-arrow-left-bold';
+import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchUserProfile } from '../api/users';
+import { fetchUserProfile, deleteProfileContactTopic, deleteProfileContactGroup } from '../api/users';
 import { ICON_SIZES } from '../constants/iconSizes';
 import { parseBackendDate } from '../utils/dates';
 
@@ -29,21 +31,31 @@ const TOPIC_COL_STYLES: Record<string, string> = {
   topic:     'w-32 min-w-[8rem]',
   score:     'w-20 min-w-[5rem]',
   last_talk: 'w-32 min-w-[8rem]',
+  actions:   'w-16 min-w-[4rem]',
 };
 
 const GROUP_COL_STYLES: Record<string, string> = {
   group_id: 'w-48 min-w-[12rem]',
+  actions:  'w-16 min-w-[4rem]',
 };
 
 const TOPIC_COLUMNS: { key: string; labelKey: string; icon: IconifyIcon; sortable: boolean }[] = [
   { key: 'topic',     labelKey: 'users.topic',    icon: hashtagCircleBold, sortable: true },
   { key: 'score',     labelKey: 'users.score',    icon: starBold,          sortable: true },
   { key: 'last_talk', labelKey: 'users.lastTalk', icon: clockCircleBold,   sortable: true },
+  { key: 'actions',   labelKey: 'common.actions', icon: trashBin2Bold,     sortable: false },
 ];
 
 const GROUP_COLUMNS: { key: string; labelKey: string; icon: IconifyIcon; sortable: boolean }[] = [
   { key: 'group_id', labelKey: 'users.groupId', icon: usersGroupRoundedBold, sortable: true },
+  { key: 'actions',  labelKey: 'common.actions', icon: trashBin2Bold,        sortable: false },
 ];
+
+/* ── Delete target type ─────────────────────────────────────────────── */
+
+type DeleteTarget =
+  | { kind: 'topic';  topic: string }
+  | { kind: 'group';  groupId: string };
 
 /* ── Component ──────────────────────────────────────────────────────── */
 
@@ -51,6 +63,7 @@ export default function FrequentContactDetailPage() {
   const { t } = useTranslation();
   const { userId, contactId } = useParams<{ userId: string; contactId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: profile, isLoading, isError } = useQuery({
     queryKey: ['user_profile', userId],
@@ -59,6 +72,47 @@ export default function FrequentContactDetailPage() {
   });
 
   const contact = profile?.frequent_contacts?.[contactId ?? ''];
+
+  /* ── Delete state ───────────────────────────────────────────────── */
+
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleteError, setDeleteError] = useState(false);
+
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['user_profile', userId] });
+    queryClient.invalidateQueries({ queryKey: ['user_profiles'] });
+    setDeleteTarget(null);
+    setDeleteError(false);
+  }, [queryClient, userId]);
+
+  const onError = useCallback(() => setDeleteError(true), []);
+
+  const delTopic = useMutation({
+    mutationFn: (topic: string) => deleteProfileContactTopic(userId!, contactId!, topic),
+    onSuccess: invalidate,
+    onError,
+  });
+  const delGroup = useMutation({
+    mutationFn: (groupId: string) => deleteProfileContactGroup(userId!, contactId!, groupId),
+    onSuccess: invalidate,
+    onError,
+  });
+
+  const isDeletePending = delTopic.isPending || delGroup.isPending;
+
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleteError(false);
+    if (deleteTarget.kind === 'topic') delTopic.mutate(deleteTarget.topic);
+    else                               delGroup.mutate(deleteTarget.groupId);
+  }
+
+  function deleteConfirmText(): string {
+    if (!deleteTarget) return '';
+    if (deleteTarget.kind === 'topic')
+      return t('users.deleteContactTopicConfirm', { item: deleteTarget.topic,  parent: contactId });
+    return t('users.deleteContactGroupConfirm',   { item: deleteTarget.groupId, parent: contactId });
+  }
 
   /* ── Topics table state ─────────────────────────────────────────── */
 
@@ -266,6 +320,18 @@ export default function FrequentContactDetailPage() {
                   <TableCell className={cn('text-xs text-default-400', TOPIC_COL_STYLES.last_talk)}>
                     {parseBackendDate(row.last_talk).toLocaleString()}
                   </TableCell>
+                  <TableCell className={TOPIC_COL_STYLES.actions}>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      color="danger"
+                      aria-label={t('common.delete')}
+                      onPress={() => setDeleteTarget({ kind: 'topic', topic: row.topic })}
+                    >
+                      <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -311,12 +377,61 @@ export default function FrequentContactDetailPage() {
                   <TableCell className={cn('text-sm text-default-900', GROUP_COL_STYLES.group_id)}>
                     {row.group_id}
                   </TableCell>
+                  <TableCell className={GROUP_COL_STYLES.actions}>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      color="danger"
+                      aria-label={t('common.delete')}
+                      onPress={() => setDeleteTarget({ kind: 'group', groupId: row.group_id })}
+                    >
+                      <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </CardBody>
       </Card>
+
+      {/* Delete confirmation modal */}
+      <Modal
+        isOpen={!!deleteTarget}
+        onClose={() => { setDeleteTarget(null); setDeleteError(false); }}
+        size="md"
+      >
+        <ModalContent>
+          <ModalHeader className="flex items-center gap-2 text-danger">
+            <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.cardHeader} />
+            {t('users.deleteItemTitle')}
+          </ModalHeader>
+          <ModalBody>
+            <p className="text-default-600">{deleteConfirmText()}</p>
+            {deleteError && (
+              <p className="text-danger text-sm mt-2">{t('users.deleteFailed')}</p>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="flat"
+              onPress={() => { setDeleteTarget(null); setDeleteError(false); }}
+              isDisabled={isDeletePending}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              color="danger"
+              startContent={<Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />}
+              isLoading={isDeletePending}
+              onPress={confirmDelete}
+            >
+              {t('common.delete')}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }
