@@ -34,6 +34,7 @@ import { ICON_SIZES } from '../constants/iconSizes';
 import { parseBackendDate } from '../utils/dates';
 
 /* ── Constants ──────────────────────────────────────────────────────── */
+const MAX_VISIBLE_ACTIVE_GROUP_CHIPS = 20;
 
 const ROWS_PER_PAGE = 10;
 
@@ -343,17 +344,33 @@ export default function UserProfileDetailPage() {
           </CardHeader>
           <CardBody>
             <div className="flex flex-wrap gap-2">
-              {profile.active_groups.map(g => (
+              {profile.active_groups
+                .slice(0, MAX_VISIBLE_ACTIVE_GROUP_CHIPS)
+                .map(g => (
+                  <Chip
+                    key={g.group_id}
+                    size="sm"
+                    variant="flat"
+                    startContent={
+                      <Icon
+                        icon={usersGroupRoundedBold}
+                        fontSize={ICON_SIZES.chip}
+                        className="text-default-500"
+                      />
+                    }
+                    onClose={() => setDeleteTarget({ kind: 'group', groupId: g.group_id })}
+                  >
+                    {g.group_id}
+                  </Chip>
+                ))}
+              {profile.active_groups.length > MAX_VISIBLE_ACTIVE_GROUP_CHIPS && (
                 <Chip
-                  key={g.group_id}
                   size="sm"
                   variant="flat"
-                  startContent={<Icon icon={usersGroupRoundedBold} fontSize={ICON_SIZES.chip} className="text-default-500" />}
-                  onClose={() => setDeleteTarget({ kind: 'group', groupId: g.group_id })}
                 >
-                  {g.group_id}
+                  {`+${profile.active_groups.length - MAX_VISIBLE_ACTIVE_GROUP_CHIPS} more`}
                 </Chip>
-              ))}
+              )}
             </div>
           </CardBody>
         </Card>
