@@ -428,7 +428,7 @@ export default function UserProfileDetailPage() {
                   </TableCell>
                   <TableCell className={INTEREST_COL_STYLES.related_chat}>
                     <div className="flex flex-wrap gap-1">
-                      {row.related_chat.slice(0, 5).map(chat => (
+                      {row.related_chat.map(chat => (
                         <Chip
                           key={chat}
                           size="sm"
@@ -439,11 +439,6 @@ export default function UserProfileDetailPage() {
                           {chat}
                         </Chip>
                       ))}
-                      {row.related_chat.length > 5 && (
-                        <span className="text-[10px] text-default-400">
-                          +{row.related_chat.length - 5} more
-                        </span>
-                      )}
                     </div>
                   </TableCell>
                   <TableCell className={INTEREST_COL_STYLES.keywords}>
