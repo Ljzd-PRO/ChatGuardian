@@ -230,9 +230,17 @@ class DiscordAdapter(Adapter):
             if ts.tzinfo is None:
                 ts = ts.replace(tzinfo=timezone.utc)
 
+            # Use the same chat_id convention as events:
+            # - DM: author.id (conversation with the user)
+            # - Guild/channel: channel.id
+            if isinstance(message.channel, discord.DMChannel):
+                chat_id = str(author.id)
+            else:
+                chat_id = str(message.channel.id)
+
             chat_message = ChatMessage(
                 message_id=str(message.id),
-                chat_id=str(message.channel.id),
+                chat_id=chat_id,
                 sender_id=sender_id,
                 sender_name=sender_name,
                 contents=contents,
