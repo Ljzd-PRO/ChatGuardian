@@ -15,8 +15,10 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import hashlib
 import json
+import mimetypes
 import re
 import time
 from dataclasses import dataclass, field
@@ -100,6 +102,80 @@ def _messages_to_markdown(messages: list[ChatMessage]) -> str:
     return "\n".join(lines)
 
 
+async def _build_rule_detection_content_blocks(
+        messages: list[ChatMessage],
+        rules_payload: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], str, int]:
+    """构建规则检测用的多模态 HumanMessage content blocks。
+
+    Returns:
+        (content_blocks, text_payload, image_block_count)
+    """
+    messages_payload = _messages_to_markdown(messages)
+    text_payload = f"""
+## 聊天消息
+{messages_payload}
+
+## 规则列表
+{json.dumps(rules_payload, ensure_ascii=False, indent=4)}
+"""
+
+    content_blocks: list[dict[str, Any]] = [{"type": "text", "text": text_payload}]
+    image_block_count = 0
+    image_cache: dict[str, tuple[str, str] | None] = {}
+
+    async def _load_image_as_base64(url: str) -> tuple[str, str] | None:
+        cached = image_cache.get(url)
+        if cached is not None or url in image_cache:
+            return cached
+        try:
+            async with httpx.AsyncClient(timeout=min(15.0, settings.llm_timeout_seconds),
+                                         follow_redirects=True) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+
+            content_type = (response.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
+            if not content_type:
+                guessed, _ = mimetypes.guess_type(url)
+                content_type = guessed or "image/jpeg"
+            if not content_type.startswith("image/"):
+                logger.warning(f"⚠️ 跳过非图片资源 | url={url} | content_type={content_type}")
+                image_cache[url] = None
+                return None
+
+            encoded = base64.b64encode(response.content).decode("ascii")
+            image_cache[url] = (encoded, content_type)
+            return image_cache[url]
+        except Exception as exc:
+            logger.warning(f"⚠️ 下载图片失败，已跳过该图片 | url={url} | error={exc}")
+            image_cache[url] = None
+            return None
+
+    for message in messages:
+        for item in message.contents:
+            if item.type.value != "image" or not item.image_url:
+                continue
+            image_url = item.image_url.strip()
+            if not image_url:
+                continue
+
+            loaded = await _load_image_as_base64(image_url)
+            if loaded is None:
+                continue
+            image_base64, mime_type = loaded
+            image_block_count += 1
+            content_blocks.append(
+                {
+                    "type": "image",
+                    "id": item.generate_short_id(image_url),
+                    "base64": image_base64,
+                    "mime_type": mime_type,
+                }
+            )
+
+    return content_blocks, text_payload, image_block_count
+
+
 class LangChainLLMClient:
     """基于 LangChain 的 LLM 客户端实现。
 
@@ -131,7 +207,6 @@ class LangChainLLMClient:
             return []
 
         logger.debug(f"🔍 LLM 评估开始 | 消息数={len(messages)} | 规则数={len(rules)}")
-        messages_payload = _messages_to_markdown(messages)
         rules_payload = [
             {
                 "rule_id": rule.rule_id,
@@ -150,13 +225,10 @@ class LangChainLLMClient:
             }
             for rule in rules
         ]
-        payload = f"""
-## 聊天消息
-{messages_payload}
-
-## 规则列表
-{json.dumps(rules_payload, ensure_ascii=False, indent=4)}
-"""
+        content_blocks, text_payload, image_block_count = await _build_rule_detection_content_blocks(
+            messages,
+            rules_payload,
+        )
 
         try:
             response = await self.model.ainvoke(
@@ -175,6 +247,8 @@ class LangChainLLMClient:
   - 例如：
     - `[2026-03-04 10:30:45 CST] (张三): 你好，今天天气如何？`
     - `[2026-03-04 10:31:12 CST] (李四): 天气不错，适合出游`
+    - 若消息内包含 `[image: XXXXX]`，表示该图片会通过同一条 HumanMessage 的 image content block 传入，
+        其中 image block 的 `id` 与 `XXXXX` 一致
 - `规则列表`：规则对象列表。每个规则包含以下字段：
   - `rule_id`：规则唯一标识，字符串
   - `name`：规则名称，字符串
@@ -217,10 +291,10 @@ class LangChainLLMClient:
 ```
 """
                     ),
-                    HumanMessage(content=payload),
+                    HumanMessage(content=content_blocks),
                 ]
             )
-            logger.debug(f"💬 LLM 输入 | {payload}")
+            logger.debug(f"💬 LLM 输入 | 文本长度={len(text_payload)} | 图片块数={image_block_count}")
             content = self._response_text(response.content)
             parsed = _extract_json_payload(content)
             decisions = self._parse_decisions(parsed, rules)
@@ -230,7 +304,16 @@ class LangChainLLMClient:
             return decisions
         except Exception as e:
             logger.error(f"❌ LLM 评估异常: {e}")
-            return None
+            return [
+                RuleDecision(
+                    rule_id=rule.rule_id,
+                    triggered=False,
+                    confidence=0.0,
+                    reason=f"LLM evaluate failed: {e}",
+                    extracted_params={},
+                )
+                for rule in rules
+            ]
 
     async def extract_self_participation(
             self,
