@@ -304,36 +304,66 @@ class ChatGuardianOperations:
 
     async def delete_profile_interest(self, user_id: str, topic: str) -> "UserMemoryFact":
         """删除用户画像中指定的兴趣话题。"""
-        profile = await self._get_profile_or_raise(user_id)
-        if topic not in profile.interests:
-            raise OperationError(f"Interest '{topic}' not found for user {user_id}", status_code=404)
-        del profile.interests[topic]
-        await self.container.memory_repository.upsert_profile(profile)
-        return profile
+
+        def updater(profile: UserMemoryFact) -> UserMemoryFact:
+            if topic not in profile.interests:
+                raise OperationError(
+                    f"Interest '{topic}' not found for user {user_id}",
+                    status_code=404,
+                )
+            del profile.interests[topic]
+            return profile
+
+        updated = await self.container.memory_repository.update_profile(user_id, updater)
+        if not updated:
+            raise OperationError(f"User not found: {user_id}", status_code=404)
+        return updated
 
     async def delete_profile_interest_chat(self, user_id: str, topic: str, chat_id: str) -> "UserMemoryFact":
         """删除用户兴趣话题中的指定相关聊天记录。"""
-        profile = await self._get_profile_or_raise(user_id)
-        if topic not in profile.interests:
-            raise OperationError(f"Interest '{topic}' not found for user {user_id}", status_code=404)
-        stat = profile.interests[topic]
-        if chat_id not in stat.related_chat:
-            raise OperationError(f"Chat '{chat_id}' not found in interest '{topic}'", status_code=404)
-        stat.related_chat = [c for c in stat.related_chat if c != chat_id]
-        await self.container.memory_repository.upsert_profile(profile)
-        return profile
+
+        def updater(profile: UserMemoryFact) -> UserMemoryFact:
+            if topic not in profile.interests:
+                raise OperationError(
+                    f"Interest '{topic}' not found for user {user_id}",
+                    status_code=404,
+                )
+            stat = profile.interests[topic]
+            if chat_id not in stat.related_chat:
+                raise OperationError(
+                    f"Chat '{chat_id}' not found in interest '{topic}'",
+                    status_code=404,
+                )
+            stat.related_chat = [c for c in stat.related_chat if c != chat_id]
+            return profile
+
+        updated = await self.container.memory_repository.update_profile(user_id, updater)
+        if not updated:
+            raise OperationError(f"User not found: {user_id}", status_code=404)
+        return updated
 
     async def delete_profile_interest_keyword(self, user_id: str, topic: str, keyword: str) -> "UserMemoryFact":
         """删除用户兴趣话题中的指定关键词。"""
-        profile = await self._get_profile_or_raise(user_id)
-        if topic not in profile.interests:
-            raise OperationError(f"Interest '{topic}' not found for user {user_id}", status_code=404)
-        stat = profile.interests[topic]
-        if keyword not in stat.keywords:
-            raise OperationError(f"Keyword '{keyword}' not found in interest '{topic}'", status_code=404)
-        stat.keywords = [k for k in stat.keywords if k != keyword]
-        await self.container.memory_repository.upsert_profile(profile)
-        return profile
+
+        def updater(profile: UserMemoryFact) -> UserMemoryFact:
+            if topic not in profile.interests:
+                raise OperationError(
+                    f"Interest '{topic}' not found for user {user_id}",
+                    status_code=404,
+                )
+            stat = profile.interests[topic]
+            if keyword not in stat.keywords:
+                raise OperationError(
+                    f"Keyword '{keyword}' not found in interest '{topic}'",
+                    status_code=404,
+                )
+            stat.keywords = [k for k in stat.keywords if k != keyword]
+            return profile
+
+        updated = await self.container.memory_repository.update_profile(user_id, updater)
+        if not updated:
+            raise OperationError(f"User not found: {user_id}", status_code=404)
+        return updated
 
     async def delete_profile_active_group(self, user_id: str, group_id: str) -> "UserMemoryFact":
         """删除用户画像中指定的活跃群组。"""
