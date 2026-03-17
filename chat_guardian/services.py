@@ -34,6 +34,7 @@ from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from loguru import logger
 
+from chat_guardian.adapters.utils import compress_image
 from chat_guardian.domain import (
     ActiveGroupStat,
     ChatEvent,
@@ -57,7 +58,6 @@ from chat_guardian.repositories import (
     RuleRepository,
 )
 from chat_guardian.settings import settings
-from chat_guardian.adapters.utils import compress_image
 
 
 def _extract_json_payload(raw_text: str) -> dict:
@@ -1278,7 +1278,7 @@ class UserMemoryService:
         min_new = max(1, getattr(settings, "user_memory_min_new_messages", 1))
         self._user_msg_counts[user_id] = self._user_msg_counts.get(user_id, 0) + 1
         current_count = self._user_msg_counts[user_id]
-        
+
         if current_count < min_new:
             logger.debug(f"⏳ 用户 {user_id} 消息数不足，当前={current_count}，最小触发={min_new}")
             return 0
@@ -1286,7 +1286,8 @@ class UserMemoryService:
         # 达到条件，重置计数器
         self._user_msg_counts[user_id] = 0
 
-        logger.debug(f"💾 用户画像检测 | 发送者={user_id} | 消息ID={event.message.message_id} | 触发消息数={current_count}")
+        logger.debug(
+            f"💾 用户画像检测 | 发送者={user_id} | 消息ID={event.message.message_id} | 触发消息数={current_count}")
 
         context_messages = await self.context_service.build_context(event)
         logger.debug(f"  ✓ 构建上下文 | 消息数={len(context_messages)}")

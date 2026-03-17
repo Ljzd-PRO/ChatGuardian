@@ -14,10 +14,10 @@ logger = logging.getLogger(__name__)
 
 
 def compress_image(
-    image_bytes: bytes,
-    max_width: int = 800,
-    max_height: int = 600,
-    quality: int = 85,
+        image_bytes: bytes,
+        max_width: int = 800,
+        max_height: int = 600,
+        quality: int = 85,
 ) -> Optional[bytes]:
     """
     压缩图片，保持宽高比。
