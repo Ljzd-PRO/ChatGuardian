@@ -191,12 +191,10 @@ export default function UserProfilesPage() {
           <Divider className="my-2" />
 
           {/* Image Parsing Configuration */}
-          <div>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <p className="text-sm font-medium text-default-700">{t('rules.enableImageParsing')}</p>
-            </div>
-            <div className="flex flex-col gap-3 max-w-sm mb-2">
-              <div className="flex items-center justify-between border border-divider rounded-xl p-3 bg-content1">
+          <div className="grid md:grid-cols-2 gap-4 mb-2">
+            {/* Image Parsing Settings */}
+            <div className="flex flex-col gap-3 border border-divider rounded-xl p-3 bg-content1/50">
+              <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">{t('rules.enableImageParsing')}</span>
                 <Switch
                   size="sm"
@@ -204,7 +202,7 @@ export default function UserProfilesPage() {
                   isSelected={enableImageParsing}
                   onValueChange={(v) => {
                     setEnableImageParsing(v);
-                    saveImageSettings.mutate({ enable_image_parsing: v, max_images: maxImages });
+                    saveImageSettings.mutate({ enable_image_parsing: v, max_images: maxImages, enable_image_compression: enableImageCompression, image_compression_max_width: imageCompressionMaxWidth, image_compression_max_height: imageCompressionMaxHeight });
                   }}
                 />
               </div>
@@ -220,9 +218,11 @@ export default function UserProfilesPage() {
                   saveImageSettings.mutate({ enable_image_parsing: enableImageParsing, max_images: val, enable_image_compression: enableImageCompression, image_compression_max_width: imageCompressionMaxWidth, image_compression_max_height: imageCompressionMaxHeight });
                 }}
               />
+            </div>
 
-              {/* Image Compression Settings */}
-              <div className="flex items-center justify-between border border-divider rounded-xl p-3 bg-content1 mt-2">
+            {/* Image Compression Settings */}
+            <div className="flex flex-col gap-3 border border-divider rounded-xl p-3 bg-content1/50">
+              <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">{t('rules.enableImageCompression')}</span>
                 <Switch
                   size="sm"
@@ -234,32 +234,36 @@ export default function UserProfilesPage() {
                   }}
                 />
               </div>
-              <Input
-                label={t('rules.imageCompressionMaxWidth')}
-                type="number"
-                size="sm"
-                isDisabled={isSettingsLoading || !enableImageParsing || !enableImageCompression}
-                value={String(imageCompressionMaxWidth)}
-                onValueChange={(v) => {
-                  const val = asNumber(v, imageCompressionMaxWidth);
-                  setImageCompressionMaxWidth(val);
-                  saveImageSettings.mutate({ enable_image_parsing: enableImageParsing, max_images: maxImages, enable_image_compression: enableImageCompression, image_compression_max_width: val, image_compression_max_height: imageCompressionMaxHeight });
-                }}
-              />
-              <Input
-                label={t('rules.imageCompressionMaxHeight')}
-                type="number"
-                size="sm"
-                isDisabled={isSettingsLoading || !enableImageParsing || !enableImageCompression}
-                value={String(imageCompressionMaxHeight)}
-                onValueChange={(v) => {
-                  const val = asNumber(v, imageCompressionMaxHeight);
-                  setImageCompressionMaxHeight(val);
-                  saveImageSettings.mutate({ enable_image_parsing: enableImageParsing, max_images: maxImages, enable_image_compression: enableImageCompression, image_compression_max_width: imageCompressionMaxWidth, image_compression_max_height: val });
-                }}
-              />
-              {saveImageSettings.isSuccess && <p className="text-success text-xs mt-[-4px]">{t('common.saved')}</p>}
+              <div className="flex gap-2">
+                <Input
+                  label={t('rules.imageCompressionMaxWidth')}
+                  type="number"
+                  size="sm"
+                  isDisabled={isSettingsLoading || !enableImageParsing || !enableImageCompression}
+                  value={String(imageCompressionMaxWidth)}
+                  onValueChange={(v) => {
+                    const val = asNumber(v, imageCompressionMaxWidth);
+                    setImageCompressionMaxWidth(val);
+                    saveImageSettings.mutate({ enable_image_parsing: enableImageParsing, max_images: maxImages, enable_image_compression: enableImageCompression, image_compression_max_width: val, image_compression_max_height: imageCompressionMaxHeight });
+                  }}
+                />
+                <Input
+                  label={t('rules.imageCompressionMaxHeight')}
+                  type="number"
+                  size="sm"
+                  isDisabled={isSettingsLoading || !enableImageParsing || !enableImageCompression}
+                  value={String(imageCompressionMaxHeight)}
+                  onValueChange={(v) => {
+                    const val = asNumber(v, imageCompressionMaxHeight);
+                    setImageCompressionMaxHeight(val);
+                    saveImageSettings.mutate({ enable_image_parsing: enableImageParsing, max_images: maxImages, enable_image_compression: enableImageCompression, image_compression_max_width: imageCompressionMaxWidth, image_compression_max_height: val });
+                  }}
+                />
+              </div>
             </div>
+          </div>
+          <div>
+            {saveImageSettings.isSuccess && <p className="text-success text-xs mt-[-4px]">{t('common.saved')}</p>}
           </div>
 
           {save.isSuccess && <p className="text-success text-sm">{t('common.saved')}</p>}

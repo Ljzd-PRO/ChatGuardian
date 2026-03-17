@@ -436,56 +436,6 @@ export default function RulesPage() {
                   value={String(detForm.detection_wait_timeout_seconds ?? 30)}
                   onValueChange={v => setDetForm(f => ({ ...f, detection_wait_timeout_seconds: asNumber(v, f.detection_wait_timeout_seconds ?? 30) }))}
                 />
-                <div className="flex flex-col justify-center border border-divider rounded-xl p-3 gap-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{t('rules.enableImageParsing')}</span>
-                    <Switch
-                      size="sm"
-                      isSelected={detForm.enable_image_parsing ?? false}
-                      onValueChange={v => setDetForm(f => ({ ...f, enable_image_parsing: v }))}
-                    />
-                  </div>
-                  <Input
-                    label={t('rules.maxImages')}
-                    type="number"
-                    size="sm"
-                    labelPlacement="outside-left"
-                    className="mt-1"
-                    isDisabled={!(detForm.enable_image_parsing ?? false)}
-                    value={String(detForm.max_images ?? 5)}
-                    onValueChange={v => setDetForm(f => ({ ...f, max_images: asNumber(v, f.max_images ?? 5) }))}
-                  />
-                  <Divider className="my-2" />
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{t('rules.enableImageCompression')}</span>
-                    <Switch
-                      size="sm"
-                      isDisabled={!(detForm.enable_image_parsing ?? false)}
-                      isSelected={detForm.enable_image_compression ?? true}
-                      onValueChange={v => setDetForm(f => ({ ...f, enable_image_compression: v }))}
-                    />
-                  </div>
-                  <Input
-                    label={t('rules.imageCompressionMaxWidth')}
-                    type="number"
-                    size="sm"
-                    labelPlacement="outside-left"
-                    className="mt-1"
-                    isDisabled={!(detForm.enable_image_parsing ?? false) || !(detForm.enable_image_compression ?? true)}
-                    value={String(detForm.image_compression_max_width ?? 800)}
-                    onValueChange={v => setDetForm(f => ({ ...f, image_compression_max_width: asNumber(v, f.image_compression_max_width ?? 800) }))}
-                  />
-                  <Input
-                    label={t('rules.imageCompressionMaxHeight')}
-                    type="number"
-                    size="sm"
-                    labelPlacement="outside-left"
-                    className="mt-1"
-                    isDisabled={!(detForm.enable_image_parsing ?? false) || !(detForm.enable_image_compression ?? true)}
-                    value={String(detForm.image_compression_max_height ?? 600)}
-                    onValueChange={v => setDetForm(f => ({ ...f, image_compression_max_height: asNumber(v, f.image_compression_max_height ?? 600) }))}
-                  />
-                </div>
 
                 <div className="md:col-span-3">
                   <div className="mb-2">
@@ -554,6 +504,61 @@ export default function RulesPage() {
                     </Button>
                   </div>
                 </div>
+
+                {/* ====== Image Processing Setting (Moved & Side-by-Side) ====== */}
+                <div className="md:col-span-3 grid md:grid-cols-2 gap-4 mt-2">
+                  {/* Image Parsing Settings */}
+                  <div className="flex flex-col gap-3 justify-start border border-divider rounded-xl p-3 bg-content1/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{t('rules.enableImageParsing')}</span>
+                      <Switch
+                        size="sm"
+                        isSelected={detForm.enable_image_parsing ?? false}
+                        onValueChange={v => setDetForm(f => ({ ...f, enable_image_parsing: v }))}
+                      />
+                    </div>
+                    <Input
+                      label={t('rules.maxImages')}
+                      type="number"
+                      size="sm"
+                      isDisabled={!(detForm.enable_image_parsing ?? false)}
+                      value={String(detForm.max_images ?? 5)}
+                      onValueChange={v => setDetForm(f => ({ ...f, max_images: asNumber(v, f.max_images ?? 5) }))}
+                    />
+                  </div>
+
+                  {/* Image Compression Settings */}
+                  <div className="flex flex-col gap-3 justify-start border border-divider rounded-xl p-3 bg-content1/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{t('rules.enableImageCompression')}</span>
+                      <Switch
+                        size="sm"
+                        isDisabled={!(detForm.enable_image_parsing ?? false)}
+                        isSelected={detForm.enable_image_compression ?? true}
+                        onValueChange={v => setDetForm(f => ({ ...f, enable_image_compression: v }))}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        label={t('rules.imageCompressionMaxWidth')}
+                        type="number"
+                        size="sm"
+                        isDisabled={!(detForm.enable_image_parsing ?? false) || !(detForm.enable_image_compression ?? true)}
+                        value={String(detForm.image_compression_max_width ?? 800)}
+                        onValueChange={v => setDetForm(f => ({ ...f, image_compression_max_width: asNumber(v, f.image_compression_max_width ?? 800) }))}
+                      />
+                      <Input
+                        label={t('rules.imageCompressionMaxHeight')}
+                        type="number"
+                        size="sm"
+                        isDisabled={!(detForm.enable_image_parsing ?? false) || !(detForm.enable_image_compression ?? true)}
+                        value={String(detForm.image_compression_max_height ?? 600)}
+                        onValueChange={v => setDetForm(f => ({ ...f, image_compression_max_height: asNumber(v, f.image_compression_max_height ?? 600) }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
               </div>
               <div className="flex items-center justify-end gap-3 flex-wrap mt-4">
                 <Button color="primary" size="sm" isDisabled={!settings} isLoading={saveDetection.isPending} onPress={() => saveDetection.mutate()}>
