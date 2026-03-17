@@ -13,6 +13,7 @@ import closeCircleBold from '@iconify/icons-solar/close-circle-bold';
 import eyeBold from '@iconify/icons-solar/eye-bold';
 import filterBold from '@iconify/icons-solar/filter-bold';
 import hashtagCircleBold from '@iconify/icons-solar/hashtag-circle-bold';
+import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
 import listCheckBold from '@iconify/icons-solar/list-check-bold';
 import magicStick2Bold from '@iconify/icons-solar/magic-stick-2-bold';
 import textFieldFocusBold from '@iconify/icons-solar/text-field-focus-bold';
@@ -467,8 +468,8 @@ export default function RulesPage() {
                   <div className="flex gap-2 max-w-md">
                     <Input
                       size="sm"
-                      placeholder={t('rules.selfSenderIdsPlaceholderCommaSeparated')}
-                      startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
+                      placeholder={t('users.addUserIdPlaceholder')}
+                      startContent={<Icon icon={userRoundedBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                       value={newSelfId}
                       onValueChange={setNewSelfId}
                       onKeyDown={(e) => {
