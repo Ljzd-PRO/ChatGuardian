@@ -1,13 +1,12 @@
-import base64
 import mimetypes
 import httpx
 import logging
 
 logger = logging.getLogger(__name__)
 
-async def download_image_as_base64(url: str, timeout: float = 15.0) -> str | None:
+async def download_image_bytes(url: str, timeout: float = 15.0) -> bytes | None:
     """
-    Download an image from the given URL and return it as a Base64 encoded string.
+    Download an image from the given URL and return raw bytes.
     Returns None if the download fails or the content is not an image.
     """
     try:
@@ -23,9 +22,7 @@ async def download_image_as_base64(url: str, timeout: float = 15.0) -> str | Non
             logger.warning(f"⚠️ 跳过非图片资源 | url={url} | content_type={content_type}")
             return None
 
-        # Format: data:{mime_type};base64,{base64_data} for proper rendering/passing later
-        encoded = base64.b64encode(response.content).decode("ascii")
-        return f"data:{content_type};base64,{encoded}"
+        return response.content
     except Exception as exc:
         logger.warning(f"⚠️ 下载图片失败，已跳过该图片 | url={url} | error={exc}")
         return None

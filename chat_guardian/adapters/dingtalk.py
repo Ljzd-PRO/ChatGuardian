@@ -8,7 +8,7 @@ from loguru import logger
 
 from chat_guardian.adapters.base import Adapter, EventHandler
 from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, MessageContent, UserInfo
-from chat_guardian.adapters.utils import download_image_as_base64
+from chat_guardian.adapters.utils import download_image_bytes
 
 
 @dataclass(slots=True)
@@ -187,7 +187,7 @@ class DingTalkAdapter(Adapter):
                 if image_content is not None:
                     download_code = getattr(image_content, "download_code", "") or ""
                     if download_code:
-                        image_data = await download_image_as_base64(download_code)
+                        image_data = await download_image_bytes(download_code)
                         if image_data:
                             contents.append(
                                 MessageContent(type=ContentType.IMAGE, image_data=image_data)

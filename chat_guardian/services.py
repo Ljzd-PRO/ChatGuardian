@@ -18,7 +18,6 @@ import asyncio
 import base64
 import hashlib
 import json
-import mimetypes
 import re
 import time
 from dataclasses import dataclass, field
@@ -102,6 +101,21 @@ def _messages_to_markdown(messages: list[ChatMessage]) -> str:
     return "\n".join(lines)
 
 
+def _guess_image_mime_type(image_bytes: bytes) -> str:
+    """根据常见文件头猜测图片 MIME，无法识别时回退为 image/jpeg。"""
+    if image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if image_bytes.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if image_bytes.startswith((b"GIF87a", b"GIF89a")):
+        return "image/gif"
+    if image_bytes.startswith(b"RIFF") and image_bytes[8:12] == b"WEBP":
+        return "image/webp"
+    if image_bytes.startswith(b"BM"):
+        return "image/bmp"
+    return "image/jpeg"
+
+
 async def _build_image_content_blocks(messages: list[ChatMessage]) -> tuple[list[dict[str, Any]], int]:
     """从消息列表中提取图片并转换为可通过 LLM 的 base64 image blocks。"""
     if not settings.enable_image_parsing:
@@ -116,24 +130,15 @@ async def _build_image_content_blocks(messages: list[ChatMessage]) -> tuple[list
 
             if len(image_blocks) >= settings.max_images:
                 break
-                
-            image_data = item.image_data.strip()
-            if not image_data.startswith("data:image/"):
-                # 如果缺少 data URI 前缀，则提供一个简单的降级
-                mime_type = "image/jpeg"
-                encoded = image_data
-            else:
-                try:
-                    prefix, encoded = image_data.split(",", 1)
-                    mime_type = prefix.split(";")[0].replace("data:", "")
-                except ValueError:
-                    mime_type = "image/jpeg"
-                    encoded = image_data
+
+            image_bytes = item.image_data
+            encoded = base64.b64encode(image_bytes).decode("ascii")
+            mime_type = _guess_image_mime_type(image_bytes)
 
             image_blocks.append(
                 {
                     "type": "image",
-                    "id": item.generate_short_id(image_data),
+                    "id": item.generate_short_id(image_bytes),
                     "base64": encoded,
                     "mime_type": mime_type,
                 }
@@ -1403,8 +1408,12 @@ class ExternalHookDispatcher:
                         {
                             "type": item.type.value,
                             "text": item.text,
-                            "image_url": item.image_url,
-                            "mention_user_id": item.mention_user,
+                            "image_data_base64": (
+                                base64.b64encode(item.image_data).decode("ascii")
+                                if item.image_data
+                                else None
+                            ),
+                            "mention_user_id": item.mention_user.user_id if item.mention_user else None,
                         }
                         for item in message.contents
                     ],

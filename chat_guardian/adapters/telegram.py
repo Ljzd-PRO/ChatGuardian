@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -202,9 +201,7 @@ class TelegramAdapter(Adapter):
                         out = io.BytesIO()
                         await file.download_to_memory(out=out)
                         file_bytes = out.getvalue()
-                        encoded = base64.b64encode(file_bytes).decode('ascii')
-                        image_data = f"data:image/jpeg;base64,{encoded}"
-                        contents.append(MessageContent(type=ContentType.IMAGE, image_data=image_data))
+                        contents.append(MessageContent(type=ContentType.IMAGE, image_data=file_bytes))
                         logger.debug("  ├ 图片片段已被提取数据")
                     except Exception as e:
                         logger.warning(f"  ├ ⚠️ 获取图片文件失败: {e}")

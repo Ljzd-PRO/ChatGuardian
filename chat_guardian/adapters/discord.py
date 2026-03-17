@@ -10,7 +10,7 @@ import discord
 from loguru import logger
 
 from chat_guardian.adapters.base import Adapter, EventHandler
-from chat_guardian.adapters.utils import download_image_as_base64
+from chat_guardian.adapters.utils import download_image_bytes
 from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, MessageContent, UserInfo
 
 # Pattern that matches Discord user mentions: <@USER_ID> or <@!USER_ID>
@@ -228,7 +228,7 @@ class DiscordAdapter(Adapter):
             for attachment in message.attachments:
                 ct = attachment.content_type or ""
                 if ct.startswith("image/"):
-                    image_data = await download_image_as_base64(attachment.url)
+                    image_data = await download_image_bytes(attachment.url)
                     if image_data:
                         contents.append(
                             MessageContent(type=ContentType.IMAGE, image_data=image_data)

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type KeyboardEvent } from 'react';
+import { useState, useEffect, type KeyboardEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Button, Card, CardBody, CardHeader, Chip, Divider, Input, Modal, ModalBody,
@@ -33,12 +33,13 @@ export default function UserProfilesPage() {
 
   const [enableImageParsing, setEnableImageParsing] = useState(false);
   const [maxImages, setMaxImages] = useState(5);
-
-  const initializedRef = useRef(false);
+  const asNumber = (value: string, fallback: number) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  };
 
   useEffect(() => {
-    if (appSettings && !initializedRef.current) {
-      initializedRef.current = true;
+    if (appSettings) {
       setTargetUserIds(appSettings.memory_target_user_ids ?? []);
       setEnableImageParsing(appSettings.enable_image_parsing ?? false);
       setMaxImages(appSettings.max_images ?? 5);
@@ -208,7 +209,7 @@ export default function UserProfilesPage() {
                 isDisabled={isSettingsLoading || !enableImageParsing}
                 value={String(maxImages)}
                 onValueChange={(v) => {
-                  const val = Number(v);
+                  const val = asNumber(v, maxImages);
                   setMaxImages(val);
                   saveImageSettings.mutate({ enable_image_parsing: enableImageParsing, max_images: val });
                 }}

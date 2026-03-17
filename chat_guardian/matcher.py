@@ -1,9 +1,10 @@
 from abc import ABC
-from typing import Annotated, Literal, Optional, Union
+from typing import TYPE_CHECKING, Annotated, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from chat_guardian.domain import ChatEvent, ContentType
+if TYPE_CHECKING:
+    from chat_guardian.domain import ChatEvent
 
 
 # noinspection PyTypeChecker
@@ -26,7 +27,7 @@ class Matcher(BaseModel, ABC):
         """使用 ~ 运算符创建"非"规则"""
         return NotMatcher(matcher=self)
 
-    def matches(self, event: ChatEvent) -> bool:
+    def matches(self, event: "ChatEvent") -> bool:
         """检查事件是否匹配规则，需在子类中实现具体逻辑"""
         raise NotImplementedError("MatcherBase is an abstract class and cannot be instantiated directly")
 
@@ -41,7 +42,7 @@ class AndMatcher(Matcher):
         """继续添加"与"条件"""
         return AndMatcher(matchers=self.matchers + [other])
 
-    def matches(self, event: ChatEvent) -> bool:
+    def matches(self, event: "ChatEvent") -> bool:
         """事件必须满足所有规则才匹配成功"""
         return all(matcher.matches(event) for matcher in self.matchers)
 
@@ -56,7 +57,7 @@ class OrMatcher(Matcher):
         """继续添加"或"条件"""
         return OrMatcher(matchers=self.matchers + [other])
 
-    def matches(self, event: ChatEvent) -> bool:
+    def matches(self, event: "ChatEvent") -> bool:
         """事件满足任一规则即匹配成功"""
         return any(matcher.matches(event) for matcher in self.matchers)
 
@@ -68,7 +69,7 @@ class NotMatcher(Matcher):
     # noinspection PyTypeHints
     matcher: "MatcherUnion" = Field(default_factory=lambda: MatchAll())
 
-    def matches(self, event: ChatEvent) -> bool:
+    def matches(self, event: "ChatEvent") -> bool:
         """事件满足子规则时返回 False，否则返回 True"""
         return not self.matcher.matches(event)
 
@@ -77,7 +78,7 @@ class MatchAll(Matcher):
     """匹配所有事件的规则"""
     type: Literal["all"] = "all"
 
-    def matches(self, events: ChatEvent) -> bool:
+    def matches(self, events: "ChatEvent") -> bool:
         return True
 
 
@@ -85,14 +86,14 @@ class _MatchUserInfo(Matcher):
     user_id: Optional[str] = None
     display_name: Optional[str] = None
 
-    def matches(self, event: ChatEvent) -> bool:
+    def matches(self, event: "ChatEvent") -> bool:
         raise NotImplementedError("This is a base class for user info matchers and should not be used directly")
 
 
 class MatchSender(_MatchUserInfo):
     type: Literal["sender"] = "sender"
 
-    def matches(self, event: ChatEvent) -> bool:
+    def matches(self, event: "ChatEvent") -> bool:
         if not event.message or not event.message.sender_id:
             return False
         if self.user_id and self.user_id != event.message.sender_id:
@@ -105,11 +106,11 @@ class MatchSender(_MatchUserInfo):
 class MatchMention(_MatchUserInfo):
     type: Literal["mention"] = "mention"
 
-    def matches(self, event: ChatEvent) -> bool:
+    def matches(self, event: "ChatEvent") -> bool:
         if not event.message or not event.message.contents:
             return False
         for content in event.message.contents:
-            if content.type == ContentType.MENTION and content.mention_user:
+            if content.type == "mention" and content.mention_user:
                 if self.user_id and self.user_id != content.mention_user.user_id:
                     continue
                 if self.display_name and content.mention_user.display_name and self.display_name != content.mention_user.display_name:
@@ -122,7 +123,7 @@ class MatchChatInfo(Matcher):
     type: Literal["chat"] = "chat"
     chat_id: str
 
-    def matches(self, event: ChatEvent) -> bool:
+    def matches(self, event: "ChatEvent") -> bool:
         return event.chat_id == self.chat_id
 
 
@@ -130,7 +131,7 @@ class MatchChatType(Matcher):
     type: Literal["chat_type"] = "chat_type"
     chat_type: Literal["group", "private"]
 
-    def matches(self, event: ChatEvent) -> bool:
+    def matches(self, event: "ChatEvent") -> bool:
         return event.chat_type.value == self.chat_type
 
 
@@ -138,7 +139,7 @@ class MatchAdapter(Matcher):
     type: Literal["adapter"] = "adapter"
     adapter_name: str
 
-    def matches(self, event: ChatEvent) -> bool:
+    def matches(self, event: "ChatEvent") -> bool:
         return event.platform == self.adapter_name
 
 

@@ -68,6 +68,10 @@ export default function RulesPage() {
   const [matcherFilterEnabled, setMatcherFilterEnabled] = useState(false);
   const [rulePage, setRulePage] = useState(1);
   const RULES_PER_PAGE = 5;
+  const asNumber = (value: string, fallback: number) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  };
 
   useEffect(() => {
     if (!settings) return;
@@ -77,6 +81,8 @@ export default function RulesPage() {
       detection_min_new_messages: settings.detection_min_new_messages,
       detection_wait_timeout_seconds: settings.detection_wait_timeout_seconds,
       detection_self_sender_ids: settings.detection_self_sender_ids,
+      enable_image_parsing: settings.enable_image_parsing,
+      max_images: settings.max_images,
     });
   }, [settings]);
 
@@ -407,28 +413,28 @@ export default function RulesPage() {
                   type="number"
                   startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={String(detForm.context_message_limit ?? 10)}
-                  onValueChange={v => setDetForm(f => ({ ...f, context_message_limit: Number(v) }))}
+                  onValueChange={v => setDetForm(f => ({ ...f, context_message_limit: asNumber(v, f.context_message_limit ?? 10) }))}
                 />
                 <Input
                   label={t('rules.detectionCooldown')}
                   type="number"
                   startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={String(detForm.detection_cooldown_seconds ?? 0)}
-                  onValueChange={v => setDetForm(f => ({ ...f, detection_cooldown_seconds: Number(v) }))}
+                  onValueChange={v => setDetForm(f => ({ ...f, detection_cooldown_seconds: asNumber(v, f.detection_cooldown_seconds ?? 0) }))}
                 />
                 <Input
                   label={t('rules.minNewMessages')}
                   type="number"
                   startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={String(detForm.detection_min_new_messages ?? 1)}
-                  onValueChange={v => setDetForm(f => ({ ...f, detection_min_new_messages: Number(v) }))}
+                  onValueChange={v => setDetForm(f => ({ ...f, detection_min_new_messages: asNumber(v, f.detection_min_new_messages ?? 1) }))}
                 />
                 <Input
                   label={t('rules.detectionWaitTimeout')}
                   type="number"
                   startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={String(detForm.detection_wait_timeout_seconds ?? 30)}
-                  onValueChange={v => setDetForm(f => ({ ...f, detection_wait_timeout_seconds: Number(v) }))}
+                  onValueChange={v => setDetForm(f => ({ ...f, detection_wait_timeout_seconds: asNumber(v, f.detection_wait_timeout_seconds ?? 30) }))}
                 />
                 <div className="flex flex-col justify-center border border-divider rounded-xl p-3 gap-2">
                   <div className="flex items-center justify-between">
@@ -447,7 +453,7 @@ export default function RulesPage() {
                     className="mt-1"
                     isDisabled={!(detForm.enable_image_parsing ?? false)}
                     value={String(detForm.max_images ?? 5)}
-                    onValueChange={v => setDetForm(f => ({ ...f, max_images: Number(v) }))}
+                    onValueChange={v => setDetForm(f => ({ ...f, max_images: asNumber(v, f.max_images ?? 5) }))}
                   />
                 </div>
 

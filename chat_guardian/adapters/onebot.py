@@ -10,7 +10,7 @@ from aiocqhttp.exceptions import Error as OneBotError  # noqa: F401
 from loguru import logger
 
 from chat_guardian.adapters.base import Adapter, EventHandler
-from chat_guardian.adapters.utils import download_image_as_base64
+from chat_guardian.adapters.utils import download_image_bytes
 from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, MessageContent, UserInfo
 
 
@@ -163,7 +163,7 @@ class OneBotAdapter(Adapter):
                 elif segment_type == "image":
                     image_url = str(data.get("url") or data.get("file") or "")
                     if image_url:
-                        image_data = await download_image_as_base64(image_url)
+                        image_data = await download_image_bytes(image_url)
                         if image_data:
                             contents.append(MessageContent(type=ContentType.IMAGE, image_data=image_data))
                             logger.debug("  ├ 图片片段已被提取数据")

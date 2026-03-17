@@ -12,7 +12,8 @@ from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from chat_guardian.matcher import MatchAll, MatcherUnion
 
 if TYPE_CHECKING:
     pass
@@ -69,17 +70,18 @@ class MessageContent(BaseModel):
     Attributes:
         type: 片段类型。
         text: 文本内容（type=text 时使用）。
-        image_data: 图像Base64数据（type=image 时使用）。
+        image_data: 图像二进制数据（type=image 时使用）。
         mention_user: 被提及用户（type=mention 时使用）。
     """
 
     type: ContentType
     text: str | None = None
-    image_data: str | None = None
+    image_data: bytes | None = None
     mention_user: UserInfo | None = None
+    model_config = ConfigDict(ser_json_bytes="base64", val_json_bytes="base64")
 
     @staticmethod
-    def generate_short_id(s: str, length: int = 5) -> str:
+    def generate_short_id(s: str | bytes, length: int = 5) -> str:
         """
         为字符串生成固定长度的短标识符
 
@@ -90,7 +92,7 @@ class MessageContent(BaseModel):
         Returns:
             固定长度的十六进制标识符（0-9, a-f），如需大写可转成upper()
         """
-        s_bytes = s.encode('utf-8')
+        s_bytes = s if isinstance(s, bytes) else s.encode('utf-8')
         hash_obj = hashlib.sha1(s_bytes)
         hash_hex = hash_obj.hexdigest()
         short_id = hash_hex[:length].upper()
@@ -162,9 +164,6 @@ class RuleParameterSpec(BaseModel):
     key: str
     description: str
     required: bool = True
-
-
-from chat_guardian.matcher import MatchAll, MatcherUnion
 
 
 class DetectionRule(BaseModel):
