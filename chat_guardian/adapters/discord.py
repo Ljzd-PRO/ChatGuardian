@@ -10,6 +10,7 @@ import discord
 from loguru import logger
 
 from chat_guardian.adapters.base import Adapter, EventHandler
+from chat_guardian.adapters.utils import download_image_as_base64
 from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, MessageContent, UserInfo
 
 # Pattern that matches Discord user mentions: <@USER_ID> or <@!USER_ID>
@@ -48,7 +49,7 @@ class _DiscordClient(discord.Client):
         if guild_ids and (message.guild is None or message.guild.id not in guild_ids):
             return
         try:
-            chat_event = self._adapter._convert_message(message)
+            chat_event = await self._adapter._convert_message(message)
             if chat_event is None:
                 return
             logger.debug(
@@ -167,9 +168,9 @@ class DiscordAdapter(Adapter):
     # Message conversion
     # ------------------------------------------------------------------
 
-    def _convert_message(self, message: discord.Message, depth: int = 0) -> ChatEvent | None:
+    async def _convert_message(self, message: discord.Message, depth: int = 0) -> ChatEvent | None:
         try:
-            chat_message = self._build_message(message, depth=depth)
+            chat_message = await self._build_message(message, depth=depth)
             if chat_message is None:
                 return None
 
@@ -190,7 +191,7 @@ class DiscordAdapter(Adapter):
             logger.error(f"❌ Discord 事件转换异常: {exc}")
             return None
 
-    def _build_message(self, message: discord.Message, depth: int = 0) -> ChatMessage | None:
+    async def _build_message(self, message: discord.Message, depth: int = 0) -> ChatMessage | None:
         try:
             contents: list[MessageContent] = []
             reply_from: ChatMessage | None = None
@@ -227,10 +228,14 @@ class DiscordAdapter(Adapter):
             for attachment in message.attachments:
                 ct = attachment.content_type or ""
                 if ct.startswith("image/"):
-                    contents.append(
-                        MessageContent(type=ContentType.IMAGE, image_url=attachment.url)
-                    )
-                    logger.debug(f"  ├ 图片附件: {attachment.url}")
+                    image_data = await download_image_as_base64(attachment.url)
+                    if image_data:
+                        contents.append(
+                            MessageContent(type=ContentType.IMAGE, image_data=image_data)
+                        )
+                        logger.debug(f"  ├ 图片附件已被提取数据")
+                    else:
+                        logger.debug(f"  ├ 图片附件提取失败: {attachment.url}")
 
             if not contents:
                 logger.info(
@@ -244,7 +249,7 @@ class DiscordAdapter(Adapter):
                 ref = message.reference.resolved
                 if isinstance(ref, discord.Message):
                     try:
-                        reply_from = self._build_message(ref, depth=depth + 1)
+                        reply_from = await self._build_message(ref, depth=depth + 1)
                     except Exception as exc:
                         logger.warning(f"  ├ ⚠️ 构建回复消息失败: {exc}")
 

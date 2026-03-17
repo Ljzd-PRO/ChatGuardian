@@ -8,6 +8,7 @@ from loguru import logger
 
 from chat_guardian.adapters.base import Adapter, EventHandler
 from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, MessageContent, UserInfo
+from chat_guardian.adapters.utils import download_image_as_base64
 
 
 @dataclass(slots=True)
@@ -80,7 +81,7 @@ class DingTalkAdapter(Adapter):
                 async def process(self, callback: CallbackMessage):  # type: ignore[override]
                     try:
                         msg = dingtalk_stream.ChatbotMessage.from_dict(callback.data)
-                        chat_event = adapter_ref._convert_message(msg)
+                        chat_event = await adapter_ref._convert_message(msg)
                         if chat_event is not None:
                             logger.debug(
                                 f"💬 收到 DingTalk 消息"
@@ -143,7 +144,7 @@ class DingTalkAdapter(Adapter):
     # Message conversion
     # ------------------------------------------------------------------
 
-    def _convert_message(self, msg: object) -> ChatEvent | None:
+    async def _convert_message(self, msg: object) -> ChatEvent | None:
         """将 dingtalk_stream.ChatbotMessage 转换为 ChatEvent"""
         try:
             import dingtalk_stream
@@ -186,9 +187,13 @@ class DingTalkAdapter(Adapter):
                 if image_content is not None:
                     download_code = getattr(image_content, "download_code", "") or ""
                     if download_code:
-                        contents.append(
-                            MessageContent(type=ContentType.IMAGE, image_url=download_code)
-                        )
+                        image_data = await download_image_as_base64(download_code)
+                        if image_data:
+                            contents.append(
+                                MessageContent(type=ContentType.IMAGE, image_data=image_data)
+                            )
+                        else:
+                            logger.debug("  ├ 提取图片失败，可能需要通过钉钉 API 获取下载链接")
 
             if not contents:
                 logger.info(f"  ├ 消息无可处理内容（类型={msg_type}），已跳过")

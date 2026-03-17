@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -194,16 +195,19 @@ class TelegramAdapter(Adapter):
             # 处理图片
             if message.photo:
                 largest_photo = message.photo[-1]
-                image_url = largest_photo.file_id
                 if self._app is not None:
                     try:
                         file = await self._app.bot.get_file(largest_photo.file_id)
-                        if file.file_path:
-                            image_url = file.file_path
+                        import io
+                        out = io.BytesIO()
+                        await file.download_to_memory(out=out)
+                        file_bytes = out.getvalue()
+                        encoded = base64.b64encode(file_bytes).decode('ascii')
+                        image_data = f"data:image/jpeg;base64,{encoded}"
+                        contents.append(MessageContent(type=ContentType.IMAGE, image_data=image_data))
+                        logger.debug("  ├ 图片片段已被提取数据")
                     except Exception as e:
-                        logger.warning(f"  ├ ⚠️ 获取图片文件路径失败: {e}")
-                contents.append(MessageContent(type=ContentType.IMAGE, image_url=image_url))
-                logger.debug(f"  ├ 图片片段: {image_url}")
+                        logger.warning(f"  ├ ⚠️ 获取图片文件失败: {e}")
 
             # 无可处理内容（贴纸、语音、视频等），跳过此消息
             if not contents:

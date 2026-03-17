@@ -1055,7 +1055,11 @@ export default function AgentChatPage() {
   }, []);
 
   return (
-    <div className="flex h-full gap-0 rounded-xl overflow-hidden border border-divider shadow-sm bg-background">
+    <div className="flex flex-col h-full gap-4">
+      <div className="w-full flex-shrink-0">
+        <AgentConfigSection />
+      </div>
+      <div className="flex-1 flex gap-0 rounded-xl overflow-hidden border border-divider shadow-sm bg-background min-h-0">
       {/* ── Sidebar (desktop) ── */}
       {!isMobile && (
         <aside className="w-60 flex-shrink-0 border-r border-divider bg-content1/60 backdrop-blur-sm">
@@ -1281,10 +1285,7 @@ export default function AgentChatPage() {
                 </div>
               )}
 
-              {/* Agent configuration */}
-              <div className="w-full max-w-xl">
-                <AgentConfigSection />
-              </div>
+              {/* Agent configuration removed and moved to the top */}
             </div>
           ) : (
             /* ── Message list ── */
@@ -1499,6 +1500,7 @@ export default function AgentChatPage() {
           </ModalFooter>
         </ModalContent>
       </Modal>
+      </div>
     </div>
   );
 }

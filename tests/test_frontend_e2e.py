@@ -125,7 +125,7 @@ def browser_context(live_server, auth_token):  # noqa: F811
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
-        ctx = browser.new_context(viewport={"width": 1280, "height": 800})
+        ctx = browser.new_context(viewport={"width": 1280, "height": 800}, locale="en-US")
         # Inject auth token so every page load sees the user as authenticated
         ctx.add_init_script(
             f"window.localStorage.setItem({json.dumps(_AUTH_TOKEN_LS_KEY)}, {json.dumps(auth_token)});"
@@ -172,6 +172,7 @@ PAGES = [
     ("/queues", "Message Queues"),
     ("/logs", "System Logs"),
     ("/settings", "Settings"),
+    ("/agent", "AI Assistant"),
 ]
 
 

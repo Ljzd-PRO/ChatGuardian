@@ -69,13 +69,13 @@ class MessageContent(BaseModel):
     Attributes:
         type: 片段类型。
         text: 文本内容（type=text 时使用）。
-        image_url: 图片地址（type=image 时使用）。
+        image_data: 图像Base64数据（type=image 时使用）。
         mention_user: 被提及用户（type=mention 时使用）。
     """
 
     type: ContentType
     text: str | None = None
-    image_url: str | None = None
+    image_data: str | None = None
     mention_user: UserInfo | None = None
 
     @staticmethod
@@ -99,8 +99,8 @@ class MessageContent(BaseModel):
     def __str__(self) -> str:
         if self.type == ContentType.TEXT and self.text:
             return self.text
-        elif self.type == ContentType.IMAGE and self.image_url:
-            return f"[image: {self.generate_short_id(self.image_url)}]"
+        elif self.type == ContentType.IMAGE and self.image_data:
+            return f"[image: {self.generate_short_id(self.image_data)}]"
         elif self.type == ContentType.MENTION and self.mention_user:
             return f"@{self.mention_user}"
         return ""

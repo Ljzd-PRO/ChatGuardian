@@ -60,6 +60,7 @@ export default function RulesPage() {
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [topicInput, setTopicInput] = useState('');
+  const [newSelfId, setNewSelfId] = useState('');
   const [search, setSearch] = useState('');
   const [detForm, setDetForm] = useState<Partial<AppSettings>>({});
   const [selectedRules, setSelectedRules] = useState<Record<string, boolean>>({});
@@ -429,20 +430,96 @@ export default function RulesPage() {
                   value={String(detForm.detection_wait_timeout_seconds ?? 30)}
                   onValueChange={v => setDetForm(f => ({ ...f, detection_wait_timeout_seconds: Number(v) }))}
                 />
-                <Input
-                  label={t('rules.selfSenderIds')}
-                  description={t('rules.selfSenderIdsDescCommaSeparated', 'Comma-separated sender IDs')}
-                  placeholder={t('rules.selfSenderIdsPlaceholderCommaSeparated', 'e.g. 12345, 67890, 13579')}
-                  startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
-                  value={(detForm.detection_self_sender_ids ?? []).join(', ')}
-                  onValueChange={v => setDetForm(f => ({
-                    ...f,
-                    detection_self_sender_ids: v.split(',').map(x => x.trim()).filter(Boolean),
-                  }))}
-                  className="md:col-span-3"
-                />
+                <div className="flex flex-col justify-center border border-divider rounded-xl p-3 gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{t('rules.enableImageParsing', 'Enable Image Parsing')}</span>
+                    <Switch
+                      size="sm"
+                      isSelected={detForm.enable_image_parsing ?? false}
+                      onValueChange={v => setDetForm(f => ({ ...f, enable_image_parsing: v }))}
+                    />
+                  </div>
+                  <Input
+                    label={t('rules.maxImages', 'Max Images')}
+                    type="number"
+                    size="sm"
+                    labelPlacement="outside-left"
+                    className="mt-1"
+                    isDisabled={!(detForm.enable_image_parsing ?? false)}
+                    value={String(detForm.max_images ?? 5)}
+                    onValueChange={v => setDetForm(f => ({ ...f, max_images: Number(v) }))}
+                  />
+                </div>
+                
+                <div className="md:col-span-3">
+                  <div className="mb-2">
+                    <p className="text-sm font-medium">{t('rules.selfSenderIds')}</p>
+                    <p className="text-xs text-default-500">{t('rules.selfSenderIdsDescCommaSeparated', 'Add IDs one by one')}</p>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {(detForm.detection_self_sender_ids ?? []).length === 0 ? (
+                      <Chip size="sm" variant="flat" color="default" className="text-default-400">
+                        {t('common.empty', 'No IDs')}
+                      </Chip>
+                    ) : (detForm.detection_self_sender_ids ?? []).map(id => (
+                      <Chip
+                        key={id}
+                        size="sm"
+                        variant="flat"
+                        color="primary"
+                        onClose={() => setDetForm(f => ({
+                          ...f,
+                          detection_self_sender_ids: (f.detection_self_sender_ids ?? []).filter(x => x !== id),
+                        }))}
+                      >
+                        {id}
+                      </Chip>
+                    ))}
+                  </div>
+                  
+                  <div className="flex gap-2 max-w-md">
+                    <Input
+                      size="sm"
+                      placeholder={t('rules.selfSenderIdsPlaceholderCommaSeparated', 'e.g. 12345, 67890')}
+                      startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
+                      value={newSelfId}
+                      onValueChange={setNewSelfId}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const val = newSelfId.trim();
+                          if (val && !(detForm.detection_self_sender_ids ?? []).includes(val)) {
+                            setDetForm(f => ({
+                              ...f,
+                              detection_self_sender_ids: [...(f.detection_self_sender_ids ?? []), val],
+                            }));
+                            setNewSelfId('');
+                          }
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      color="primary"
+                      variant="flat"
+                      onPress={() => {
+                        const val = newSelfId.trim();
+                        if (val && !(detForm.detection_self_sender_ids ?? []).includes(val)) {
+                          setDetForm(f => ({
+                            ...f,
+                            detection_self_sender_ids: [...(f.detection_self_sender_ids ?? []), val],
+                          }));
+                          setNewSelfId('');
+                        }
+                      }}
+                    >
+                      {t('common.add', 'Add')}
+                    </Button>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center justify-end gap-3 flex-wrap">
+              <div className="flex items-center justify-end gap-3 flex-wrap mt-4">
                 <Button color="primary" size="sm" isDisabled={!settings} isLoading={saveDetection.isPending} onPress={() => saveDetection.mutate()}>
                   {t('common.save')}
                 </Button>

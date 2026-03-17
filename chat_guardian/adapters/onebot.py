@@ -10,6 +10,7 @@ from aiocqhttp.exceptions import Error as OneBotError  # noqa: F401
 from loguru import logger
 
 from chat_guardian.adapters.base import Adapter, EventHandler
+from chat_guardian.adapters.utils import download_image_as_base64
 from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, MessageContent, UserInfo
 
 
@@ -161,8 +162,13 @@ class OneBotAdapter(Adapter):
                     segment_count += 1
                 elif segment_type == "image":
                     image_url = str(data.get("url") or data.get("file") or "")
-                    contents.append(MessageContent(type=ContentType.IMAGE, image_url=image_url))
-                    logger.debug(f"  ├ 图片片段: {image_url}")
+                    if image_url:
+                        image_data = await download_image_as_base64(image_url)
+                        if image_data:
+                            contents.append(MessageContent(type=ContentType.IMAGE, image_data=image_data))
+                            logger.debug("  ├ 图片片段已被提取数据")
+                        else:
+                            logger.debug(f"  ├ 图片提取失败: {image_url}")
                     segment_count += 1
                 elif segment_type == "at":
                     mention_id = str(data.get("qq", ""))

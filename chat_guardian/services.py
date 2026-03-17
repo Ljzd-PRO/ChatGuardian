@@ -103,57 +103,44 @@ def _messages_to_markdown(messages: list[ChatMessage]) -> str:
 
 
 async def _build_image_content_blocks(messages: list[ChatMessage]) -> tuple[list[dict[str, Any]], int]:
-    """从消息列表中提取图片并转换为可直接发送给 LLM 的 base64 image blocks。"""
+    """从消息列表中提取图片并转换为可通过 LLM 的 base64 image blocks。"""
+    if not settings.enable_image_parsing:
+        return [], 0
+
     image_blocks: list[dict[str, Any]] = []
-    image_cache: dict[str, tuple[str, str] | None] = {}
-
-    async def _load_image_as_base64(url: str) -> tuple[str, str] | None:
-        cached = image_cache.get(url)
-        if cached is not None or url in image_cache:
-            return cached
-        try:
-            async with httpx.AsyncClient(timeout=min(15.0, settings.llm_timeout_seconds),
-                                         follow_redirects=True) as client:
-                response = await client.get(url)
-                response.raise_for_status()
-
-            content_type = (response.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
-            if not content_type:
-                guessed, _ = mimetypes.guess_type(url)
-                content_type = guessed or "image/jpeg"
-            if not content_type.startswith("image/"):
-                logger.warning(f"⚠️ 跳过非图片资源 | url={url} | content_type={content_type}")
-                image_cache[url] = None
-                return None
-
-            encoded = base64.b64encode(response.content).decode("ascii")
-            image_cache[url] = (encoded, content_type)
-            return image_cache[url]
-        except Exception as exc:
-            logger.warning(f"⚠️ 下载图片失败，已跳过该图片 | url={url} | error={exc}")
-            image_cache[url] = None
-            return None
 
     for message in messages:
         for item in message.contents:
-            if item.type.value != "image" or not item.image_url:
-                continue
-            image_url = item.image_url.strip()
-            if not image_url:
+            if item.type.value != "image" or not item.image_data:
                 continue
 
-            loaded = await _load_image_as_base64(image_url)
-            if loaded is None:
-                continue
-            image_base64, mime_type = loaded
+            if len(image_blocks) >= settings.max_images:
+                break
+                
+            image_data = item.image_data.strip()
+            if not image_data.startswith("data:image/"):
+                # 如果缺少 data URI 前缀，则提供一个简单的降级
+                mime_type = "image/jpeg"
+                encoded = image_data
+            else:
+                try:
+                    prefix, encoded = image_data.split(",", 1)
+                    mime_type = prefix.split(";")[0].replace("data:", "")
+                except ValueError:
+                    mime_type = "image/jpeg"
+                    encoded = image_data
+
             image_blocks.append(
                 {
                     "type": "image",
-                    "id": item.generate_short_id(image_url),
-                    "base64": image_base64,
+                    "id": item.generate_short_id(image_data),
+                    "base64": encoded,
                     "mime_type": mime_type,
                 }
             )
+
+        if len(image_blocks) >= settings.max_images:
+            break
 
     return image_blocks, len(image_blocks)
 

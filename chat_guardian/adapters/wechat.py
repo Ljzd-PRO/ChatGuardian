@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 from loguru import logger
 
 from chat_guardian.adapters.base import Adapter, EventHandler
-from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, MessageContent
-
+from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, MessageContent, UserInfo
+from chat_guardian.adapters.utils import download_image_as_base64
 
 @dataclass(slots=True)
 class WeChatAdapterConfig:
@@ -108,7 +108,7 @@ class WeChatAdapter(Adapter):
                     body = await request.read()
                     xml = crypto.decrypt_message(body.decode("utf-8"), signature, timestamp, nonce)
                     msg = parse_message(xml)
-                    chat_event = self._convert_message(msg)
+                    chat_event = await self._convert_message(msg)
                     if chat_event is not None:
                         logger.debug(
                             f"💬 收到 WeChat Work 消息"
@@ -163,7 +163,7 @@ class WeChatAdapter(Adapter):
     # Message conversion
     # ------------------------------------------------------------------
 
-    def _convert_message(self, msg: object) -> ChatEvent | None:
+    async def _convert_message(self, msg: object) -> ChatEvent | None:
         """将 wechatpy 企业微信消息对象转换为 ChatEvent"""
         try:
             msg_type: str = getattr(msg, "type", "unknown")
@@ -184,7 +184,12 @@ class WeChatAdapter(Adapter):
                 media_id = str(getattr(msg, "media_id", "") or "")
                 image_url = pic_url or media_id
                 if image_url:
-                    contents.append(MessageContent(type=ContentType.IMAGE, image_url=image_url))
+                    image_data = await download_image_as_base64(image_url)
+                    if image_data:
+                        contents.append(MessageContent(type=ContentType.IMAGE, image_data=image_data))
+                        logger.debug("  ├ 图片片段已被提取数据")
+                    else:
+                        logger.debug(f"  ├ 提取图片数据失败: {image_url}")
 
             if not contents:
                 return None

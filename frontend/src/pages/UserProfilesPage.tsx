@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, type KeyboardEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Button, Card, CardBody, CardHeader, Chip, Divider, Input, Modal, ModalBody,
-  ModalContent, ModalFooter, ModalHeader, Spinner,
+  ModalContent, ModalFooter, ModalHeader, Spinner, Switch,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import addCircleBold from '@iconify/icons-solar/add-circle-bold';
@@ -30,12 +30,18 @@ export default function UserProfilesPage() {
   const [targetUserIds, setTargetUserIds] = useState<string[]>([]);
   const [newUserId, setNewUserId] = useState('');
   const [settingsReady, setSettingsReady] = useState(false);
+  
+  const [enableImageParsing, setEnableImageParsing] = useState(false);
+  const [maxImages, setMaxImages] = useState(5);
+
   const initializedRef = useRef(false);
 
   useEffect(() => {
     if (appSettings && !initializedRef.current) {
       initializedRef.current = true;
       setTargetUserIds(appSettings.memory_target_user_ids ?? []);
+      setEnableImageParsing(appSettings.enable_image_parsing ?? false);
+      setMaxImages(appSettings.max_images ?? 5);
       setSettingsReady(true);
     }
   }, [appSettings]);
@@ -44,6 +50,11 @@ export default function UserProfilesPage() {
 
   const save = useMutation({
     mutationFn: (ids: string[]) => updateSettings({ memory_target_user_ids: ids }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
+  });
+
+  const saveImageSettings = useMutation({
+    mutationFn: (data: { enable_image_parsing: boolean, max_images: number }) => updateSettings(data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
   });
 
@@ -167,6 +178,42 @@ export default function UserProfilesPage() {
               >
                 {t('common.add')}
               </Button>
+            </div>
+          </div>
+          
+          <Divider className="my-2" />
+
+          {/* Image Parsing Configuration */}
+          <div>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <p className="text-sm font-medium text-default-700">{t('rules.enableImageParsing', 'Enable Image Parsing')}</p>
+            </div>
+            <div className="flex flex-col gap-3 max-w-sm mb-2">
+              <div className="flex items-center justify-between border border-divider rounded-xl p-3 bg-content1">
+                <span className="text-sm font-medium">{t('rules.enableImageParsing', 'Enable Image Parsing')}</span>
+                <Switch
+                  size="sm"
+                  isDisabled={isSettingsLoading}
+                  isSelected={enableImageParsing}
+                  onValueChange={(v) => {
+                    setEnableImageParsing(v);
+                    saveImageSettings.mutate({ enable_image_parsing: v, max_images: maxImages });
+                  }}
+                />
+              </div>
+              <Input
+                label={t('rules.maxImages', 'Max Images')}
+                type="number"
+                size="sm"
+                isDisabled={isSettingsLoading || !enableImageParsing}
+                value={String(maxImages)}
+                onValueChange={(v) => {
+                  const val = Number(v);
+                  setMaxImages(val);
+                  saveImageSettings.mutate({ enable_image_parsing: enableImageParsing, max_images: val });
+                }}
+              />
+              {saveImageSettings.isSuccess && <p className="text-success text-xs mt-[-4px]">{t('common.saved')}</p>}
             </div>
           </div>
 
