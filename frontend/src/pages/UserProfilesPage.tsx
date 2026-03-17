@@ -1,4 +1,4 @@
-import { useState, useEffect, type KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, type KeyboardEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Button, Card, CardBody, CardHeader, Chip, Divider, Input, Modal, ModalBody,
@@ -28,8 +28,11 @@ export default function UserProfilesPage() {
   // ── Profiling settings ───────────────────────────────────────────────
   const { data: appSettings, isLoading: settingsLoading } = useQuery({ queryKey: ['settings'], queryFn: fetchSettings });
   const [targetUserIds, setTargetUserIds] = useState<string[]>([]);
+  const [userMemoryMinNewMessages, setUserMemoryMinNewMessages] = useState<number>(1);
+  const [lastSavedMinNewMessages, setLastSavedMinNewMessages] = useState<number>(1);
   const [newUserId, setNewUserId] = useState('');
   const [settingsReady, setSettingsReady] = useState(false);
+  const minMessagesDebounceRef = useRef<number | null>(null);
 
   const [enableImageParsing, setEnableImageParsing] = useState(false);
   const [maxImages, setMaxImages] = useState(5);
@@ -44,6 +47,9 @@ export default function UserProfilesPage() {
   useEffect(() => {
     if (appSettings) {
       setTargetUserIds(appSettings.memory_target_user_ids ?? []);
+      const loadedMinMessages = Math.max(1, appSettings.user_memory_min_new_messages ?? 1);
+      setUserMemoryMinNewMessages(loadedMinMessages);
+      setLastSavedMinNewMessages(loadedMinMessages);
       setEnableImageParsing(appSettings.enable_image_parsing ?? false);
       setMaxImages(appSettings.max_images ?? 5);
       setEnableImageCompression(appSettings.enable_image_compression ?? true);
@@ -59,6 +65,36 @@ export default function UserProfilesPage() {
     mutationFn: (ids: string[]) => updateSettings({ memory_target_user_ids: ids }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
   });
+
+  const saveMinMessages = useMutation({
+    mutationFn: (val: number) => updateSettings({ user_memory_min_new_messages: val }),
+    onSuccess: (_, val) => {
+      setLastSavedMinNewMessages(val);
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+    },
+  });
+
+  useEffect(() => {
+    if (!settingsReady) return;
+    const normalized = Math.max(1, userMemoryMinNewMessages);
+    if (normalized === lastSavedMinNewMessages) return;
+
+    if (minMessagesDebounceRef.current !== null) {
+      window.clearTimeout(minMessagesDebounceRef.current);
+    }
+
+    minMessagesDebounceRef.current = window.setTimeout(() => {
+      saveMinMessages.mutate(normalized);
+      minMessagesDebounceRef.current = null;
+    }, 400);
+
+    return () => {
+      if (minMessagesDebounceRef.current !== null) {
+        window.clearTimeout(minMessagesDebounceRef.current);
+        minMessagesDebounceRef.current = null;
+      }
+    };
+  }, [settingsReady, userMemoryMinNewMessages, lastSavedMinNewMessages, saveMinMessages]);
 
   const saveImageSettings = useMutation({
     mutationFn: (data: { enable_image_parsing: boolean, max_images: number, enable_image_compression: boolean, image_compression_max_width: number, image_compression_max_height: number }) => updateSettings(data),
@@ -189,6 +225,24 @@ export default function UserProfilesPage() {
           </div>
 
           <Divider className="my-2" />
+
+          {/* User Memory Minimum Messages Configuration */}
+          <div className="flex flex-col gap-3 border border-divider rounded-xl p-3 bg-content1/50 mb-2">
+            <Input
+              label={t('users.minNewMessages')}
+              type="number"
+              size="sm"
+              isDisabled={isSettingsLoading}
+              value={String(userMemoryMinNewMessages)}
+              onValueChange={(v) => {
+                const val = Math.max(1, asNumber(v, userMemoryMinNewMessages));
+                setUserMemoryMinNewMessages(val);
+              }}
+            />
+            {saveMinMessages.isPending && <p className="text-default-500 text-xs">{t('common.saving')}</p>}
+            {saveMinMessages.isSuccess && !saveMinMessages.isPending && <p className="text-success text-xs">{t('common.saved')}</p>}
+            {saveMinMessages.isError && <p className="text-danger text-xs">{t('common.saveFailed')}</p>}
+          </div>
 
           {/* Image Parsing Configuration */}
           <div className="grid md:grid-cols-2 gap-4 mb-2">

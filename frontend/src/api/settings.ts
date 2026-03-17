@@ -43,6 +43,7 @@ export interface AppSettings {
   bark_level: string | null;
   notification_text_template: string | null;
   memory_target_user_ids: string[];
+  user_memory_min_new_messages: number;
   enabled_adapters: string[];
   onebot_host: string;
   onebot_port: number;

@@ -122,6 +122,7 @@ class Settings(BaseModel):
 
     # 用户画像分析配置
     memory_target_user_ids: list[str] = []
+    user_memory_min_new_messages: int = 1
 
     # 从会话中获取历史消息条数
     context_message_limit: int = 10

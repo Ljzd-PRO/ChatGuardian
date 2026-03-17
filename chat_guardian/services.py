@@ -1257,6 +1257,7 @@ class UserMemoryService:
         self.llm_client = llm_client
         self.memory_repository = memory_repository
         self.context_service = context_service
+        self._user_msg_counts: dict[str, int] = {}
 
     async def process_user_memory(self, event: ChatEvent) -> int:
         """按配置的用户 ID 列表提取并累积用户画像。
@@ -1273,7 +1274,19 @@ class UserMemoryService:
             logger.debug(f"ℹ️ 非画像目标用户，跳过处理 | 发送者={user_id}")
             return 0
 
-        logger.debug(f"💾 用户画像检测 | 发送者={user_id} | 消息ID={event.message.message_id}")
+        # 判断是否达到处理的最小消息数限制
+        min_new = max(1, getattr(settings, "user_memory_min_new_messages", 1))
+        self._user_msg_counts[user_id] = self._user_msg_counts.get(user_id, 0) + 1
+        current_count = self._user_msg_counts[user_id]
+        
+        if current_count < min_new:
+            logger.debug(f"⏳ 用户 {user_id} 消息数不足，当前={current_count}，最小触发={min_new}")
+            return 0
+
+        # 达到条件，重置计数器
+        self._user_msg_counts[user_id] = 0
+
+        logger.debug(f"💾 用户画像检测 | 发送者={user_id} | 消息ID={event.message.message_id} | 触发消息数={current_count}")
 
         context_messages = await self.context_service.build_context(event)
         logger.debug(f"  ✓ 构建上下文 | 消息数={len(context_messages)}")
