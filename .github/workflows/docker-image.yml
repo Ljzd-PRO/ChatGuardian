@@ -12,7 +12,8 @@ on:
         default: ""
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/chatguardian
+  # GitHub container registry requires lowercase repository names
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner | toLower }}/chatguardian
 
 jobs:
   build-and-push:
