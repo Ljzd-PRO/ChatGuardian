@@ -431,8 +431,8 @@ export default function RulesPage() {
                 />
                 <Input
                   label={t('rules.selfSenderIds')}
-                  description={t('rules.selfSenderIdsDesc')}
-                  placeholder={t('rules.selfSenderIdsPlaceholder')}
+                  description={t('rules.selfSenderIdsDescCommaSeparated', 'Comma-separated sender IDs')}
+                  placeholder={t('rules.selfSenderIdsPlaceholderCommaSeparated', 'e.g. 12345, 67890, 13579')}
                   startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={(detForm.detection_self_sender_ids ?? []).join(', ')}
                   onValueChange={v => setDetForm(f => ({
