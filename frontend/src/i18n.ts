@@ -359,6 +359,7 @@ const resources = {
         settingsDescription: 'Configure which users will have profile analysis enabled. Leave empty to disable profiling for all users.',
         targetUserIds: 'Target User IDs',
         targetUserIdsHint: 'Add user IDs below. Press Enter or click Add to confirm. Click × on a tag to stop profiling that user.',
+        minNewMessages: 'Min New Messages for Profiling',
         addUserIdPlaceholder: 'Enter a user ID…',
         profilingDisabled: 'Profiling disabled (no users configured)',
         topic: 'Topic',
@@ -426,6 +427,7 @@ const resources = {
         },
       },
       setup: {
+        title: 'Setup',
         welcome: 'Welcome! Let\'s get started with the initial configuration.',
         steps: {
           account: 'Account',
@@ -865,6 +867,7 @@ const resources = {
         settingsDescription: '配置需要进行画像分析的用户。留空则对所有用户禁用画像功能。',
         targetUserIds: '目标用户 ID',
         targetUserIdsHint: '在下方输入用户 ID，按回车或点击"添加"确认。点击标签上的 × 可停止对该用户进行画像。',
+        minNewMessages: '画像分析所需最小新消息数',
         addUserIdPlaceholder: '输入用户 ID…',
         profilingDisabled: '画像已禁用（未配置任何用户）',
         topic: '话题',
@@ -932,6 +935,7 @@ const resources = {
         },
       },
       setup: {
+        title: '设置',
         welcome: '欢迎！让我们开始初始配置。',
         steps: {
           account: '账户',
@@ -1371,6 +1375,7 @@ const resources = {
         settingsDescription: '設定需要進行畫像分析的使用者。留空則對所有使用者停用畫像功能。',
         targetUserIds: '目標使用者 ID',
         targetUserIdsHint: '在下方輸入使用者 ID，按 Enter 或點擊「新增」確認。點擊標籤上的 × 可停止對該使用者進行畫像。',
+        minNewMessages: 'Min New Messages for Profiling',
         addUserIdPlaceholder: '輸入使用者 ID…',
         profilingDisabled: '畫像已停用（未設定任何使用者）',
         topic: '話題',
@@ -1438,6 +1443,7 @@ const resources = {
         },
       },
       setup: {
+        title: '設定',
         welcome: '歡迎！讓我們開始初始配置。',
         steps: {
           account: '帳戶',
@@ -1858,6 +1864,7 @@ const resources = {
         settingsDescription: 'プロファイル分析を有効にするユーザーを設定します。空のままにすると、すべてのユーザーのプロファイリングが無効になります。',
         targetUserIds: '対象ユーザー ID',
         targetUserIdsHint: '以下にユーザー ID を入力し、Enter キーまたは「追加」をクリックして確定します。タグの × をクリックすると対象から外れます。',
+        minNewMessages: 'Min New Messages for Profiling',
         addUserIdPlaceholder: 'ユーザー ID を入力…',
         profilingDisabled: 'プロファイリング無効（ユーザー未設定）',
         topic: 'トピック',
@@ -1925,6 +1932,7 @@ const resources = {
         },
       },
       setup: {
+        title: 'セットアップ',
         welcome: 'ようこそ！初期設定を始めましょう。',
         steps: {
           account: 'アカウント',
@@ -2345,6 +2353,7 @@ const resources = {
         settingsDescription: '프로필 분석을 활성화할 사용자를 구성합니다. 비워두면 모든 사용자의 프로파일링이 비활성화됩니다.',
         targetUserIds: '대상 사용자 ID',
         targetUserIdsHint: '아래에 사용자 ID를 입력하고 Enter 키를 누르거나 추가를 클릭하여 확인합니다. 태그의 × 를 클릭하면 대상에서 제외됩니다.',
+        minNewMessages: 'Min New Messages for Profiling',
         addUserIdPlaceholder: '사용자 ID 입력…',
         profilingDisabled: '프로파일링 비활성화 (설정된 사용자 없음)',
         topic: '주제',
@@ -2412,6 +2421,7 @@ const resources = {
         },
       },
       setup: {
+        title: '설정',
         welcome: '환영합니다! 초기 설정을 시작하겠습니다.',
         steps: {
           account: '계정',
@@ -2832,6 +2842,7 @@ const resources = {
         settingsDescription: 'Configurez les utilisateurs pour lesquels l\'analyse de profil sera activée. Laissez vide pour désactiver le profilage pour tous les utilisateurs.',
         targetUserIds: 'ID utilisateurs cibles',
         targetUserIdsHint: 'Entrez les ID utilisateur ci-dessous. Appuyez sur Entrée ou cliquez sur Ajouter pour confirmer. Cliquez sur × d\'un tag pour arrêter le profilage de cet utilisateur.',
+        minNewMessages: 'Min New Messages for Profiling',
         addUserIdPlaceholder: 'Saisir un ID utilisateur…',
         profilingDisabled: 'Profilage désactivé (aucun utilisateur configuré)',
         topic: 'Sujet',
@@ -2899,6 +2910,7 @@ const resources = {
         },
       },
       setup: {
+        title: 'Configuration',
         welcome: 'Bienvenue ! Commençons la configuration initiale.',
         steps: {
           account: 'Compte',
@@ -3319,6 +3331,7 @@ const resources = {
         settingsDescription: 'Konfigurieren Sie, für welche Benutzer die Profilanalyse aktiviert wird. Leer lassen, um die Profilierung für alle Benutzer zu deaktivieren.',
         targetUserIds: 'Zielbenutzer-IDs',
         targetUserIdsHint: 'Geben Sie unten Benutzer-IDs ein. Drücken Sie Enter oder klicken Sie auf Hinzufügen. Klicken Sie auf × eines Tags, um die Profilierung dieses Benutzers zu beenden.',
+        minNewMessages: 'Min New Messages for Profiling',
         addUserIdPlaceholder: 'Benutzer-ID eingeben…',
         profilingDisabled: 'Profilierung deaktiviert (keine Benutzer konfiguriert)',
         topic: 'Thema',
@@ -3386,6 +3399,7 @@ const resources = {
         },
       },
       setup: {
+        title: 'Einrichtung',
         welcome: 'Willkommen! Beginnen wir mit der Erstkonfiguration.',
         steps: {
           account: 'Konto',
@@ -3806,6 +3820,7 @@ const resources = {
         settingsDescription: 'Настройте, для каких пользователей будет включён анализ профиля. Оставьте пустым, чтобы отключить профилирование для всех пользователей.',
         targetUserIds: 'ID целевых пользователей',
         targetUserIdsHint: 'Введите ID пользователей ниже. Нажмите Enter или кнопку «Добавить» для подтверждения. Нажмите × на теге, чтобы убрать пользователя из списка.',
+        minNewMessages: 'Min New Messages for Profiling',
         addUserIdPlaceholder: 'Введите ID пользователя…',
         profilingDisabled: 'Профилирование отключено (пользователи не настроены)',
         topic: 'Тема',
@@ -3873,6 +3888,7 @@ const resources = {
         },
       },
       setup: {
+        title: 'Настройка',
         welcome: 'Добро пожаловать! Начнём начальную настройку.',
         steps: {
           account: 'Аккаунт',
