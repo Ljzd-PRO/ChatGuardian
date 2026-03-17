@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
-  Button, Card, CardBody, CardHeader, Input, Spinner, Switch,
+  Button, Card, CardBody, CardHeader, Input, Spinner, Switch, Textarea,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import bellBingBold from '@iconify/icons-solar/bell-bing-bold';
@@ -18,7 +18,7 @@ import tagBold from '@iconify/icons-solar/tag-bold';
 import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
 import playCircleBold from '@iconify/icons-solar/play-circle-bold';
 import { useTranslation } from 'react-i18next';
-import { fetchNotificationsConfig, updateSettings, testNotification } from '../api/settings';
+import { fetchNotificationsConfig, fetchSettings, updateSettings, testNotification } from '../api/settings';
 import { ApiError } from '../api/client';
 import type { AppSettings } from '../api/settings';
 import { ICON_SIZES } from '../constants/iconSizes';
@@ -26,6 +26,7 @@ import { ICON_SIZES } from '../constants/iconSizes';
 export default function NotificationsPage() {
   const { t } = useTranslation();
   const { data, isLoading } = useQuery({ queryKey: ['notifications_config'], queryFn: fetchNotificationsConfig });
+  const { data: settingsData } = useQuery({ queryKey: ['settings'], queryFn: fetchSettings });
   const [form, setForm] = useState<Partial<AppSettings>>({});
   const [emailTestState, setEmailTestState] = useState<'idle' | 'loading' | 'success' | 'error' | 'notConfigured'>('idle');
   const [barkTestState, setBarkTestState] = useState<'idle' | 'loading' | 'success' | 'error' | 'notConfigured'>('idle');
@@ -57,6 +58,14 @@ export default function NotificationsPage() {
       bark_level: data.bark.level ?? '',
     });
   }, [data]);
+
+  useEffect(() => {
+    if (!settingsData) return;
+    setForm(f => ({
+      ...f,
+      notification_text_template: f.notification_text_template ?? settingsData.notification_text_template ?? '',
+    }));
+  }, [settingsData]);
 
   const save = useMutation({
     mutationFn: () => updateSettings(form),
@@ -234,6 +243,25 @@ export default function NotificationsPage() {
             startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
             value={form.bark_level ?? ''}
             onValueChange={v => setForm(f => ({ ...f, bark_level: v.trim() === '' ? null : v }))}
+          />
+        </CardBody>
+      </Card>
+
+      {/* Shared text template */}
+      <Card>
+        <CardHeader className="flex items-start justify-between gap-2">
+          <div className="space-y-1">
+            <span className="font-semibold">{t('notifications.textTemplate')}</span>
+            <p className="text-xs text-default-500 max-w-lg">{t('notifications.textTemplateDesc')}</p>
+          </div>
+        </CardHeader>
+        <CardBody className="space-y-3">
+          <Textarea
+            label={t('notifications.textTemplate')}
+            placeholder={t('notifications.textTemplatePlaceholder')}
+            minRows={3}
+            value={form.notification_text_template ?? ''}
+            onValueChange={v => setForm(f => ({ ...f, notification_text_template: v.trim() === '' ? null : v }))}
           />
         </CardBody>
       </Card>
