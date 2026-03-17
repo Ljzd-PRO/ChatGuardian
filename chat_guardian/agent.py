@@ -366,6 +366,7 @@ class AdminAgent:
         - {"type": "tool_call_start", "tool_call_id": str, "name": str, "display_name": str}
         - {"type": "tool_call_args", "tool_call_id": str, "args_delta": str}
         - {"type": "tool_result", "tool_call_id": str, "name": str, "display_name": str, "result": Any}
+        - {"type": "usage", "total_tokens": int}  - 累计 token 消耗（在 done 之前发出）
         - {"type": "error", "content": str}
         - {"type": "done"}
 
@@ -393,6 +394,9 @@ class AdminAgent:
                 lc_messages.append(AIMessage(content=content))
 
         model = self._get_model()
+        # 累计 token 使用量（跨所有迭代）
+        accumulated_input_tokens: int = 0
+        accumulated_output_tokens: int = 0
 
         for _iteration in range(self.MAX_ITERATIONS):
             if await _client_gone():
@@ -410,6 +414,12 @@ class AdminAgent:
 
                     if not isinstance(chunk, AIMessageChunk):
                         continue
+
+                    # 收集 token 用量（usage_metadata 通常在最后一个 chunk 中）
+                    usage = getattr(chunk, "usage_metadata", None)
+                    if usage and isinstance(usage, dict):
+                        accumulated_input_tokens += usage.get("input_tokens", 0)
+                        accumulated_output_tokens += usage.get("output_tokens", 0)
 
                     # 处理文本内容
                     if chunk.content:
@@ -479,6 +489,9 @@ class AdminAgent:
 
                 if not tool_calls:
                     # 没有工具调用，对话完成
+                    total_tokens = accumulated_input_tokens + accumulated_output_tokens
+                    if total_tokens > 0:
+                        yield {"type": "usage", "total_tokens": total_tokens}
                     yield {"type": "done"}
                     return
 
@@ -535,10 +548,16 @@ class AdminAgent:
 
             except Exception as exc:
                 logger.error(f"Agent stream error: {exc}")
+                total_tokens = accumulated_input_tokens + accumulated_output_tokens
+                if total_tokens > 0:
+                    yield {"type": "usage", "total_tokens": total_tokens}
                 yield {"type": "error", "content": str(exc)}
                 yield {"type": "done"}
                 return
 
         # 达到最大迭代次数
+        total_tokens = accumulated_input_tokens + accumulated_output_tokens
+        if total_tokens > 0:
+            yield {"type": "usage", "total_tokens": total_tokens}
         yield {"type": "error", "content": "达到最大工具调用次数限制"}
         yield {"type": "done"}

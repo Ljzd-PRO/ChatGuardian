@@ -75,6 +75,7 @@ export default function RulesPage() {
       detection_cooldown_seconds: settings.detection_cooldown_seconds,
       detection_min_new_messages: settings.detection_min_new_messages,
       detection_wait_timeout_seconds: settings.detection_wait_timeout_seconds,
+      detection_self_sender_ids: settings.detection_self_sender_ids,
     });
   }, [settings]);
 
@@ -427,6 +428,18 @@ export default function RulesPage() {
                   startContent={<Icon icon={chart2Bold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                   value={String(detForm.detection_wait_timeout_seconds ?? 30)}
                   onValueChange={v => setDetForm(f => ({ ...f, detection_wait_timeout_seconds: Number(v) }))}
+                />
+                <Input
+                  label={t('rules.selfSenderIds')}
+                  description={t('rules.selfSenderIdsDescCommaSeparated', 'Comma-separated sender IDs')}
+                  placeholder={t('rules.selfSenderIdsPlaceholderCommaSeparated', 'e.g. 12345, 67890, 13579')}
+                  startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
+                  value={(detForm.detection_self_sender_ids ?? []).join(', ')}
+                  onValueChange={v => setDetForm(f => ({
+                    ...f,
+                    detection_self_sender_ids: v.split(',').map(x => x.trim()).filter(Boolean),
+                  }))}
+                  className="md:col-span-3"
                 />
               </div>
               <div className="flex items-center justify-end gap-3 flex-wrap">

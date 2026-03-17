@@ -983,6 +983,19 @@ class DetectionEngine:
         active_rules = [rule for rule in await self.rules.list_enabled() if rule.matcher.matches(event)]
         logger.info(f"📋 适用规则 | 总数={len(active_rules)}")
 
+        # 若上下文中含有自身账号发送的消息，则跳过 LLM 分析
+        self_ids = set(settings.detection_self_sender_ids)
+        if self_ids:
+            self_in_ctx = any(msg.sender_id in self_ids for msg in context_messages if msg.sender_id)
+            if self_in_ctx:
+                logger.info(f"⏭️ 上下文含有自身消息，跳过 LLM 分析 | 会话={event.chat_id}")
+                return EngineOutput(
+                    event_id=f"evt-{event.message.message_id}",
+                    results=[],
+                    triggered_rule_ids=[],
+                    notified_count=0,
+                )
+
         scheduler_request_id = f"{event.platform}:{event.chat_id}:{event.message.message_id}"
         decisions = await self.batch_scheduler.evaluate_rules(
             messages=context_messages,

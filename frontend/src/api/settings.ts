@@ -21,6 +21,7 @@ export interface AppSettings {
   detection_cooldown_seconds: number;
   detection_min_new_messages: number;
   detection_wait_timeout_seconds: number;
+  detection_self_sender_ids: string[];
   email_notifier_enabled: boolean;
   email_notifier_to_email: string | null;
   smtp_host: string | null;
@@ -35,6 +36,7 @@ export interface AppSettings {
   bark_server_url: string;
   bark_group: string | null;
   bark_level: string | null;
+  notification_text_template: string | null;
   memory_target_user_ids: string[];
   enabled_adapters: string[];
   onebot_host: string;
@@ -59,6 +61,11 @@ export interface AppSettings {
   virtual_adapter_interval_min_seconds: number;
   virtual_adapter_interval_max_seconds: number;
   virtual_adapter_script_path: string | null;
+  mcp_http_enabled: boolean;
+  mcp_http_transport: 'sse' | 'streamable-http';
+  mcp_http_host: string;
+  mcp_http_port: number;
+  mcp_http_path: string;
 }
 
 export interface NotificationsConfig {

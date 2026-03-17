@@ -97,10 +97,26 @@ class _AgentMessageRecord(_Base):
     content: Mapped[str] = mapped_column(Text, default="")
     tool_calls_json: Mapped[str] = mapped_column(Text, default="[]")
     elapsed_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[str] = mapped_column(String(32))
 
 
 class _RepositoryDatabase:
+    def _migrate_agent_messages_total_tokens(self) -> None:
+        """Ensure `agent_messages.total_tokens` column exists for older databases."""
+        # This migration mirrors the style of other incremental migrations (e.g., detection_results.result_id).
+        # It is safe to run multiple times; duplicate-column errors are ignored.
+        with self.engine.begin() as conn:
+            try:
+                conn.execute(text("ALTER TABLE agent_messages ADD COLUMN total_tokens INTEGER"))
+            except OperationalError as exc:
+                msg = str(exc).lower()
+                # SQLite typically reports "duplicate column name: total_tokens" if the column already exists.
+                # Other databases may use "already exists" in the error message.
+                if "duplicate column name" in msg or "already exists" in msg:
+                    return
+                raise
+
     def __init__(self, database_url: str):
         normalized_url = normalize_database_url(database_url)
         engine_kwargs: dict[str, Any] = {"future": True}
@@ -111,6 +127,7 @@ class _RepositoryDatabase:
         self.session_factory = sessionmaker(bind=self.engine, expire_on_commit=False)
         _Base.metadata.create_all(self.engine)
         self._migrate()
+        self._migrate_agent_messages_total_tokens()
 
     def _migrate(self) -> None:
         """Apply incremental schema migrations for new columns added after initial creation."""
@@ -906,6 +923,7 @@ class AgentSessionRepository:
                 "content": r.content,
                 "tool_calls": json.loads(r.tool_calls_json) if r.tool_calls_json else [],
                 "elapsed_ms": r.elapsed_ms,
+                "total_tokens": r.total_tokens,
                 "created_at": r.created_at,
             }
             for r in rows
@@ -914,6 +932,7 @@ class AgentSessionRepository:
     def add_message(
             self, session_id: str, role: str, content: str,
             tool_calls: list | None = None, elapsed_ms: int | None = None,
+            total_tokens: int | None = None,
     ) -> dict[str, Any]:
         """向会话添加一条消息。"""
         if self._db is None:
@@ -931,6 +950,7 @@ class AgentSessionRepository:
                 content=content,
                 tool_calls_json=tc_json,
                 elapsed_ms=elapsed_ms,
+                total_tokens=total_tokens,
                 created_at=now,
             )
             session.add(record)
@@ -945,6 +965,7 @@ class AgentSessionRepository:
             "content": content,
             "tool_calls": tool_calls or [],
             "elapsed_ms": elapsed_ms,
+            "total_tokens": total_tokens,
             "created_at": now,
         }
 
