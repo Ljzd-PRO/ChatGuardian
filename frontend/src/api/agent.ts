@@ -4,13 +4,14 @@ import { apiFetch } from './client';
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/';
 
 export interface AgentEvent {
-  type: 'token' | 'tool_call_start' | 'tool_call_args' | 'tool_result' | 'error' | 'done';
+  type: 'token' | 'tool_call_start' | 'tool_call_args' | 'tool_result' | 'usage' | 'error' | 'done';
   content?: string;
   tool_call_id?: string;
   name?: string;
   display_name?: string;
   args_delta?: string;
   result?: unknown;
+  total_tokens?: number;
 }
 
 export interface AgentMessage {
@@ -50,6 +51,7 @@ export interface AgentSessionMessage {
   content: string;
   tool_calls: unknown[];
   elapsed_ms: number | null;
+  total_tokens: number | null;
   created_at: string;
 }
 
@@ -159,6 +161,7 @@ export async function saveSessionMessage(
   content: string,
   toolCalls?: unknown[],
   elapsedMs?: number,
+  totalTokens?: number,
 ): Promise<AgentSessionMessage> {
   return apiFetch<AgentSessionMessage>(`/api/agent/sessions/${sessionId}/messages`, {
     method: 'POST',
@@ -167,6 +170,7 @@ export async function saveSessionMessage(
       content,
       tool_calls: toolCalls ?? null,
       elapsed_ms: elapsedMs ?? null,
+      total_tokens: totalTokens ?? null,
     }),
   });
 }

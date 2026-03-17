@@ -97,6 +97,7 @@ class _AgentMessageRecord(_Base):
     content: Mapped[str] = mapped_column(Text, default="")
     tool_calls_json: Mapped[str] = mapped_column(Text, default="[]")
     elapsed_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[str] = mapped_column(String(32))
 
 
@@ -906,6 +907,7 @@ class AgentSessionRepository:
                 "content": r.content,
                 "tool_calls": json.loads(r.tool_calls_json) if r.tool_calls_json else [],
                 "elapsed_ms": r.elapsed_ms,
+                "total_tokens": r.total_tokens,
                 "created_at": r.created_at,
             }
             for r in rows
@@ -914,6 +916,7 @@ class AgentSessionRepository:
     def add_message(
             self, session_id: str, role: str, content: str,
             tool_calls: list | None = None, elapsed_ms: int | None = None,
+            total_tokens: int | None = None,
     ) -> dict[str, Any]:
         """向会话添加一条消息。"""
         if self._db is None:
@@ -931,6 +934,7 @@ class AgentSessionRepository:
                 content=content,
                 tool_calls_json=tc_json,
                 elapsed_ms=elapsed_ms,
+                total_tokens=total_tokens,
                 created_at=now,
             )
             session.add(record)
@@ -945,6 +949,7 @@ class AgentSessionRepository:
             "content": content,
             "tool_calls": tool_calls or [],
             "elapsed_ms": elapsed_ms,
+            "total_tokens": total_tokens,
             "created_at": now,
         }
 

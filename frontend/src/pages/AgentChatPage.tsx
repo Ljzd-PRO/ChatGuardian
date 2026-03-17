@@ -2,11 +2,17 @@ import { useState, useRef, useEffect, useCallback, useMemo, type FormEvent, type
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Accordion,
+  AccordionItem,
   Button,
   Card,
   CardBody,
   Chip,
+  Input,
+  Select,
+  SelectItem,
   Spinner,
+  Switch,
   Textarea,
   ScrollShadow,
   Tooltip,
@@ -47,6 +53,8 @@ import arrowDownBold from '@iconify/icons-solar/alt-arrow-down-bold';
 import arrowRightBold from '@iconify/icons-solar/alt-arrow-right-bold';
 import sparklesLinear from '@iconify/icons-solar/stars-line-duotone';
 import keyboardBold from '@iconify/icons-solar/keyboard-bold';
+import serverBold from '@iconify/icons-solar/server-square-cloud-bold';
+import globeBold from '@iconify/icons-solar/global-bold';
 
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -66,6 +74,8 @@ import {
   type AgentSession,
   type AgentSessionMessage,
 } from '../api/agent';
+import { fetchSettings, updateSettings } from '../api/settings';
+import { useMutation } from '@tanstack/react-query';
 
 const messageKeyMap = new WeakMap<AgentMessage, string>();
 
@@ -117,6 +127,7 @@ interface ChatMessage {
   content: string;
   toolCalls?: ToolCallInfo[];
   elapsedMs?: number;
+  totalTokens?: number;
   dbId?: number;
 }
 
@@ -276,6 +287,10 @@ function ToolCallCard({ toolCall }: { toolCall: ToolCallInfo }) {
     toolCall.result !== null &&
     'error' in (toolCall.result as Record<string, unknown>);
 
+  const displayName = toolCall.name
+    ? t(`agent.tools.${toolCall.name}`, { defaultValue: toolCall.displayName || toolCall.name })
+    : toolCall.displayName;
+
   return (
     <div className="my-2 rounded-xl border border-divider overflow-hidden shadow-sm">
       <button
@@ -293,7 +308,7 @@ function ToolCallCard({ toolCall }: { toolCall: ToolCallInfo }) {
           )}
         </div>
         <span className="text-sm font-medium text-foreground flex-1 truncate">
-          {toolCall.displayName}
+          {displayName}
         </span>
         <Icon
           icon={expanded ? arrowDownBold : arrowRightBold}
@@ -366,6 +381,131 @@ function formatElapsed(ms: number): string {
   const minutes = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${minutes}m ${secs.toFixed(0)}s`;
+}
+
+/* ─── Agent config section ─────────────────────────────────────────── */
+
+function AgentConfigSection() {
+  const { t } = useTranslation();
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: fetchSettings,
+    staleTime: 30_000,
+  });
+  const [form, setForm] = useState<{
+    mcp_http_enabled: boolean;
+    mcp_http_transport: 'sse' | 'streamable-http';
+    mcp_http_host: string;
+    mcp_http_port: number;
+    mcp_http_path: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (settings && form === null) {
+      setForm({
+        mcp_http_enabled: settings.mcp_http_enabled,
+        mcp_http_transport: settings.mcp_http_transport,
+        mcp_http_host: settings.mcp_http_host,
+        mcp_http_port: settings.mcp_http_port,
+        mcp_http_path: settings.mcp_http_path,
+      });
+    }
+  }, [settings, form]);
+
+  const saveMutation = useMutation({
+    mutationFn: () => updateSettings(form ?? {}),
+  });
+
+  if (!form) return null;
+
+  return (
+    <Accordion
+      selectionMode="multiple"
+      defaultExpandedKeys={new Set<string>()}
+      itemClasses={{ title: 'w-full' }}
+      variant="splitted"
+      className="bg-transparent px-0 shadow-none"
+    >
+      <AccordionItem
+        key="agent-config"
+        aria-label={t('agent.agentConfig.title')}
+        title={(
+          <div className="flex items-center gap-2">
+            <Icon icon={serverBold} fontSize={18} className="text-primary" />
+            <div className="text-left">
+              <p className="font-semibold text-sm">{t('agent.agentConfig.title')}</p>
+              <p className="text-xs text-default-500">{t('agent.agentConfig.desc')}</p>
+            </div>
+          </div>
+        )}
+        className="rounded-xl border border-divider shadow-sm"
+      >
+        <Card className="shadow-none border-0">
+          <CardBody className="space-y-4 pt-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">{t('agent.agentConfig.mcpHttpEnabled')}</p>
+                <p className="text-xs text-default-500">{t('agent.agentConfig.mcpHttpEnabledDesc')}</p>
+              </div>
+              <Switch
+                isSelected={form.mcp_http_enabled}
+                onValueChange={(v) => setForm(f => f ? { ...f, mcp_http_enabled: v } : f)}
+                size="sm"
+              />
+            </div>
+            {form.mcp_http_enabled && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Select
+                  label={t('agent.agentConfig.mcpHttpTransport')}
+                  selectedKeys={new Set([form.mcp_http_transport])}
+                  onSelectionChange={(keys) => {
+                    const val = Array.from(keys)[0] as 'sse' | 'streamable-http';
+                    setForm(f => f ? { ...f, mcp_http_transport: val } : f);
+                  }}
+                  size="sm"
+                  startContent={<Icon icon={globeBold} fontSize={14} className="text-default-500" />}
+                >
+                  <SelectItem key="sse">SSE</SelectItem>
+                  <SelectItem key="streamable-http">Streamable HTTP</SelectItem>
+                </Select>
+                <Input
+                  label={t('agent.agentConfig.mcpHttpHost')}
+                  value={form.mcp_http_host}
+                  onValueChange={(v) => setForm(f => f ? { ...f, mcp_http_host: v } : f)}
+                  size="sm"
+                />
+                <Input
+                  label={t('agent.agentConfig.mcpHttpPort')}
+                  type="number"
+                  value={String(form.mcp_http_port)}
+                  onValueChange={(v) => setForm(f => f ? { ...f, mcp_http_port: Number(v) } : f)}
+                  size="sm"
+                />
+                <Input
+                  label={t('agent.agentConfig.mcpHttpPath')}
+                  value={form.mcp_http_path}
+                  onValueChange={(v) => setForm(f => f ? { ...f, mcp_http_path: v } : f)}
+                  size="sm"
+                />
+              </div>
+            )}
+            <div className="flex items-center justify-end gap-3">
+              <Button
+                color="primary"
+                size="sm"
+                isLoading={saveMutation.isPending}
+                onPress={() => saveMutation.mutate()}
+              >
+                {t('common.save')}
+              </Button>
+            </div>
+            {saveMutation.isSuccess && <p className="text-success text-xs">{t('common.saved')}</p>}
+            {saveMutation.isError && <p className="text-danger text-xs">{t('common.saveFailed')}</p>}
+          </CardBody>
+        </Card>
+      </AccordionItem>
+    </Accordion>
+  );
 }
 
 /* ─── Session sidebar ──────────────────────────────────────────────── */
@@ -514,8 +654,7 @@ function SessionSidebar({
 /* ─── Main component ───────────────────────────────────────────────── */
 
 export default function AgentChatPage() {
-  const { t, i18n } = useTranslation();
-  const isZh = i18n.language.startsWith('zh');
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -530,6 +669,7 @@ export default function AgentChatPage() {
   const pendingMsgRef = useRef<ChatMessage | null>(null);
   const rafIdRef = useRef<number>(0);
   const streamStartRef = useRef<number>(0);
+  const pendingTokensRef = useRef<number>(0);
   // When a new session is created programmatically (first message), we skip the
   // automatic message re-fetch triggered by the currentSessionId effect to avoid
   // a race condition where the effect's fetch returns [] before messages are saved.
@@ -592,6 +732,7 @@ export default function AgentChatPage() {
           isLoading: false,
         })),
         elapsedMs: m.elapsed_ms ?? undefined,
+        totalTokens: m.total_tokens ?? undefined,
         dbId: m.id,
       }));
       setMessages(chatMsgs);
@@ -663,6 +804,7 @@ export default function AgentChatPage() {
           isLoading: false,
         })),
         elapsedMs: m.elapsed_ms ?? undefined,
+        totalTokens: m.total_tokens ?? undefined,
         dbId: m.id,
       }));
       setMessages(chatMsgs);
@@ -691,6 +833,7 @@ export default function AgentChatPage() {
       setInput('');
       setIsStreaming(true);
       streamStartRef.current = Date.now();
+      pendingTokensRef.current = 0;
 
       let userMsgDb: AgentSessionMessage | null = null;
       try {
@@ -790,6 +933,10 @@ export default function AgentChatPage() {
                 msg.content += `\n\n❌ ${event.content ?? 'Unknown error'}`;
                 break;
 
+              case 'usage':
+                pendingTokensRef.current = event.total_tokens ?? 0;
+                break;
+
               case 'done':
                 break;
             }
@@ -813,9 +960,11 @@ export default function AgentChatPage() {
         }
 
         const elapsed = Date.now() - streamStartRef.current;
+        const totalTokens = pendingTokensRef.current || undefined;
         const msg = pendingMsgRef.current;
         if (msg) {
           msg.elapsedMs = elapsed;
+          msg.totalTokens = totalTokens;
         }
         pendingMsgRef.current = null;
 
@@ -823,7 +972,7 @@ export default function AgentChatPage() {
           const updated = [...prev];
           const last = updated[updated.length - 1];
           if (last && last.role === 'assistant') {
-            updated[updated.length - 1] = { ...last, ...(msg ?? {}), elapsedMs: elapsed };
+            updated[updated.length - 1] = { ...last, ...(msg ?? {}), elapsedMs: elapsed, totalTokens };
           }
           return updated;
         });
@@ -839,7 +988,7 @@ export default function AgentChatPage() {
             args: tc.args,
             result: tc.result,
           }));
-          saveSessionMessage(sessionId, 'assistant', msg.content, tcForDb, elapsed).then((saved) => {
+          saveSessionMessage(sessionId, 'assistant', msg.content, tcForDb, elapsed, totalTokens).then((saved) => {
             if (saved?.id) {
               setMessages((prev) => {
                 const updated = [...prev];
@@ -1054,8 +1203,7 @@ export default function AgentChatPage() {
                           {capabilities.capabilities
                             .find((c) => c.category === 'query')
                             ?.items.map((item) => {
-                              const display = capabilities.tool_display_names[item];
-                              const label = display ? (isZh ? display.zh : display.en) : item;
+                              const label = t(`agent.tools.${item}`, { defaultValue: item });
                               const icon = CAPABILITY_ICONS[item];
                               return (
                                 <Chip
@@ -1088,8 +1236,7 @@ export default function AgentChatPage() {
                           {capabilities.capabilities
                             .find((c) => c.category === 'management')
                             ?.items.map((item) => {
-                              const display = capabilities.tool_display_names[item];
-                              const label = display ? (isZh ? display.zh : display.en) : item;
+                              const label = t(`agent.tools.${item}`, { defaultValue: item });
                               const icon = CAPABILITY_ICONS[item];
                               return (
                                 <Chip
@@ -1133,6 +1280,11 @@ export default function AgentChatPage() {
                   </div>
                 </div>
               )}
+
+              {/* Agent configuration */}
+              <div className="w-full max-w-xl">
+                <AgentConfigSection />
+              </div>
             </div>
           ) : (
             /* ── Message list ── */
@@ -1166,10 +1318,10 @@ export default function AgentChatPage() {
                     <div className={`flex flex-col gap-1 ${isUser ? 'items-end max-w-[78%] sm:max-w-[70%]' : 'items-start max-w-[85%] sm:max-w-[80%]'}`}>
                       {/* Bubble */}
                       <div
-                        className={`group relative rounded-2xl px-4 py-3 ${
+                        className={`group relative rounded-2xl ${
                           isUser
-                            ? 'bg-primary text-primary-foreground rounded-br-sm shadow-sm'
-                            : 'bg-content2/80 backdrop-blur-sm rounded-bl-sm shadow-sm border border-divider/50'
+                            ? 'bg-primary text-primary-foreground rounded-br-sm shadow-sm px-4 py-3'
+                            : 'bg-content2/80 backdrop-blur-sm rounded-bl-sm shadow-sm border border-divider/50 px-4 pt-3 pb-3'
                         }`}
                       >
                         {!isUser ? (
@@ -1189,33 +1341,46 @@ export default function AgentChatPage() {
                           <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                         )}
 
-                        {/* Hover action buttons */}
+                        {/* Copy button — embedded corner */}
                         {msg.content && !isStreaming && (
-                          <div className={`absolute ${isUser ? '-left-9' : '-right-9'} top-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150`}>
+                          <div className={`absolute bottom-2 ${isUser ? 'left-2' : 'right-2'} opacity-0 group-hover:opacity-100 transition-opacity duration-150`}>
                             <CopyButton text={msg.content} t={t} />
-                            {canDeletePair && currentSessionId && msg.dbId != null && (
-                              <Tooltip content={t('agent.deletePair')} placement="left">
-                                <button
-                                  type="button"
-                                  onClick={() => requestDeletePair(currentSessionId, msg.dbId as number)}
-                                  className="p-1.5 rounded-lg hover:bg-danger/15 transition-all duration-150 text-foreground/40 hover:text-danger"
-                                  aria-label={t('agent.deletePair')}
-                                >
-                                  <Icon icon={trashBold} fontSize={14} />
-                                </button>
-                              </Tooltip>
-                            )}
                           </div>
                         )}
+                        {/* Spacer so content doesn't overlap copy button */}
+                        {msg.content && !isStreaming && <div className="h-6" />}
                       </div>
 
-                      {/* Elapsed time */}
-                      {!isUser && msg.elapsedMs != null && (!isStreaming || !isLast) && (
-                        <div className="flex items-center gap-1 px-1">
-                          <Icon icon={clockBold} className="text-foreground/25" fontSize={11} />
-                          <span className="text-xs text-foreground/35">
-                            {formatElapsed(msg.elapsedMs)}
-                          </span>
+                      {/* Footer: elapsed time + token count + delete */}
+                      {(!isUser || canDeletePair) && (msg.elapsedMs != null || msg.totalTokens != null || canDeletePair) && (!isStreaming || !isLast) && (
+                        <div className="flex items-center gap-2 px-1">
+                          {!isUser && msg.elapsedMs != null && (
+                            <div className="flex items-center gap-1">
+                              <Icon icon={clockBold} className="text-foreground/25" fontSize={11} />
+                              <span className="text-xs text-foreground/35">{formatElapsed(msg.elapsedMs)}</span>
+                            </div>
+                          )}
+                          {!isUser && msg.totalTokens != null && msg.totalTokens > 0 && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-foreground/20">·</span>
+                              <Icon icon={cpuBold} className="text-foreground/25" fontSize={11} />
+                              <span className="text-xs text-foreground/35">
+                                {t('agent.tokens', { count: msg.totalTokens })}
+                              </span>
+                            </div>
+                          )}
+                          {canDeletePair && currentSessionId && msg.dbId != null && (
+                            <Tooltip content={t('agent.deletePair')} placement="left">
+                              <button
+                                type="button"
+                                onClick={() => requestDeletePair(currentSessionId, msg.dbId as number)}
+                                className="p-1 rounded-lg hover:bg-danger/15 transition-all duration-150 text-foreground/30 hover:text-danger ml-0.5"
+                                aria-label={t('agent.deletePair')}
+                              >
+                                <Icon icon={trashBold} fontSize={13} />
+                              </button>
+                            </Tooltip>
+                          )}
                         </div>
                       )}
                     </div>

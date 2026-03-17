@@ -96,6 +96,7 @@ class SaveMessageRequest(BaseModel):
     content: str
     tool_calls: list | None = None
     elapsed_ms: int | None = None
+    total_tokens: int | None = None
 
 
 class DeleteMessagePairRequest(BaseModel):
@@ -773,6 +774,7 @@ def create_app() -> FastAPI:
             content=payload.content,
             tool_calls=payload.tool_calls,
             elapsed_ms=payload.elapsed_ms,
+            total_tokens=payload.total_tokens,
         )
 
     @app.delete("/api/agent/sessions/{session_id}/message-pair")

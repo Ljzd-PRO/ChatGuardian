@@ -48,6 +48,7 @@ class Settings(BaseModel):
         detection_cooldown_seconds: 检测冷却时间（秒）。
         detection_min_new_messages: 检测触发所需最小新消息数。
         detection_wait_timeout_seconds: 检测等待超时时间（秒）。
+        detection_self_sender_ids: 自身账号 ID 列表，若上下文中含有该 ID 的消息则跳过 LLM 分析。
         smtp_host: SMTP 邮件服务器主机。
         smtp_port: SMTP 端口。
         smtp_username: SMTP 用户名。
@@ -62,6 +63,7 @@ class Settings(BaseModel):
         bark_group: Bark 推送分组。
         bark_level: Bark 推送级别（如 active/timeSensitive/passive/critical）。
         hook_timeout_seconds: 外部 Hook 超时时间（秒）。
+        notification_text_template: 通知文本模板（Python .format() 格式）。
         enabled_adapters: 启用的 adapter 列表。
         onebot_host: OneBot WebSocket 服务器监听地址。
         onebot_port: OneBot WebSocket 服务器监听端口。
@@ -127,6 +129,8 @@ class Settings(BaseModel):
     detection_cooldown_seconds: float = 0
     detection_min_new_messages: int = 1
     detection_wait_timeout_seconds: float = 30.0
+    # 自身账号 ID 列表：若上下文消息中含有该 ID 发送的消息，则跳过 LLM 分析
+    detection_self_sender_ids: list[str] = []
 
     # SMTP 发信配置（可用于 EmailNotifier）
     smtp_host: Optional[str] = None
@@ -147,6 +151,10 @@ class Settings(BaseModel):
 
     # 外部 Hook 配置
     hook_timeout_seconds: float = 8.0
+
+    # 通知文本模板（支持 Python .format() 格式，可用变量：{rule_id}, {chat_id}, {message_id}, {confidence}, {reason}, {params_text}）
+    # 留空则使用内置默认模板
+    notification_text_template: Optional[str] = None
 
     # Adapter 插件配置
     enabled_adapters: list[str] = []
