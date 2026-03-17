@@ -102,7 +102,7 @@ const resources = {
         detectionWaitTimeout: 'Detection Wait Timeout (s)',
         selfSenderIds: 'Self Sender IDs',
         selfSenderIdsDesc: 'If any message in the context is from these IDs, LLM analysis will be skipped.',
-        selfSenderIdsPlaceholder: 'Enter ID and press Enter',
+        selfSenderIdsPlaceholder: 'Enter IDs separated by commas',
         pendingQueueLimit: 'Pending Queue Limit',
         historyListLimit: 'History List Limit',
         hookTimeout: 'Hook Timeout (s)',
