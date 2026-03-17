@@ -42,7 +42,8 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     if (!data) return;
-    setForm({
+    setForm(prev => ({
+      ...prev,
       email_notifier_enabled: data.email.enabled,
       email_notifier_to_email: data.email.to_email ?? '',
       smtp_host: data.email.smtp_host ?? '',
@@ -56,7 +57,7 @@ export default function NotificationsPage() {
       bark_server_url: data.bark.server_url,
       bark_group: data.bark.group ?? '',
       bark_level: data.bark.level ?? '',
-    });
+    }));
   }, [data]);
 
   useEffect(() => {
