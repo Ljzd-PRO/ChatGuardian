@@ -978,7 +978,6 @@ const resources = {
           createRule: '创建一个检测垃圾消息的规则',
           viewLogs: '查看最近的系统日志',
         },
-        tokens: '{{count}} tokens',
         tools: {
           get_dashboard: '查看仪表盘',
           get_rules_list: '查看规则列表',
@@ -1001,6 +1000,7 @@ const resources = {
           check_llm_health: '检查 LLM 健康状态',
           check_system_health: '检查系统健康状态',
         },
+        tokens: '{{count}} tokens',
         agentConfig: {
           title: '智能体配置',
           desc: 'HTTP MCP 等高级配置，默认折叠。',
@@ -2913,7 +2913,6 @@ const resources = {
           createRule: 'Créer une règle pour détecter les messages de spam',
           viewLogs: 'Afficher les journaux système récents',
         },
-        tokens: '{{count}} jetons',
         tools: {
           get_dashboard: 'Voir le tableau de bord',
           get_rules_list: 'Voir les règles',
@@ -2936,6 +2935,7 @@ const resources = {
           check_llm_health: 'Vérifier la santé du LLM',
           check_system_health: 'Vérifier la santé du système',
         },
+        tokens: '{{count}} jetons',
         agentConfig: {
           title: "Configuration de l'agent",
           desc: 'Paramètres avancés tels que HTTP MCP. Réduit par défaut.',

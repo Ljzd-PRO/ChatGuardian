@@ -261,7 +261,10 @@ export default function NotificationsPage() {
             placeholder={t('notifications.textTemplatePlaceholder')}
             minRows={3}
             value={form.notification_text_template ?? ''}
-            onValueChange={v => setForm(f => ({ ...f, notification_text_template: v.trim() === '' ? null : v }))}
+            onValueChange={v => {
+              const trimmed = v.trim();
+              setForm(f => ({ ...f, notification_text_template: trimmed === '' ? null : trimmed }));
+            }}
           />
         </CardBody>
       </Card>
