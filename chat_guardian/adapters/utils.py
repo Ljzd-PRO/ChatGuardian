@@ -1,12 +1,13 @@
 import logging
 import mimetypes
+from typing import Optional
 
 import httpx
 
 logger = logging.getLogger(__name__)
 
 
-async def download_image_bytes(url: str, timeout: float = 15.0) -> bytes | None:
+async def download_image_bytes(url: str, timeout: float = 15.0) -> Optional[bytes]:
     """
     Download an image from the given URL and return raw bytes.
     Returns None if the download fails or the content is not an image.

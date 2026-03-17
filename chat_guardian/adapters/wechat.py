@@ -96,8 +96,8 @@ class WeChatAdapter(Adapter):
                     plain = crypto.check_signature(signature, timestamp, nonce, echostr)
                     logger.info("✅ WeChat Work 回调 URL 验证成功")
                     return web.Response(text=plain)
-                except Exception as exc:
-                    logger.error(f"❌ WeChat Work 回调 URL 验证失败: {exc}")
+                except Exception as e:
+                    logger.error(f"❌ WeChat Work 回调 URL 验证失败: {e}")
                     return web.Response(status=403, text="forbidden")
 
             async def handle_message(request: web.Request) -> web.Response:
@@ -120,8 +120,8 @@ class WeChatAdapter(Adapter):
                             *(handler(chat_event) for handler in self._handlers),
                             return_exceptions=True,
                         )
-                except Exception as exc:
-                    logger.error(f"❌ WeChat Work 消息处理异常: {exc}")
+                except Exception as e:
+                    logger.error(f"❌ WeChat Work 消息处理异常: {e}")
                 return web.Response(text="success")
 
             app = web.Application()

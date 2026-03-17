@@ -93,8 +93,8 @@ class DingTalkAdapter(Adapter):
                                 *(handler(chat_event) for handler in adapter_ref._handlers),
                                 return_exceptions=True,
                             )
-                    except Exception as exc:
-                        logger.error(f"❌ DingTalk 消息处理异常: {exc}")
+                    except Exception as e:
+                        logger.error(f"❌ DingTalk 消息处理异常: {e}")
                     return AckMessage.STATUS_OK, "ok"
 
             credential = dingtalk_stream.Credential(
@@ -114,8 +114,8 @@ class DingTalkAdapter(Adapter):
                     await client.start()
                 except asyncio.CancelledError:
                     logger.debug("DingTalk Stream 任务已取消")
-                except Exception as exc:
-                    logger.error(f"❌ DingTalk Stream 异常退出: {exc}")
+                except Exception as e:
+                    logger.error(f"❌ DingTalk Stream 异常退出: {e}")
                 finally:
                     adapter_ref._running = False
 
