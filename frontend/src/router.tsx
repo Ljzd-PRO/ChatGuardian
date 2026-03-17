@@ -13,7 +13,6 @@ import LLMPage            from './pages/LLMPage';
 import NotificationsPage  from './pages/NotificationsPage';
 import QueuesPage         from './pages/QueuesPage';
 import LogsPage           from './pages/LogsPage';
-import SettingsPage       from './pages/SettingsPage';
 import LoginPage          from './pages/LoginPage';
 import SetupWizardPage    from './pages/SetupWizardPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
@@ -48,7 +47,6 @@ export const router = createBrowserRouter([
       { path: 'notifications',    element: <NotificationsPage /> },
       { path: 'queues',           element: <QueuesPage /> },
       { path: 'logs',             element: <LogsPage /> },
-      { path: 'settings',         element: <SettingsPage /> },
       { path: 'change-password',  element: <ChangePasswordPage /> },
       { path: 'agent',            element: <AgentChatPage /> },
     ],

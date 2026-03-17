@@ -171,7 +171,6 @@ PAGES = [
     ("/notifications", "Notifications"),
     ("/queues", "Message Queues"),
     ("/logs", "System Logs"),
-    ("/settings", "Settings"),
     ("/agent", "AI Assistant"),
 ]
 
@@ -212,8 +211,8 @@ def test_sidebar_navigation(page):
     pg.wait_for_url(f"**/app/rules")
     assert_no_fatal_errors(pg)
 
-    pg.click("a:has-text('Settings')")
-    pg.wait_for_url(f"**/app/settings")
+    pg.click("a:has-text('Logs')")
+    pg.wait_for_url(f"**/app/logs")
     assert_no_fatal_errors(pg)
 
 
@@ -273,19 +272,6 @@ def test_create_and_delete_rule(page):
 
     # The rule should appear in the list
     pg.wait_for_selector("text=E2E Test Rule", timeout=8_000)
-    assert_no_fatal_errors(pg)
-
-
-# ── settings page ─────────────────────────────────────────────────────────────
-
-
-def test_settings_page_shows_fields(page):
-    """Settings page should render the settings preview card with configuration entries."""
-    pg, base = page
-    go(pg, base, "/settings")
-    pg.wait_for_selector("text=Settings Preview", timeout=8_000)
-    pg.wait_for_selector("text=Preview only")
-    pg.wait_for_selector("text=Read-only snapshot of all configuration items.")
     assert_no_fatal_errors(pg)
 
 

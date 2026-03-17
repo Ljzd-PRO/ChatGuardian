@@ -12,7 +12,6 @@ import hamburgerMenuBold from '@iconify/icons-solar/hamburger-menu-bold';
 import lockPasswordBold from '@iconify/icons-solar/lock-password-bold';
 import listCheckBold from '@iconify/icons-solar/list-check-bold';
 import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
-import settingsBold from '@iconify/icons-solar/settings-bold';
 import shieldCheckBold from '@iconify/icons-solar/shield-check-bold';
 import usersGroupRoundedBold from '@iconify/icons-solar/users-group-rounded-bold';
 import widget2Bold from '@iconify/icons-solar/widget-2-bold';
@@ -30,7 +29,6 @@ const NAV_ITEMS: { path: string; labelKey: string; icon: IconifyIcon }[] = [
   { path: '/notifications',labelKey: 'layout.nav.notifications', icon: bellBingBold },
   { path: '/queues',       labelKey: 'layout.nav.queues',        icon: listCheckBold },
   { path: '/logs',         labelKey: 'layout.nav.logs',          icon: documentTextBold },
-  { path: '/settings',     labelKey: 'layout.nav.settings',      icon: settingsBold },
   { path: '/change-password', labelKey: 'auth.changePw.title',   icon: lockPasswordBold },
 ];
 
