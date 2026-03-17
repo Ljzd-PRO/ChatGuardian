@@ -13,7 +13,8 @@ on:
 
 env:
   # GitHub container registry requires lowercase repository names
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner | toLower }}/chatguardian
+  # We lowercase the owner at runtime in the `Define tags` step to avoid unsupported GH expression functions.
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/chatguardian
 
 jobs:
   build-and-push:
@@ -28,6 +29,10 @@ jobs:
       - name: Define tags
         id: vars
         run: |
+          # Ensure owner is lowercase for ghcr tag requirements
+          OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_NAME="ghcr.io/${OWNER}/chatguardian"
+
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             TAG="${{ github.event.inputs.tag }}"
             if [[ -z "$TAG" ]]; then TAG="manual"; fi
