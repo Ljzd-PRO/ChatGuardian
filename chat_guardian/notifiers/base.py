@@ -39,7 +39,7 @@ def format_notification_text(event: ChatEvent, decision: RuleDecision) -> str:
             reason=decision.reason or "",
             params_text=params_text,
         )
-    except (KeyError, ValueError):
+    except (KeyError, ValueError, IndexError):
         # 模板格式错误时回退到默认模板
         return _DEFAULT_NOTIFICATION_TEMPLATE.format(
             rule_id=decision.rule_id,
