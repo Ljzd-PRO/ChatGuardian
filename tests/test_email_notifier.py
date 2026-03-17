@@ -13,10 +13,10 @@ class _FakeSMTP:
     """Controllable SMTP stub for unit testing."""
 
     def __init__(
-        self,
-        *,
-        fail_on: str | None = None,
-        recorded: list[str] | None = None,
+            self,
+            *,
+            fail_on: str | None = None,
+            recorded: list[str] | None = None,
     ):
         """
         Args:
@@ -50,6 +50,7 @@ def _make_notifier(to_email: str = "test@example.com") -> EmailNotifier:
 
 def _patch_smtp(monkeypatch, smtp_instance: _FakeSMTP) -> None:
     """Replace email_module.SMTP constructor with one that returns *smtp_instance*."""
+
     def _fake_smtp_constructor(**kwargs):
         return smtp_instance
 

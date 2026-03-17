@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import timezone
 from typing import Any
 
 import discord

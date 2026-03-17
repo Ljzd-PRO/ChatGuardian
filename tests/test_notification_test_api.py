@@ -1,8 +1,9 @@
 """API smoke tests for POST /api/notifications/test/{notifier_type}."""
 from __future__ import annotations
 
-from chat_guardian.api.app import create_app
 from fastapi.testclient import TestClient
+
+from chat_guardian.api.app import create_app
 
 
 def _register_and_login(client: TestClient) -> dict[str, str]:

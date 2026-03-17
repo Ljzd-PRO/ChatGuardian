@@ -1,8 +1,10 @@
-import mimetypes
-import httpx
 import logging
+import mimetypes
+
+import httpx
 
 logger = logging.getLogger(__name__)
+
 
 async def download_image_bytes(url: str, timeout: float = 15.0) -> bytes | None:
     """

@@ -1,8 +1,8 @@
 import pytest
-
-from chat_guardian.mcp import ChatGuardianMCPService, ChatGuardianOperations
 from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
+
+from chat_guardian.mcp import ChatGuardianMCPService, ChatGuardianOperations
 
 
 class _DummyTokenManager:

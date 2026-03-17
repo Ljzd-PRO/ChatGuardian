@@ -4,7 +4,6 @@ from typing import Protocol
 
 from chat_guardian.domain import ChatEvent, ChatMessage, RuleDecision
 
-
 _DEFAULT_NOTIFICATION_TEMPLATE = (
     "Rule: {rule_id}\n"
     "Chat: {chat_id}\n"

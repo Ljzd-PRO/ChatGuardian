@@ -7,8 +7,9 @@ from datetime import datetime, timezone
 from loguru import logger
 
 from chat_guardian.adapters.base import Adapter, EventHandler
-from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, MessageContent, UserInfo
 from chat_guardian.adapters.utils import download_image_bytes
+from chat_guardian.domain import ChatEvent, ChatMessage, ChatType, ContentType, MessageContent
+
 
 @dataclass(slots=True)
 class WeChatAdapterConfig:

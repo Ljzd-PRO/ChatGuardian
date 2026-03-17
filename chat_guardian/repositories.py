@@ -540,7 +540,7 @@ class MemoryRepository:
         return self.profiles.get(user_id)
 
     async def update_profile(
-        self, user_id: str, updater: Callable[[UserMemoryFact], UserMemoryFact]
+            self, user_id: str, updater: Callable[[UserMemoryFact], UserMemoryFact]
     ) -> UserMemoryFact | None:
         """对指定用户的画像应用 updater 函数并持久化，返回更新后的画像；用户不存在则返回 None。"""
         profile = self.profiles.get(user_id)

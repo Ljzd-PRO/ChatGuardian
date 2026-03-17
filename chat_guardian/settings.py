@@ -131,7 +131,7 @@ class Settings(BaseModel):
     detection_wait_timeout_seconds: float = 30.0
     # 自身账号 ID 列表：若上下文消息中含有该 ID 发送的消息，则跳过 LLM 分析
     detection_self_sender_ids: list[str] = []
-    
+
     # 图像解析配置
     enable_image_parsing: bool = True
     max_images: int = 5

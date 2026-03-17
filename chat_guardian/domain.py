@@ -13,6 +13,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
+
 from chat_guardian.matcher import MatchAll, MatcherUnion
 
 if TYPE_CHECKING:
