@@ -440,7 +440,7 @@ export default function RulesPage() {
                 <div className="md:col-span-3">
                   <div className="mb-2">
                     <p className="text-sm font-medium">{t('rules.selfSenderIds')}</p>
-                    <p className="text-xs text-default-500">{t('rules.selfSenderIdsDescCommaSeparated')}</p>
+                    <p className="text-xs text-default-500">{t('rules.selfSenderIdsDescription')}</p>
                   </div>
 
                   <div className="flex flex-wrap gap-2 mb-3">
