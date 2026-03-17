@@ -16,7 +16,7 @@ import plugCircleBold from '@iconify/icons-solar/plug-circle-bold';
 import hashtagCircleBold from '@iconify/icons-solar/hashtag-circle-bold';
 import usersGroupRoundedBold from '@iconify/icons-solar/users-group-rounded-bold';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { fetchRuleStats } from '../api/stats';
 import { fetchRules } from '../api/rules';
 import TriggerChart from '../components/charts/TriggerChart';
@@ -42,6 +42,7 @@ const MAX_REASON_PREVIEW = 60;
 
 export default function TriggerStatsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { data: stats, isLoading: statsLoading } = useQuery({ queryKey: ['rule_stats'], queryFn: fetchRuleStats });
   const { data: rules, isLoading: rulesLoading } = useQuery({ queryKey: ['rules'], queryFn: fetchRules });
   const [query, setQuery] = useState('');
@@ -88,14 +89,14 @@ export default function TriggerStatsPage() {
 
   return (
     <div className="space-y-6">
-        <Card>
-          <CardHeader className="flex items-center gap-2">
-            <Icon icon={chart2Bold} fontSize={16} className="text-primary" />
-            <span className="font-semibold">{t('stats.overview')}</span>
-          </CardHeader>
-          <CardBody>
-            <TriggerChart data={chartData} />
-          </CardBody>
+      <Card>
+        <CardHeader className="flex items-center gap-2">
+          <Icon icon={chart2Bold} fontSize={16} className="text-primary" />
+          <span className="font-semibold">{t('stats.overview')}</span>
+        </CardHeader>
+        <CardBody>
+          <TriggerChart data={chartData} />
+        </CardBody>
       </Card>
 
       <div className="flex justify-end">
@@ -111,30 +112,39 @@ export default function TriggerStatsPage() {
 
       <div className="space-y-4">
         {pagedRules.map(r => (
-              <Card key={r.rule_id} className="border border-default-200 shadow-sm">
-                <CardHeader className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <Icon icon={chatDotsBold} fontSize={16} className="text-primary" />
-                    <div>
-                      <Link
-                        to={`/stats/${encodeURIComponent(r.rule_id)}`}
-                        className="font-medium text-default-900 hover:text-primary transition-colors"
-                      >
-                        {r.name}
-                      </Link>
-                      <p className="text-xs text-default-500">{r.description}</p>
-                    </div>
-                  </div>
-              <Chip
-                size="sm"
-                color={r.stat.count > 0 ? 'warning' : 'default'}
-                variant="flat"
+          <Card key={r.rule_id} className="border border-default-200 shadow-sm hover:border-primary-300 hover:shadow-md transition">
+            <CardHeader className="flex items-center justify-between gap-3">
+              <div
+                className="flex w-full items-center justify-between gap-3 cursor-pointer"
+                onClick={() => navigate(`/stats/${encodeURIComponent(r.rule_id)}`)}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return;
+                  e.preventDefault();
+                  navigate(`/stats/${encodeURIComponent(r.rule_id)}`);
+                }}
+                role="button"
+                tabIndex={0}
               >
-                {t('stats.triggers', { count: r.stat.count })}
-              </Chip>
+                <div className="flex items-center gap-2">
+                  <Icon icon={chatDotsBold} fontSize={16} className="text-primary" />
+                  <div>
+                    <p className="font-semibold text-primary transition-colors">
+                      {r.name}
+                    </p>
+                    <p className="text-xs text-default-500">{r.description}</p>
+                  </div>
+                </div>
+                <Chip
+                  size="sm"
+                  color={r.stat.count > 0 ? 'warning' : 'default'}
+                  variant="flat"
+                >
+                  {t('stats.triggers', { count: r.stat.count })}
+                </Chip>
+              </div>
             </CardHeader>
             {r.stat.records.length > 0 && (
-              <CardBody className="pt-0 space-y-2">
+              <CardBody className="pt-0 space-y-2" data-prevent-card-nav="true">
                 <Accordion>
                   {r.stat.records.slice(0, 5).map(rec => {
                     const reasonPreview = rec.reason.length > MAX_REASON_PREVIEW
@@ -142,81 +152,82 @@ export default function TriggerStatsPage() {
                       : rec.reason;
                     const previewMessages = rec.messages.slice(-MAX_PREVIEW_MESSAGES);
                     return (
-                    <AccordionItem
-                      key={rec.id}
-                      title={
-                        <div className="flex flex-wrap items-center gap-2 text-sm">
-                          <span className="text-default-500">{formatTriggerTime(rec.trigger_time)}</span>
-                          <Progress
-                            size="sm"
-                            value={rec.confidence * 100}
-                            color="warning"
-                            className="w-24"
-                            aria-label={t('stats.confidence')}
-                          />
-                          <div className="flex items-center gap-1 text-xs text-default-500">
-                            <Icon icon={clockCircleBold} fontSize={12} />
-                            {(rec.confidence * 100).toFixed(0)}%
-                          </div>
-                          {rec.adapter && (
-                            <Chip
+                      <AccordionItem
+                        key={rec.id}
+                        title={
+                          <div className="flex flex-wrap items-center gap-2 text-sm">
+                            <span className="text-default-500">{formatTriggerTime(rec.trigger_time)}</span>
+                            <Progress
                               size="sm"
-                              variant="flat"
-                              color="secondary"
-                              startContent={<Icon icon={plugCircleBold} fontSize={ICON_SIZES.chip} />}
-                            >
-                              {rec.adapter}
-                            </Chip>
-                          )}
-                          {rec.chat_type && (
-                            <Chip
-                              size="sm"
-                              variant="flat"
-                              color="primary"
-                              startContent={<Icon icon={usersGroupRoundedBold} fontSize={ICON_SIZES.chip} />}
-                            >
-                              {rec.chat_type}
-                            </Chip>
-                          )}
-                          {rec.chat_id && (
-                            <Chip
-                              size="sm"
-                              variant="flat"
-                              color="default"
-                              startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.chip} />}
-                            >
-                              {rec.chat_id}
-                            </Chip>
-                          )}
-                          <span className="text-xs text-default-400 truncate max-w-[20rem]" title={rec.reason}>
-                            {reasonPreview}
-                          </span>
-                        </div>
-                      }
-                    >
-                      <div className="space-y-3">
-                        <p className="text-sm text-default-700 whitespace-pre-wrap break-words">{rec.reason}</p>
-                        <div className="space-y-2">
-                          {previewMessages.map((m, i) => (
-                            <div key={i} className="flex justify-start">
-                              <div className="max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm bg-primary-50 dark:bg-primary-900/30 border-primary-100 dark:border-primary-800 text-primary-800 dark:text-primary-200">
-                                <p className="text-xs font-medium text-primary-600 dark:text-primary-400 mb-1">{m.sender}</p>
-                                <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
-                              </div>
+                              value={rec.confidence * 100}
+                              color="warning"
+                              className="w-24"
+                              aria-label={t('stats.confidence')}
+                            />
+                            <div className="flex items-center gap-1 text-xs text-default-500">
+                              <Icon icon={clockCircleBold} fontSize={12} />
+                              {(rec.confidence * 100).toFixed(0)}%
                             </div>
-                          ))}
+                            {rec.adapter && (
+                              <Chip
+                                size="sm"
+                                variant="flat"
+                                color="secondary"
+                                startContent={<Icon icon={plugCircleBold} fontSize={ICON_SIZES.chip} />}
+                              >
+                                {rec.adapter}
+                              </Chip>
+                            )}
+                            {rec.chat_type && (
+                              <Chip
+                                size="sm"
+                                variant="flat"
+                                color="primary"
+                                startContent={<Icon icon={usersGroupRoundedBold} fontSize={ICON_SIZES.chip} />}
+                              >
+                                {rec.chat_type}
+                              </Chip>
+                            )}
+                            {rec.chat_id && (
+                              <Chip
+                                size="sm"
+                                variant="flat"
+                                color="default"
+                                startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.chip} />}
+                              >
+                                {rec.chat_id}
+                              </Chip>
+                            )}
+                            <span className="text-xs text-default-400 truncate max-w-[20rem]" title={rec.reason}>
+                              {reasonPreview}
+                            </span>
+                          </div>
+                        }
+                      >
+                        <div className="space-y-3">
+                          <p className="text-sm text-default-700 whitespace-pre-wrap break-words">{rec.reason}</p>
+                          <div className="space-y-2">
+                            {previewMessages.map((m, i) => (
+                              <div key={i} className="flex justify-start">
+                                <div className="max-w-[80%] rounded-2xl border px-3 py-2 shadow-sm bg-primary-50 dark:bg-primary-900/30 border-primary-100 dark:border-primary-800 text-primary-800 dark:text-primary-200">
+                                  <p className="text-xs font-medium text-primary-600 dark:text-primary-400 mb-1">{m.sender}</p>
+                                  <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="light"
+                            color="primary"
+                            className="mt-1"
+                            data-prevent-card-nav="true"
+                            onPress={() => setSelectedRecord({ ...rec, ruleLabel: r.name, ruleDescription: r.description })}
+                          >
+                            {t('stats.viewDetails')}
+                          </Button>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="light"
-                          color="primary"
-                          className="mt-1"
-                          onPress={() => setSelectedRecord({ ...rec, ruleLabel: r.name, ruleDescription: r.description })}
-                        >
-                          {t('stats.viewDetails')}
-                        </Button>
-                      </div>
-                    </AccordionItem>
+                      </AccordionItem>
                     );
                   })}
                 </Accordion>
@@ -321,7 +332,7 @@ export default function TriggerStatsPage() {
                             variant="flat"
                             size="sm"
                             className="text-left"
-                            classNames={{pre: 'whitespace-pre-wrap break-words text-sm'}}
+                            classNames={{ pre: 'whitespace-pre-wrap break-words text-sm' }}
                           >
                             {String(val)}
                           </Snippet> : null}
