@@ -466,7 +466,7 @@ export default function RulesPage() {
                   <div className="flex flex-wrap gap-2 mb-3">
                     {(detForm.detection_self_sender_ids ?? []).length === 0 ? (
                       <Chip size="sm" variant="flat" color="default" className="text-default-400">
-                        {t('common.empty', 'No IDs')}
+                        {t('common.empty')}
                       </Chip>
                     ) : (detForm.detection_self_sender_ids ?? []).map(id => (
                       <Chip
@@ -520,7 +520,7 @@ export default function RulesPage() {
                         }
                       }}
                     >
-                      {t('common.add', 'Add')}
+                      {t('common.add')}
                     </Button>
                   </div>
                 </div>

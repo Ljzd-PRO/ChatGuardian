@@ -58,7 +58,7 @@ export default function LLMPage() {
       const r = await fetchLLMHealth() as { ping?: { ok: boolean; latency_ms: number; error?: string } };
       if (r.ping) setPingResult(r.ping);
     } catch {
-      setPingResult({ ok: false, latency_ms: 0, error: 'Request failed' });
+      setPingResult({ ok: false, latency_ms: 0, error: t('llm.requestFailed') });
     } finally {
       setPinging(false);
     }
