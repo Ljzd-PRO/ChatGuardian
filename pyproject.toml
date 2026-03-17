@@ -35,6 +35,7 @@ wechatpy = "^1.8.18"
 dingtalk-stream = "^0.24.3"
 aiohttp = "^3.8.0"
 fastmcp = "3.1.1"
+pillow = "^12.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.1"

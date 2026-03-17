@@ -33,6 +33,9 @@ export default function UserProfilesPage() {
 
   const [enableImageParsing, setEnableImageParsing] = useState(false);
   const [maxImages, setMaxImages] = useState(5);
+  const [enableImageCompression, setEnableImageCompression] = useState(true);
+  const [imageCompressionMaxWidth, setImageCompressionMaxWidth] = useState(800);
+  const [imageCompressionMaxHeight, setImageCompressionMaxHeight] = useState(600);
   const asNumber = (value: string, fallback: number) => {
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
@@ -43,6 +46,9 @@ export default function UserProfilesPage() {
       setTargetUserIds(appSettings.memory_target_user_ids ?? []);
       setEnableImageParsing(appSettings.enable_image_parsing ?? false);
       setMaxImages(appSettings.max_images ?? 5);
+      setEnableImageCompression(appSettings.enable_image_compression ?? true);
+      setImageCompressionMaxWidth(appSettings.image_compression_max_width ?? 800);
+      setImageCompressionMaxHeight(appSettings.image_compression_max_height ?? 600);
       setSettingsReady(true);
     }
   }, [appSettings]);
@@ -55,7 +61,7 @@ export default function UserProfilesPage() {
   });
 
   const saveImageSettings = useMutation({
-    mutationFn: (data: { enable_image_parsing: boolean, max_images: number }) => updateSettings(data),
+    mutationFn: (data: { enable_image_parsing: boolean, max_images: number, enable_image_compression: boolean, image_compression_max_width: number, image_compression_max_height: number }) => updateSettings(data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
   });
 
@@ -211,7 +217,45 @@ export default function UserProfilesPage() {
                 onValueChange={(v) => {
                   const val = asNumber(v, maxImages);
                   setMaxImages(val);
-                  saveImageSettings.mutate({ enable_image_parsing: enableImageParsing, max_images: val });
+                  saveImageSettings.mutate({ enable_image_parsing: enableImageParsing, max_images: val, enable_image_compression: enableImageCompression, image_compression_max_width: imageCompressionMaxWidth, image_compression_max_height: imageCompressionMaxHeight });
+                }}
+              />
+
+              {/* Image Compression Settings */}
+              <div className="flex items-center justify-between border border-divider rounded-xl p-3 bg-content1 mt-2">
+                <span className="text-sm font-medium">{t('rules.enableImageCompression')}</span>
+                <Switch
+                  size="sm"
+                  isDisabled={isSettingsLoading || !enableImageParsing}
+                  isSelected={enableImageCompression}
+                  onValueChange={(v) => {
+                    setEnableImageCompression(v);
+                    saveImageSettings.mutate({ enable_image_parsing: enableImageParsing, max_images: maxImages, enable_image_compression: v, image_compression_max_width: imageCompressionMaxWidth, image_compression_max_height: imageCompressionMaxHeight });
+                  }}
+                />
+              </div>
+              <Input
+                label={t('rules.imageCompressionMaxWidth')}
+                type="number"
+                size="sm"
+                isDisabled={isSettingsLoading || !enableImageParsing || !enableImageCompression}
+                value={String(imageCompressionMaxWidth)}
+                onValueChange={(v) => {
+                  const val = asNumber(v, imageCompressionMaxWidth);
+                  setImageCompressionMaxWidth(val);
+                  saveImageSettings.mutate({ enable_image_parsing: enableImageParsing, max_images: maxImages, enable_image_compression: enableImageCompression, image_compression_max_width: val, image_compression_max_height: imageCompressionMaxHeight });
+                }}
+              />
+              <Input
+                label={t('rules.imageCompressionMaxHeight')}
+                type="number"
+                size="sm"
+                isDisabled={isSettingsLoading || !enableImageParsing || !enableImageCompression}
+                value={String(imageCompressionMaxHeight)}
+                onValueChange={(v) => {
+                  const val = asNumber(v, imageCompressionMaxHeight);
+                  setImageCompressionMaxHeight(val);
+                  saveImageSettings.mutate({ enable_image_parsing: enableImageParsing, max_images: maxImages, enable_image_compression: enableImageCompression, image_compression_max_width: imageCompressionMaxWidth, image_compression_max_height: val });
                 }}
               />
               {saveImageSettings.isSuccess && <p className="text-success text-xs mt-[-4px]">{t('common.saved')}</p>}

@@ -24,6 +24,9 @@ export interface AppSettings {
   detection_self_sender_ids: string[];
   enable_image_parsing: boolean;
   max_images: number;
+  enable_image_compression: boolean;
+  image_compression_max_width: number;
+  image_compression_max_height: number;
   email_notifier_enabled: boolean;
   email_notifier_to_email: string | null;
   smtp_host: string | null;

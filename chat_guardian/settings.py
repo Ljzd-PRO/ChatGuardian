@@ -49,6 +49,11 @@ class Settings(BaseModel):
         detection_min_new_messages: 检测触发所需最小新消息数。
         detection_wait_timeout_seconds: 检测等待超时时间（秒）。
         detection_self_sender_ids: 自身账号 ID 列表，若上下文中含有该 ID 的消息则跳过 LLM 分析。
+        enable_image_parsing: 是否启用图像解析。
+        max_images: 单条消息最多处理的图片数量。
+        enable_image_compression: 是否启用图像压缩（保持宽高比）。
+        image_compression_max_width: 图像压缩后的最大宽度（像素）。
+        image_compression_max_height: 图像压缩后的最大高度（像素）。
         smtp_host: SMTP 邮件服务器主机。
         smtp_port: SMTP 端口。
         smtp_username: SMTP 用户名。
@@ -135,6 +140,10 @@ class Settings(BaseModel):
     # 图像解析配置
     enable_image_parsing: bool = True
     max_images: int = 5
+    # 图像压缩配置：保持宽高比的图片分辨率压缩
+    enable_image_compression: bool = True
+    image_compression_max_width: int = 800
+    image_compression_max_height: int = 600
 
     # SMTP 发信配置（可用于 EmailNotifier）
     smtp_host: Optional[str] = None

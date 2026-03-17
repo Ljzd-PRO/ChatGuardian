@@ -57,6 +57,7 @@ from chat_guardian.repositories import (
     RuleRepository,
 )
 from chat_guardian.settings import settings
+from chat_guardian.adapters.utils import compress_image
 
 
 def _extract_json_payload(raw_text: str) -> dict:
@@ -132,6 +133,18 @@ async def _build_image_content_blocks(messages: list[ChatMessage]) -> tuple[list
                 break
 
             image_bytes = item.image_data
+
+            # 如果启用了图片压缩，进行压缩处理
+            if settings.enable_image_compression:
+                compressed_bytes = compress_image(
+                    image_bytes,
+                    max_width=settings.image_compression_max_width,
+                    max_height=settings.image_compression_max_height,
+                    quality=85,
+                )
+                if compressed_bytes is not None:
+                    image_bytes = compressed_bytes
+
             encoded = base64.b64encode(image_bytes).decode("ascii")
             mime_type = _guess_image_mime_type(image_bytes)
 

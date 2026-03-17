@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Accordion, AccordionItem, Button, Card, CardBody, Checkbox, Chip, Input, Modal, ModalBody,
+  Accordion, AccordionItem, Button, Card, CardBody, Checkbox, Chip, Divider, Input, Modal, ModalBody,
   ModalContent, ModalFooter, ModalHeader, Pagination, Select, SelectItem, Spinner, Switch, Slider, Textarea,
 } from '@heroui/react';
 import { Icon, type IconifyIcon } from '@iconify/react';
@@ -454,6 +454,36 @@ export default function RulesPage() {
                     isDisabled={!(detForm.enable_image_parsing ?? false)}
                     value={String(detForm.max_images ?? 5)}
                     onValueChange={v => setDetForm(f => ({ ...f, max_images: asNumber(v, f.max_images ?? 5) }))}
+                  />
+                  <Divider className="my-2" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{t('rules.enableImageCompression')}</span>
+                    <Switch
+                      size="sm"
+                      isDisabled={!(detForm.enable_image_parsing ?? false)}
+                      isSelected={detForm.enable_image_compression ?? true}
+                      onValueChange={v => setDetForm(f => ({ ...f, enable_image_compression: v }))}
+                    />
+                  </div>
+                  <Input
+                    label={t('rules.imageCompressionMaxWidth')}
+                    type="number"
+                    size="sm"
+                    labelPlacement="outside-left"
+                    className="mt-1"
+                    isDisabled={!(detForm.enable_image_parsing ?? false) || !(detForm.enable_image_compression ?? true)}
+                    value={String(detForm.image_compression_max_width ?? 800)}
+                    onValueChange={v => setDetForm(f => ({ ...f, image_compression_max_width: asNumber(v, f.image_compression_max_width ?? 800) }))}
+                  />
+                  <Input
+                    label={t('rules.imageCompressionMaxHeight')}
+                    type="number"
+                    size="sm"
+                    labelPlacement="outside-left"
+                    className="mt-1"
+                    isDisabled={!(detForm.enable_image_parsing ?? false) || !(detForm.enable_image_compression ?? true)}
+                    value={String(detForm.image_compression_max_height ?? 600)}
+                    onValueChange={v => setDetForm(f => ({ ...f, image_compression_max_height: asNumber(v, f.image_compression_max_height ?? 600) }))}
                   />
                 </div>
 
