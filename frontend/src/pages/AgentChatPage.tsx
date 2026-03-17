@@ -256,11 +256,10 @@ function CopyButton({ text, t }: { text: string; t: (key: string) => string }) {
       <button
         type="button"
         onClick={handleCopy}
-        className={`p-1.5 rounded-lg transition-all duration-200 ${
-          copied
+        className={`p-1.5 rounded-lg transition-all duration-200 ${copied
             ? 'bg-success/20 text-success'
             : 'hover:bg-content3 text-foreground/40 hover:text-foreground/70'
-        }`}
+          }`}
         aria-label={t('agent.copy')}
       >
         <Icon icon={copied ? checkCircleBold : copyBold} fontSize={14} />
@@ -332,11 +331,10 @@ function ToolCallCard({ toolCall }: { toolCall: ToolCallInfo }) {
           {resultStr && (
             <div>
               <p className="text-xs font-medium text-foreground/50 mb-1.5">{t('agent.toolResult')}</p>
-              <pre className={`text-xs border rounded-lg p-3 overflow-x-auto max-h-52 font-mono leading-relaxed ${
-                isError
+              <pre className={`text-xs border rounded-lg p-3 overflow-x-auto max-h-52 font-mono leading-relaxed ${isError
                   ? 'bg-danger/5 border-danger/20 text-danger/80'
                   : 'bg-default-100 dark:bg-default-50/10 border-divider text-foreground/75'
-              }`}>
+                }`}>
                 {resultStr.length > MAX_TOOL_RESULT_LENGTH ? resultStr.slice(0, MAX_TOOL_RESULT_LENGTH) + '\n…(truncated)' : resultStr}
               </pre>
             </div>
@@ -584,25 +582,22 @@ function SessionSidebar({
             {sessions.map((session) => (
               <div
                 key={session.session_id}
-                className={`group flex items-center gap-1.5 px-3 py-2.5 rounded-xl transition-all duration-150 ${
-                  isStreaming
+                className={`group flex items-center gap-1.5 px-3 py-2.5 rounded-xl transition-all duration-150 ${isStreaming
                     ? 'cursor-not-allowed opacity-60'
                     : 'cursor-pointer'
-                } ${
-                  currentSessionId === session.session_id
+                  } ${currentSessionId === session.session_id
                     ? 'bg-primary/15 text-primary shadow-sm'
                     : isStreaming
                       ? 'text-foreground'
                       : 'hover:bg-default-100/80 text-foreground/80 hover:text-foreground'
-                }`}
+                  }`}
                 onClick={() => { if (!isStreaming) onSelectSession(session.session_id); }}
               >
                 <Icon
                   icon={chatBold}
                   fontSize={13}
-                  className={`flex-shrink-0 ${
-                    currentSessionId === session.session_id ? 'text-primary' : 'opacity-40'
-                  }`}
+                  className={`flex-shrink-0 ${currentSessionId === session.session_id ? 'text-primary' : 'opacity-40'
+                    }`}
                 />
                 {editingId === session.session_id ? (
                   <input
@@ -999,12 +994,12 @@ export default function AgentChatPage() {
                 return updated;
               });
             }
-          }).catch(() => {});
+          }).catch(() => { });
 
           if (messages.length === 0) {
             updateAgentSessionTitle(sessionId, content.slice(0, 50)).then(() => {
               queryClient.invalidateQueries({ queryKey: ['agent-sessions'] });
-            }).catch(() => {});
+            }).catch(() => { });
           }
         }
       }
@@ -1060,446 +1055,445 @@ export default function AgentChatPage() {
         <AgentConfigSection />
       </div>
       <div className="flex-1 flex gap-0 rounded-xl overflow-hidden border border-divider shadow-sm bg-background min-h-0">
-      {/* ── Sidebar (desktop) ── */}
-      {!isMobile && (
-        <aside className="w-60 flex-shrink-0 border-r border-divider bg-content1/60 backdrop-blur-sm">
-          <SessionSidebar
-            sessions={sessions}
-            currentSessionId={currentSessionId}
-            onSelectSession={(id) => { setCurrentSessionId(id); }}
-            onNewSession={handleNewSession}
-            onDeleteSession={handleDeleteSession}
-            onRenameSession={handleRenameSession}
-            isLoading={sessionsLoading}
-            isStreaming={isStreaming}
-            t={t}
-          />
-        </aside>
-      )}
-
-      {/* ── Sidebar (mobile modal) ── */}
-      {isMobile && (
-        <Modal isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} placement="center" size="sm" scrollBehavior="inside">
-          <ModalContent>
-            <ModalHeader className="pb-1 text-sm font-semibold">{t('agent.sessions')}</ModalHeader>
-            <ModalBody className="p-0 min-h-[50vh]">
-              <SessionSidebar
-                sessions={sessions}
-                currentSessionId={currentSessionId}
-                onSelectSession={(id) => { setCurrentSessionId(id); setSidebarOpen(false); }}
-                onNewSession={() => { handleNewSession(); setSidebarOpen(false); }}
-                onDeleteSession={handleDeleteSession}
-                onRenameSession={handleRenameSession}
-                isLoading={sessionsLoading}
-                isStreaming={isStreaming}
-                t={t}
-              />
-            </ModalBody>
-          </ModalContent>
-        </Modal>
-      )}
-
-      {/* ── Main chat area ── */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
-        {/* Mobile header */}
-        {isMobile && (
-          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-divider bg-content1/50 flex-shrink-0">
-            <Button
-              isIconOnly
-              variant="light"
-              size="sm"
-              onPress={() => setSidebarOpen(true)}
-              aria-label={t('agent.sessions')}
-            >
-              <Icon icon={menuBold} fontSize={20} />
-            </Button>
-            <div className="flex items-center gap-1.5 flex-1">
-              <Icon icon={cpuBold} className="text-primary" fontSize={16} />
-              <span className="text-sm font-semibold text-foreground">{t('agent.title')}</span>
-            </div>
-            {isStreaming && <Spinner size="sm" color="primary" className="flex-shrink-0" />}
-          </div>
-        )}
-
-        {/* Desktop header bar */}
+        {/* ── Sidebar (desktop) ── */}
         {!isMobile && (
-          <div className="flex items-center justify-between px-5 py-3 border-b border-divider bg-content1/30 flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
-                <Icon icon={cpuBold} className="text-primary" fontSize={15} />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground leading-none">{t('agent.title')}</p>
-                {currentSessionId &&
-                  (() => {
-                    const currentSession = sessions.find(s => s.session_id === currentSessionId);
-                    if (!currentSession) return null;
-                    return (
-                      <p className="text-xs text-foreground/40 mt-0.5 truncate max-w-xs">
-                        {currentSession.title || t('agent.untitledSession')}
-                      </p>
-                    );
-                  })()}
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {isStreaming && (
-                <div className="flex items-center gap-1.5 mr-1">
-                  <Spinner size="sm" color="primary" />
-                  <span className="text-xs text-foreground/50">{t('agent.thinking')}</span>
-                </div>
-              )}
-              <Tooltip content={t('agent.reset')}>
-                <Button
-                  isIconOnly
-                  variant="light"
-                  size="sm"
-                  onPress={handleReset}
-                  aria-label={t('agent.reset')}
-                  className="text-foreground/50 hover:text-foreground"
-                >
-                  <Icon icon={restartBold} fontSize={16} />
-                </Button>
-              </Tooltip>
-            </div>
-          </div>
+          <aside className="w-60 flex-shrink-0 border-r border-divider bg-content1/60 backdrop-blur-sm">
+            <SessionSidebar
+              sessions={sessions}
+              currentSessionId={currentSessionId}
+              onSelectSession={(id) => { setCurrentSessionId(id); }}
+              onNewSession={handleNewSession}
+              onDeleteSession={handleDeleteSession}
+              onRenameSession={handleRenameSession}
+              isLoading={sessionsLoading}
+              isStreaming={isStreaming}
+              t={t}
+            />
+          </aside>
         )}
 
-        {/* ── Messages area ── */}
-        <ScrollShadow
-          className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4"
-          hideScrollBar={false}
-        >
-          {showEmptyState ? (
-            /* ── Empty / welcome state ── */
-            <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-7 py-8">
-              {/* Icon */}
-              <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center shadow-md">
-                  <Icon icon={sparklesLinear} className="text-primary" fontSize={32} />
+        {/* ── Sidebar (mobile modal) ── */}
+        {isMobile && (
+          <Modal isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} placement="center" size="sm" scrollBehavior="inside">
+            <ModalContent>
+              <ModalHeader className="pb-1 text-sm font-semibold">{t('agent.sessions')}</ModalHeader>
+              <ModalBody className="p-0 min-h-[50vh]">
+                <SessionSidebar
+                  sessions={sessions}
+                  currentSessionId={currentSessionId}
+                  onSelectSession={(id) => { setCurrentSessionId(id); setSidebarOpen(false); }}
+                  onNewSession={() => { handleNewSession(); setSidebarOpen(false); }}
+                  onDeleteSession={handleDeleteSession}
+                  onRenameSession={handleRenameSession}
+                  isLoading={sessionsLoading}
+                  isStreaming={isStreaming}
+                  t={t}
+                />
+              </ModalBody>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* ── Main chat area ── */}
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+          {/* Mobile header */}
+          {isMobile && (
+            <div className="flex items-center gap-2 px-3 py-2.5 border-b border-divider bg-content1/50 flex-shrink-0">
+              <Button
+                isIconOnly
+                variant="light"
+                size="sm"
+                onPress={() => setSidebarOpen(true)}
+                aria-label={t('agent.sessions')}
+              >
+                <Icon icon={menuBold} fontSize={20} />
+              </Button>
+              <div className="flex items-center gap-1.5 flex-1">
+                <Icon icon={cpuBold} className="text-primary" fontSize={16} />
+                <span className="text-sm font-semibold text-foreground">{t('agent.title')}</span>
+              </div>
+              {isStreaming && <Spinner size="sm" color="primary" className="flex-shrink-0" />}
+            </div>
+          )}
+
+          {/* Desktop header bar */}
+          {!isMobile && (
+            <div className="flex items-center justify-between px-5 py-3 border-b border-divider bg-content1/30 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
+                  <Icon icon={cpuBold} className="text-primary" fontSize={15} />
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-success/20 border-2 border-background flex items-center justify-center">
-                  <Icon icon={cpuBold} className="text-success" fontSize={11} />
+                <div>
+                  <p className="text-sm font-semibold text-foreground leading-none">{t('agent.title')}</p>
+                  {currentSessionId &&
+                    (() => {
+                      const currentSession = sessions.find(s => s.session_id === currentSessionId);
+                      if (!currentSession) return null;
+                      return (
+                        <p className="text-xs text-foreground/40 mt-0.5 truncate max-w-xs">
+                          {currentSession.title || t('agent.untitledSession')}
+                        </p>
+                      );
+                    })()}
                 </div>
               </div>
-
-              {/* Title */}
-              <div className="text-center space-y-2 max-w-sm">
-                <h2 className="text-xl font-bold text-foreground">{t('agent.title')}</h2>
-                <p className="text-sm text-foreground/50 leading-relaxed">{t('agent.description')}</p>
-              </div>
-
-              {/* Capabilities */}
-              {capabilities && (
-                <div className="w-full max-w-xl space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <Card className="border border-divider shadow-none bg-content1/80">
-                      <CardBody className="p-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <Icon icon={chartBold} className="text-primary" fontSize={13} />
-                          </div>
-                          <h3 className="font-semibold text-xs text-foreground/70 uppercase tracking-wide">
-                            {t('agent.capabilities.query')}
-                          </h3>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {capabilities.capabilities
-                            .find((c) => c.category === 'query')
-                            ?.items.map((item) => {
-                              const label = t(`agent.tools.${item}`, { defaultValue: item });
-                              const icon = CAPABILITY_ICONS[item];
-                              return (
-                                <Chip
-                                  key={item}
-                                  size="sm"
-                                  variant="flat"
-                                  color="default"
-                                  startContent={icon ? <Icon icon={icon} fontSize={11} className="text-foreground/50" /> : undefined}
-                                  className="text-xs h-6"
-                                >
-                                  {label}
-                                </Chip>
-                              );
-                            })}
-                        </div>
-                      </CardBody>
-                    </Card>
-
-                    <Card className="border border-divider shadow-none bg-content1/80">
-                      <CardBody className="p-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-6 h-6 rounded-lg bg-secondary/10 flex items-center justify-center">
-                            <Icon icon={settingsBold} className="text-secondary" fontSize={13} />
-                          </div>
-                          <h3 className="font-semibold text-xs text-foreground/70 uppercase tracking-wide">
-                            {t('agent.capabilities.management')}
-                          </h3>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {capabilities.capabilities
-                            .find((c) => c.category === 'management')
-                            ?.items.map((item) => {
-                              const label = t(`agent.tools.${item}`, { defaultValue: item });
-                              const icon = CAPABILITY_ICONS[item];
-                              return (
-                                <Chip
-                                  key={item}
-                                  size="sm"
-                                  variant="flat"
-                                  color="default"
-                                  startContent={icon ? <Icon icon={icon} fontSize={11} className="text-foreground/50" /> : undefined}
-                                  className="text-xs h-6"
-                                >
-                                  {label}
-                                </Chip>
-                              );
-                            })}
-                        </div>
-                      </CardBody>
-                    </Card>
+              <div className="flex items-center gap-1.5">
+                {isStreaming && (
+                  <div className="flex items-center gap-1.5 mr-1">
+                    <Spinner size="sm" color="primary" />
+                    <span className="text-xs text-foreground/50">{t('agent.thinking')}</span>
                   </div>
+                )}
+                <Tooltip content={t('agent.reset')}>
+                  <Button
+                    isIconOnly
+                    variant="light"
+                    size="sm"
+                    onPress={handleReset}
+                    aria-label={t('agent.reset')}
+                    className="text-foreground/50 hover:text-foreground"
+                  >
+                    <Icon icon={restartBold} fontSize={16} />
+                  </Button>
+                </Tooltip>
+              </div>
+            </div>
+          )}
 
-                  {/* Suggested prompts */}
-                  <div>
-                    <p className="text-xs text-foreground/40 mb-2 font-medium">{t('agent.suggestedPrompts')}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {suggestedPrompts.map((prompt) => (
-                        <button
-                          type="button"
-                          key={prompt}
-                          onClick={() => handlePromptClick(prompt)}
-                          className="text-left px-3.5 py-3 rounded-xl border border-divider
+          {/* ── Messages area ── */}
+          <ScrollShadow
+            className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4"
+            hideScrollBar={false}
+          >
+            {showEmptyState ? (
+              /* ── Empty / welcome state ── */
+              <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-7 py-8">
+                {/* Icon */}
+                <div className="relative">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center shadow-md">
+                    <Icon icon={sparklesLinear} className="text-primary" fontSize={32} />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-success/20 border-2 border-background flex items-center justify-center">
+                    <Icon icon={cpuBold} className="text-success" fontSize={11} />
+                  </div>
+                </div>
+
+                {/* Title */}
+                <div className="text-center space-y-2 max-w-sm">
+                  <h2 className="text-xl font-bold text-foreground">{t('agent.title')}</h2>
+                  <p className="text-sm text-foreground/50 leading-relaxed">{t('agent.description')}</p>
+                </div>
+
+                {/* Capabilities */}
+                {capabilities && (
+                  <div className="w-full max-w-xl space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Card className="border border-divider shadow-none bg-content1/80">
+                        <CardBody className="p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <Icon icon={chartBold} className="text-primary" fontSize={13} />
+                            </div>
+                            <h3 className="font-semibold text-xs text-foreground/70 uppercase tracking-wide">
+                              {t('agent.capabilities.query')}
+                            </h3>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {capabilities.capabilities
+                              .find((c) => c.category === 'query')
+                              ?.items.map((item) => {
+                                const label = t(`agent.tools.${item}`, { defaultValue: item });
+                                const icon = CAPABILITY_ICONS[item];
+                                return (
+                                  <Chip
+                                    key={item}
+                                    size="sm"
+                                    variant="flat"
+                                    color="default"
+                                    startContent={icon ? <Icon icon={icon} fontSize={11} className="text-foreground/50" /> : undefined}
+                                    className="text-xs h-6"
+                                  >
+                                    {label}
+                                  </Chip>
+                                );
+                              })}
+                          </div>
+                        </CardBody>
+                      </Card>
+
+                      <Card className="border border-divider shadow-none bg-content1/80">
+                        <CardBody className="p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-6 h-6 rounded-lg bg-secondary/10 flex items-center justify-center">
+                              <Icon icon={settingsBold} className="text-secondary" fontSize={13} />
+                            </div>
+                            <h3 className="font-semibold text-xs text-foreground/70 uppercase tracking-wide">
+                              {t('agent.capabilities.management')}
+                            </h3>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {capabilities.capabilities
+                              .find((c) => c.category === 'management')
+                              ?.items.map((item) => {
+                                const label = t(`agent.tools.${item}`, { defaultValue: item });
+                                const icon = CAPABILITY_ICONS[item];
+                                return (
+                                  <Chip
+                                    key={item}
+                                    size="sm"
+                                    variant="flat"
+                                    color="default"
+                                    startContent={icon ? <Icon icon={icon} fontSize={11} className="text-foreground/50" /> : undefined}
+                                    className="text-xs h-6"
+                                  >
+                                    {label}
+                                  </Chip>
+                                );
+                              })}
+                          </div>
+                        </CardBody>
+                      </Card>
+                    </div>
+
+                    {/* Suggested prompts */}
+                    <div>
+                      <p className="text-xs text-foreground/40 mb-2 font-medium">{t('agent.suggestedPrompts')}</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {suggestedPrompts.map((prompt) => (
+                          <button
+                            type="button"
+                            key={prompt}
+                            onClick={() => handlePromptClick(prompt)}
+                            className="text-left px-3.5 py-3 rounded-xl border border-divider
                             bg-content1/60 hover:bg-content2 hover:border-primary/30
                             text-sm text-foreground/65 hover:text-foreground/90
                             transition-all duration-150 cursor-pointer group"
-                        >
-                          <div className="flex items-start gap-2">
-                            <Icon icon={sparklesLinear} className="text-primary/40 group-hover:text-primary/70 flex-shrink-0 mt-0.5 transition-colors" fontSize={14} />
-                            <span className="text-xs leading-relaxed">{prompt}</span>
-                          </div>
-                        </button>
-                      ))}
+                          >
+                            <div className="flex items-start gap-2">
+                              <Icon icon={sparklesLinear} className="text-primary/40 group-hover:text-primary/70 flex-shrink-0 mt-0.5 transition-colors" fontSize={14} />
+                              <span className="text-xs leading-relaxed">{prompt}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Agent configuration removed and moved to the top */}
-            </div>
-          ) : (
-            /* ── Message list ── */
-            <div className="space-y-5 py-2">
-              {messages.map((msg, idx) => {
-                const isUser = msg.role === 'user';
-                const isLast = idx === messages.length - 1;
-                const showThinking =
-                  !isUser &&
-                  !msg.content &&
-                  !msg.toolCalls?.length &&
-                  isStreaming &&
-                  isLast;
+                {/* Agent configuration removed and moved to the top */}
+              </div>
+            ) : (
+              /* ── Message list ── */
+              <div className="space-y-5 py-2">
+                {messages.map((msg, idx) => {
+                  const isUser = msg.role === 'user';
+                  const isLast = idx === messages.length - 1;
+                  const showThinking =
+                    !isUser &&
+                    !msg.content &&
+                    !msg.toolCalls?.length &&
+                    isStreaming &&
+                    isLast;
 
-                const canDeletePair = isUser && msg.dbId != null && currentSessionId != null && !isStreaming;
+                  const canDeletePair = isUser && msg.dbId != null && currentSessionId != null && !isStreaming;
 
-                return (
-                  <div
-                    key={getMessageKey(msg, idx)}
-                    className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
-                  >
-                    {/* AI avatar */}
-                    {!isUser && (
-                      <div className="flex-shrink-0 mt-0.5">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-secondary/20 to-primary/20 flex items-center justify-center shadow-sm border border-divider">
-                          <Icon icon={cpuBold} className="text-secondary" fontSize={15} />
+                  return (
+                    <div
+                      key={getMessageKey(msg, idx)}
+                      className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
+                    >
+                      {/* AI avatar */}
+                      {!isUser && (
+                        <div className="flex-shrink-0 mt-0.5">
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-secondary/20 to-primary/20 flex items-center justify-center shadow-sm border border-divider">
+                            <Icon icon={cpuBold} className="text-secondary" fontSize={15} />
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    <div className={`flex flex-col gap-1 ${isUser ? 'items-end max-w-[78%] sm:max-w-[70%]' : 'items-start max-w-[85%] sm:max-w-[80%]'}`}>
-                      {/* Bubble */}
-                      <div
-                        className={`group relative rounded-2xl ${
-                          isUser
-                            ? 'bg-primary text-primary-foreground rounded-br-sm shadow-sm px-4 py-3'
-                            : 'bg-content2/80 backdrop-blur-sm rounded-bl-sm shadow-sm border border-divider/50 px-4 pt-3 pb-3'
-                        }`}
-                      >
-                        {!isUser ? (
-                          <>
-                            {msg.toolCalls?.map((tc) => (
-                              <ToolCallCard key={tc.id} toolCall={tc} />
-                            ))}
-                            {msg.content ? (
-                              <div className="prose-sm max-w-none">
-                                <MarkdownContent content={msg.content} />
+                      <div className={`flex flex-col gap-1 ${isUser ? 'items-end max-w-[78%] sm:max-w-[70%]' : 'items-start max-w-[85%] sm:max-w-[80%]'}`}>
+                        {/* Bubble */}
+                        <div
+                          className={`group relative rounded-2xl ${isUser
+                              ? 'bg-primary text-primary-foreground rounded-br-sm shadow-sm px-4 py-3'
+                              : 'bg-content2/80 backdrop-blur-sm rounded-bl-sm shadow-sm border border-divider/50 px-4 pt-3 pb-3'
+                            }`}
+                        >
+                          {!isUser ? (
+                            <>
+                              {msg.toolCalls?.map((tc) => (
+                                <ToolCallCard key={tc.id} toolCall={tc} />
+                              ))}
+                              {msg.content ? (
+                                <div className="prose-sm max-w-none">
+                                  <MarkdownContent content={msg.content} />
+                                </div>
+                              ) : (
+                                showThinking && <TypingIndicator />
+                              )}
+                            </>
+                          ) : (
+                            <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                          )}
+
+                          {/* Copy button — embedded corner */}
+                          {msg.content && !isStreaming && (
+                            <div className={`absolute bottom-2 ${isUser ? 'left-2' : 'right-2'} opacity-0 group-hover:opacity-100 transition-opacity duration-150`}>
+                              <CopyButton text={msg.content} t={t} />
+                            </div>
+                          )}
+                          {/* Spacer so content doesn't overlap copy button */}
+                          {msg.content && !isStreaming && <div className="h-6" />}
+                        </div>
+
+                        {/* Footer: elapsed time + token count + delete */}
+                        {(!isUser || canDeletePair) && (msg.elapsedMs != null || msg.totalTokens != null || canDeletePair) && (!isStreaming || !isLast) && (
+                          <div className="flex items-center gap-2 px-1">
+                            {!isUser && msg.elapsedMs != null && (
+                              <div className="flex items-center gap-1">
+                                <Icon icon={clockBold} className="text-foreground/25" fontSize={11} />
+                                <span className="text-xs text-foreground/35">{formatElapsed(msg.elapsedMs)}</span>
                               </div>
-                            ) : (
-                              showThinking && <TypingIndicator />
                             )}
-                          </>
-                        ) : (
-                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                        )}
-
-                        {/* Copy button — embedded corner */}
-                        {msg.content && !isStreaming && (
-                          <div className={`absolute bottom-2 ${isUser ? 'left-2' : 'right-2'} opacity-0 group-hover:opacity-100 transition-opacity duration-150`}>
-                            <CopyButton text={msg.content} t={t} />
+                            {!isUser && msg.totalTokens != null && msg.totalTokens > 0 && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-foreground/20">·</span>
+                                <Icon icon={cpuBold} className="text-foreground/25" fontSize={11} />
+                                <span className="text-xs text-foreground/35">
+                                  {t('agent.tokens', { count: msg.totalTokens })}
+                                </span>
+                              </div>
+                            )}
+                            {canDeletePair && currentSessionId && msg.dbId != null && (
+                              <Tooltip content={t('agent.deletePair')} placement="left">
+                                <button
+                                  type="button"
+                                  onClick={() => requestDeletePair(currentSessionId, msg.dbId as number)}
+                                  className="p-1 rounded-lg hover:bg-danger/15 transition-all duration-150 text-foreground/30 hover:text-danger ml-0.5"
+                                  aria-label={t('agent.deletePair')}
+                                >
+                                  <Icon icon={trashBold} fontSize={13} />
+                                </button>
+                              </Tooltip>
+                            )}
                           </div>
                         )}
-                        {/* Spacer so content doesn't overlap copy button */}
-                        {msg.content && !isStreaming && <div className="h-6" />}
                       </div>
 
-                      {/* Footer: elapsed time + token count + delete */}
-                      {(!isUser || canDeletePair) && (msg.elapsedMs != null || msg.totalTokens != null || canDeletePair) && (!isStreaming || !isLast) && (
-                        <div className="flex items-center gap-2 px-1">
-                          {!isUser && msg.elapsedMs != null && (
-                            <div className="flex items-center gap-1">
-                              <Icon icon={clockBold} className="text-foreground/25" fontSize={11} />
-                              <span className="text-xs text-foreground/35">{formatElapsed(msg.elapsedMs)}</span>
-                            </div>
-                          )}
-                          {!isUser && msg.totalTokens != null && msg.totalTokens > 0 && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-foreground/20">·</span>
-                              <Icon icon={cpuBold} className="text-foreground/25" fontSize={11} />
-                              <span className="text-xs text-foreground/35">
-                                {t('agent.tokens', { count: msg.totalTokens })}
-                              </span>
-                            </div>
-                          )}
-                          {canDeletePair && currentSessionId && msg.dbId != null && (
-                            <Tooltip content={t('agent.deletePair')} placement="left">
-                              <button
-                                type="button"
-                                onClick={() => requestDeletePair(currentSessionId, msg.dbId as number)}
-                                className="p-1 rounded-lg hover:bg-danger/15 transition-all duration-150 text-foreground/30 hover:text-danger ml-0.5"
-                                aria-label={t('agent.deletePair')}
-                              >
-                                <Icon icon={trashBold} fontSize={13} />
-                              </button>
-                            </Tooltip>
-                          )}
+                      {/* User avatar */}
+                      {isUser && (
+                        <div className="flex-shrink-0 mt-0.5">
+                          <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center shadow-sm">
+                            <span className="text-primary text-xs font-bold">U</span>
+                          </div>
                         </div>
                       )}
                     </div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </ScrollShadow>
 
-                    {/* User avatar */}
-                    {isUser && (
-                      <div className="flex-shrink-0 mt-0.5">
-                        <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center shadow-sm">
-                          <span className="text-primary text-xs font-bold">U</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </ScrollShadow>
+          {/* ── Input area ── */}
+          <div className="flex-shrink-0 border-t border-divider bg-content1/30 px-3 sm:px-5 pt-3 pb-3">
+            <form onSubmit={handleFormSubmit}>
+              <div className="flex gap-2 items-end">
+                <div className="flex-1 relative">
+                  <Textarea
+                    ref={textareaRef}
+                    value={input}
+                    onValueChange={setInput}
+                    onKeyDown={handleKeyDown}
+                    placeholder={t('agent.inputPlaceholder')}
+                    minRows={1}
+                    maxRows={6}
+                    variant="bordered"
+                    classNames={{
+                      base: 'w-full',
+                      inputWrapper: [
+                        'bg-content1 border-divider',
+                        'hover:border-primary/50',
+                        'focus-within:!border-primary',
+                        'transition-colors duration-200',
+                        'rounded-xl shadow-sm',
+                      ].join(' '),
+                      input: 'text-sm pr-1 resize-none',
+                    }}
+                    isDisabled={isStreaming}
+                  />
+                </div>
 
-        {/* ── Input area ── */}
-        <div className="flex-shrink-0 border-t border-divider bg-content1/30 px-3 sm:px-5 pt-3 pb-3">
-          <form onSubmit={handleFormSubmit}>
-            <div className="flex gap-2 items-end">
-              <div className="flex-1 relative">
-                <Textarea
-                  ref={textareaRef}
-                  value={input}
-                  onValueChange={setInput}
-                  onKeyDown={handleKeyDown}
-                  placeholder={t('agent.inputPlaceholder')}
-                  minRows={1}
-                  maxRows={6}
-                  variant="bordered"
-                  classNames={{
-                    base: 'w-full',
-                    inputWrapper: [
-                      'bg-content1 border-divider',
-                      'hover:border-primary/50',
-                      'focus-within:!border-primary',
-                      'transition-colors duration-200',
-                      'rounded-xl shadow-sm',
-                    ].join(' '),
-                    input: 'text-sm pr-1 resize-none',
-                  }}
-                  isDisabled={isStreaming}
-                />
+                <div className="flex gap-1.5 pb-1 flex-shrink-0">
+                  {isStreaming ? (
+                    <Tooltip content={t('agent.stop')}>
+                      <Button
+                        isIconOnly
+                        color="danger"
+                        variant="flat"
+                        size="lg"
+                        onPress={handleStop}
+                        aria-label={t('agent.stop')}
+                        className="rounded-xl"
+                      >
+                        <Icon icon={stopBold} fontSize={20} />
+                      </Button>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip content={t('agent.send')}>
+                      <Button
+                        type="submit"
+                        isIconOnly
+                        color="primary"
+                        size="lg"
+                        isDisabled={!input.trim() || isStreaming}
+                        aria-label={t('agent.send')}
+                        className="rounded-xl shadow-sm"
+                      >
+                        <Icon icon={paperPlaneBold} fontSize={20} />
+                      </Button>
+                    </Tooltip>
+                  )}
+                  {isMobile && (
+                    <Tooltip content={t('agent.reset')}>
+                      <Button
+                        isIconOnly
+                        variant="flat"
+                        size="lg"
+                        onPress={handleReset}
+                        aria-label={t('agent.reset')}
+                        className="rounded-xl"
+                      >
+                        <Icon icon={restartBold} fontSize={18} />
+                      </Button>
+                    </Tooltip>
+                  )}
+                </div>
               </div>
 
-              <div className="flex gap-1.5 pb-1 flex-shrink-0">
-                {isStreaming ? (
-                  <Tooltip content={t('agent.stop')}>
-                    <Button
-                      isIconOnly
-                      color="danger"
-                      variant="flat"
-                      size="lg"
-                      onPress={handleStop}
-                      aria-label={t('agent.stop')}
-                      className="rounded-xl"
-                    >
-                      <Icon icon={stopBold} fontSize={20} />
-                    </Button>
-                  </Tooltip>
-                ) : (
-                  <Tooltip content={t('agent.send')}>
-                    <Button
-                      type="submit"
-                      isIconOnly
-                      color="primary"
-                      size="lg"
-                      isDisabled={!input.trim() || isStreaming}
-                      aria-label={t('agent.send')}
-                      className="rounded-xl shadow-sm"
-                    >
-                      <Icon icon={paperPlaneBold} fontSize={20} />
-                    </Button>
-                  </Tooltip>
-                )}
-                {isMobile && (
-                  <Tooltip content={t('agent.reset')}>
-                    <Button
-                      isIconOnly
-                      variant="flat"
-                      size="lg"
-                      onPress={handleReset}
-                      aria-label={t('agent.reset')}
-                      className="rounded-xl"
-                    >
-                      <Icon icon={restartBold} fontSize={18} />
-                    </Button>
-                  </Tooltip>
-                )}
+              {/* Hint */}
+              <div className="flex items-center gap-1.5 mt-1.5 px-0.5">
+                <Icon icon={keyboardBold} className="text-foreground/25" fontSize={12} />
+                <span className="text-xs text-foreground/30">{t('agent.sendHint')}</span>
               </div>
-            </div>
-
-            {/* Hint */}
-            <div className="flex items-center gap-1.5 mt-1.5 px-0.5">
-              <Icon icon={keyboardBold} className="text-foreground/25" fontSize={12} />
-              <span className="text-xs text-foreground/30">{t('agent.sendHint')}</span>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
-      </div>
 
-      {/* ── Delete confirmation modal ── */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} placement="center" size="sm">
-        <ModalContent>
-          <ModalHeader className="text-base font-semibold">{t('agent.deletePairTitle')}</ModalHeader>
-          <ModalBody>
-            <p className="text-sm text-foreground/70 leading-relaxed">{t('agent.deletePairConfirm')}</p>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="flat" onPress={onDeleteClose} size="sm">{t('agent.cancel')}</Button>
-            <Button color="danger" onPress={handleDeletePair} size="sm">{t('agent.delete')}</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+        {/* ── Delete confirmation modal ── */}
+        <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} placement="center" size="sm">
+          <ModalContent>
+            <ModalHeader className="text-base font-semibold">{t('agent.deletePairTitle')}</ModalHeader>
+            <ModalBody>
+              <p className="text-sm text-foreground/70 leading-relaxed">{t('agent.deletePairConfirm')}</p>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="flat" onPress={onDeleteClose} size="sm">{t('agent.cancel')}</Button>
+              <Button color="danger" onPress={handleDeletePair} size="sm">{t('agent.delete')}</Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
       </div>
     </div>
   );

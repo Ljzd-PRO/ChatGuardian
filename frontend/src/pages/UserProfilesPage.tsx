@@ -30,7 +30,7 @@ export default function UserProfilesPage() {
   const [targetUserIds, setTargetUserIds] = useState<string[]>([]);
   const [newUserId, setNewUserId] = useState('');
   const [settingsReady, setSettingsReady] = useState(false);
-  
+
   const [enableImageParsing, setEnableImageParsing] = useState(false);
   const [maxImages, setMaxImages] = useState(5);
 
@@ -180,17 +180,17 @@ export default function UserProfilesPage() {
               </Button>
             </div>
           </div>
-          
+
           <Divider className="my-2" />
 
           {/* Image Parsing Configuration */}
           <div>
             <div className="flex items-center gap-1.5 mb-1.5">
-              <p className="text-sm font-medium text-default-700">{t('rules.enableImageParsing', 'Enable Image Parsing')}</p>
+              <p className="text-sm font-medium text-default-700">{t('rules.enableImageParsing')}</p>
             </div>
             <div className="flex flex-col gap-3 max-w-sm mb-2">
               <div className="flex items-center justify-between border border-divider rounded-xl p-3 bg-content1">
-                <span className="text-sm font-medium">{t('rules.enableImageParsing', 'Enable Image Parsing')}</span>
+                <span className="text-sm font-medium">{t('rules.enableImageParsing')}</span>
                 <Switch
                   size="sm"
                   isDisabled={isSettingsLoading}
@@ -202,7 +202,7 @@ export default function UserProfilesPage() {
                 />
               </div>
               <Input
-                label={t('rules.maxImages', 'Max Images')}
+                label={t('rules.maxImages')}
                 type="number"
                 size="sm"
                 isDisabled={isSettingsLoading || !enableImageParsing}
@@ -267,96 +267,96 @@ export default function UserProfilesPage() {
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/users/${encodeURIComponent(p.user_id)}`); } }}
                 >
-                <CardHeader className="pb-0 gap-3 flex items-start justify-between">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-1.5 rounded-lg bg-primary-50 dark:bg-primary-900/30 shrink-0">
-                      <Icon icon={userRoundedBold} fontSize={ICON_SIZES.cardHeader} className="text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-primary truncate">
-                        {p.user_name || p.user_id}
-                      </p>
-                      <p className="text-xs text-default-400 truncate font-mono">{p.user_id}</p>
-                    </div>
-                  </div>
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="light"
-                    color="danger"
-                    onPress={() => setDeleteTarget(p.user_id)}
-                    onClick={e => e.stopPropagation()}
-                    aria-label={t('common.delete')}
-                  >
-                    <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />
-                  </Button>
-                </CardHeader>
-                <CardBody className="space-y-3">
-                  {topInterests.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-default-600 mb-1.5">
-                        <Icon icon={starBold} fontSize={12} className="inline mr-1 text-default-500 align-middle" />
-                        {t('users.interests')}
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {topInterests.map(i => (
-                          <Chip
-                            key={i.topic}
-                            size="sm"
-                            variant="flat"
-                            color="secondary"
-                            startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.chip} />}
-                          >
-                            {i.topic} ({i.score.toFixed(1)})
-                          </Chip>
-                        ))}
+                  <CardHeader className="pb-0 gap-3 flex items-start justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-1.5 rounded-lg bg-primary-50 dark:bg-primary-900/30 shrink-0">
+                        <Icon icon={userRoundedBold} fontSize={ICON_SIZES.cardHeader} className="text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-primary truncate">
+                          {p.user_name || p.user_id}
+                        </p>
+                        <p className="text-xs text-default-400 truncate font-mono">{p.user_id}</p>
                       </div>
                     </div>
-                  )}
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      color="danger"
+                      onPress={() => setDeleteTarget(p.user_id)}
+                      onClick={e => e.stopPropagation()}
+                      aria-label={t('common.delete')}
+                    >
+                      <Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />
+                    </Button>
+                  </CardHeader>
+                  <CardBody className="space-y-3">
+                    {topInterests.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-default-600 mb-1.5">
+                          <Icon icon={starBold} fontSize={12} className="inline mr-1 text-default-500 align-middle" />
+                          {t('users.interests')}
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {topInterests.map(i => (
+                            <Chip
+                              key={i.topic}
+                              size="sm"
+                              variant="flat"
+                              color="secondary"
+                              startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.chip} />}
+                            >
+                              {i.topic} ({i.score.toFixed(1)})
+                            </Chip>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-                  {topGroups.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-default-600 mb-1.5">
-                        <Icon icon={usersGroupRoundedBold} fontSize={12} className="inline mr-1 text-default-500 align-middle" />
-                        {t('users.activeGroups')}
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {topGroups.map(g => (
-                          <Chip
-                            key={g.group_id}
-                            size="sm"
-                            variant="flat"
-                            startContent={<Icon icon={usersGroupRoundedBold} fontSize={ICON_SIZES.chip} />}
-                          >
-                            {g.group_id}
-                          </Chip>
-                        ))}
+                    {topGroups.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-default-600 mb-1.5">
+                          <Icon icon={usersGroupRoundedBold} fontSize={12} className="inline mr-1 text-default-500 align-middle" />
+                          {t('users.activeGroups')}
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {topGroups.map(g => (
+                            <Chip
+                              key={g.group_id}
+                              size="sm"
+                              variant="flat"
+                              startContent={<Icon icon={usersGroupRoundedBold} fontSize={ICON_SIZES.chip} />}
+                            >
+                              {g.group_id}
+                            </Chip>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {topContacts.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-default-600 mb-1.5">
-                        <Icon icon={chatDotsBold} fontSize={12} className="inline mr-1 text-default-500 align-middle" />
-                        {t('users.frequentContacts')}
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {topContacts.map(c => (
-                          <Chip
-                            key={c.uid}
-                            size="sm"
-                            variant="flat"
-                            color="primary"
-                            startContent={<Icon icon={userRoundedBold} fontSize={ICON_SIZES.chip} />}
-                          >
-                            {c.name || c.uid} ({c.count})
-                          </Chip>
-                        ))}
+                    {topContacts.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-default-600 mb-1.5">
+                          <Icon icon={chatDotsBold} fontSize={12} className="inline mr-1 text-default-500 align-middle" />
+                          {t('users.frequentContacts')}
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {topContacts.map(c => (
+                            <Chip
+                              key={c.uid}
+                              size="sm"
+                              variant="flat"
+                              color="primary"
+                              startContent={<Icon icon={userRoundedBold} fontSize={ICON_SIZES.chip} />}
+                            >
+                              {c.name || c.uid} ({c.count})
+                            </Chip>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </CardBody>
+                    )}
+                  </CardBody>
                 </div>
               </Card>
             );

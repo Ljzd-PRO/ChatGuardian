@@ -389,15 +389,15 @@ export default function RulesPage() {
         <AccordionItem
           key="detection"
           aria-label={t('rules.detectionSettings')}
-            title={(
-              <div className="flex items-center gap-2">
-                <Icon icon={shieldCheckBold} fontSize={ICON_SIZES.cardHeader} className="text-primary" />
-                <div className="text-left">
-                  <p className="font-semibold">{t('rules.detectionSettings')}</p>
-                  <p className="text-sm text-default-500">{t('rules.detectionSettingsDesc')}</p>
-                </div>
+          title={(
+            <div className="flex items-center gap-2">
+              <Icon icon={shieldCheckBold} fontSize={ICON_SIZES.cardHeader} className="text-primary" />
+              <div className="text-left">
+                <p className="font-semibold">{t('rules.detectionSettings')}</p>
+                <p className="text-sm text-default-500">{t('rules.detectionSettingsDesc')}</p>
               </div>
-            )}
+            </div>
+          )}
         >
           <Card className="shadow-md">
             <CardBody className="space-y-4">
@@ -432,7 +432,7 @@ export default function RulesPage() {
                 />
                 <div className="flex flex-col justify-center border border-divider rounded-xl p-3 gap-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{t('rules.enableImageParsing', 'Enable Image Parsing')}</span>
+                    <span className="text-sm font-medium">{t('rules.enableImageParsing')}</span>
                     <Switch
                       size="sm"
                       isSelected={detForm.enable_image_parsing ?? false}
@@ -440,7 +440,7 @@ export default function RulesPage() {
                     />
                   </div>
                   <Input
-                    label={t('rules.maxImages', 'Max Images')}
+                    label={t('rules.maxImages')}
                     type="number"
                     size="sm"
                     labelPlacement="outside-left"
@@ -450,13 +450,13 @@ export default function RulesPage() {
                     onValueChange={v => setDetForm(f => ({ ...f, max_images: Number(v) }))}
                   />
                 </div>
-                
+
                 <div className="md:col-span-3">
                   <div className="mb-2">
                     <p className="text-sm font-medium">{t('rules.selfSenderIds')}</p>
-                    <p className="text-xs text-default-500">{t('rules.selfSenderIdsDescCommaSeparated', 'Add IDs one by one')}</p>
+                    <p className="text-xs text-default-500">{t('rules.selfSenderIdsDescCommaSeparated')}</p>
                   </div>
-                  
+
                   <div className="flex flex-wrap gap-2 mb-3">
                     {(detForm.detection_self_sender_ids ?? []).length === 0 ? (
                       <Chip size="sm" variant="flat" color="default" className="text-default-400">
@@ -477,11 +477,11 @@ export default function RulesPage() {
                       </Chip>
                     ))}
                   </div>
-                  
+
                   <div className="flex gap-2 max-w-md">
                     <Input
                       size="sm"
-                      placeholder={t('rules.selfSenderIdsPlaceholderCommaSeparated', 'e.g. 12345, 67890')}
+                      placeholder={t('rules.selfSenderIdsPlaceholderCommaSeparated')}
                       startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
                       value={newSelfId}
                       onValueChange={setNewSelfId}
@@ -713,12 +713,12 @@ export default function RulesPage() {
                   )}
                   {filter.type === 'adapter' && (
                     <Input
-                        size="sm"
-                        label={t('matcher.adapterName')}
-                        value={filter.adapter_name ?? ''}
-                        onValueChange={v => patchMatcherFilter(idx, { adapter_name: v })}
-                        className="w-60"
-                      />
+                      size="sm"
+                      label={t('matcher.adapterName')}
+                      value={filter.adapter_name ?? ''}
+                      onValueChange={v => patchMatcherFilter(idx, { adapter_name: v })}
+                      className="w-60"
+                    />
                   )}
                 </div>
               </div>
@@ -747,16 +747,16 @@ export default function RulesPage() {
 
       <div className="space-y-4">
         {pagedRules.map(rule => (
-            <Card
-              key={rule.rule_id}
-              className="w-full border border-default-200 shadow-sm transition-shadow hover:shadow-md"
+          <Card
+            key={rule.rule_id}
+            className="w-full border border-default-200 shadow-sm transition-shadow hover:shadow-md"
+          >
+            <CardBody
+              className="flex flex-col gap-3 md:flex-row md:items-start justify-between md:gap-6 cursor-pointer"
+              onClick={() => openEdit(rule)}
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(rule); } }}
             >
-              <CardBody
-                className="flex flex-col gap-3 md:flex-row md:items-start justify-between md:gap-6 cursor-pointer"
-                onClick={() => openEdit(rule)}
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(rule); } }}
-              >
               <div className="flex items-start gap-3 flex-1 min-w-0">
                 <div onClick={e => e.stopPropagation()} className="mt-1">
                   <Checkbox
@@ -988,11 +988,11 @@ export default function RulesPage() {
 
                 {/* Parameters */}
                 <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Icon icon={listCheckBold} fontSize={ICON_SIZES.input} className="text-default-500" />
-                        <p className="text-sm font-medium text-default-700">{t('rules.parameters')}</p>
-                      </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Icon icon={listCheckBold} fontSize={ICON_SIZES.input} className="text-default-500" />
+                      <p className="text-sm font-medium text-default-700">{t('rules.parameters')}</p>
+                    </div>
                     <Button
                       size="sm"
                       variant="flat"
