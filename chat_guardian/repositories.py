@@ -102,6 +102,21 @@ class _AgentMessageRecord(_Base):
 
 
 class _RepositoryDatabase:
+    def _migrate_agent_messages_total_tokens(self) -> None:
+        """Ensure `agent_messages.total_tokens` column exists for older databases."""
+        # This migration mirrors the style of other incremental migrations (e.g., detection_results.result_id).
+        # It is safe to run multiple times; duplicate-column errors are ignored.
+        with self.engine.begin() as conn:
+            try:
+                conn.execute(text("ALTER TABLE agent_messages ADD COLUMN total_tokens INTEGER"))
+            except OperationalError as exc:
+                msg = str(exc).lower()
+                # SQLite typically reports "duplicate column name: total_tokens" if the column already exists.
+                # Other databases may use "already exists" in the error message.
+                if "duplicate column name" in msg or "already exists" in msg:
+                    return
+                raise
+
     def __init__(self, database_url: str):
         normalized_url = normalize_database_url(database_url)
         engine_kwargs: dict[str, Any] = {"future": True}
@@ -112,6 +127,7 @@ class _RepositoryDatabase:
         self.session_factory = sessionmaker(bind=self.engine, expire_on_commit=False)
         _Base.metadata.create_all(self.engine)
         self._migrate()
+        self._migrate_agent_messages_total_tokens()
 
     def _migrate(self) -> None:
         """Apply incremental schema migrations for new columns added after initial creation."""
