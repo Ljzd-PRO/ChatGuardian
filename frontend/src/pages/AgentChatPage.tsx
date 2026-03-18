@@ -1167,7 +1167,7 @@ export default function AgentChatPage() {
           >
             {showEmptyState ? (
               /* ── Empty / welcome state ── */
-              <div className="flex min-h-full flex-col items-center justify-start lg:justify-center min-h-[300px] gap-5 sm:gap-7 py-4 sm:py-8">
+              <div className="flex min-h-full flex-col items-center justify-start lg:justify-center gap-5 sm:gap-7 py-4 sm:py-8">
                 {/* Icon */}
                 <div className="relative">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center shadow-md">
