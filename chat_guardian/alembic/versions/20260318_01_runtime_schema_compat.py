@@ -29,6 +29,9 @@ def _column_names(table_name: str) -> set[str]:
 
 def _try_backfill_result_id() -> None:
     bind = op.get_bind()
+    # Only attempt this backfill on SQLite, where json_extract is expected to exist.
+    if bind.dialect.name != "sqlite":
+        return
     try:
         bind.execute(
             sa.text(
@@ -37,8 +40,8 @@ def _try_backfill_result_id() -> None:
                 "WHERE result_id IS NULL"
             )
         )
-    except sa.exc.OperationalError:
-        # Keep migration compatible with databases that don't provide json_extract.
+    except (sa.exc.OperationalError, sa.exc.ProgrammingError):
+        # Keep migration compatible with databases (or SQLite builds) that don't provide json_extract.
         return
 
 
