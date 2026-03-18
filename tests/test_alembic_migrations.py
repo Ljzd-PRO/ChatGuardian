@@ -11,25 +11,27 @@ def _create_legacy_schema(db_path: Path) -> None:
     try:
         conn.executescript(
             """
-            CREATE TABLE detection_results (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                rule_id VARCHAR(128),
-                generated_at DATETIME,
-                triggered BOOLEAN,
+            CREATE TABLE detection_results
+            (
+                id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                rule_id            VARCHAR(128),
+                generated_at       DATETIME,
+                triggered          BOOLEAN,
                 trigger_suppressed BOOLEAN,
-                payload_json TEXT
+                payload_json       TEXT
             );
-            CREATE TABLE agent_messages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id VARCHAR(64),
-                role VARCHAR(16),
-                content TEXT,
+            CREATE TABLE agent_messages
+            (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id      VARCHAR(64),
+                role            VARCHAR(16),
+                content         TEXT,
                 tool_calls_json TEXT,
-                elapsed_ms INTEGER,
-                created_at VARCHAR(32)
+                elapsed_ms      INTEGER,
+                created_at      VARCHAR(32)
             );
             INSERT INTO detection_results(rule_id, generated_at, triggered, trigger_suppressed, payload_json)
-            VALUES('rule-1', '2026-01-01 00:00:00', 1, 0, '{"result_id":"legacy-result"}');
+            VALUES ('rule-1', '2026-01-01 00:00:00', 1, 0, '{"result_id":"legacy-result"}');
             """
         )
         conn.commit()
