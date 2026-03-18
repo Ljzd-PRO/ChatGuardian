@@ -1256,6 +1256,12 @@ class UserMemoryService:
         self.memory_repository = memory_repository
         self.context_service = context_service
         self._user_msg_counts: dict[str, int] = {}
+        # 记录每个用户最后评估的上下文消息ID
+        self._last_context_msg_ids: dict[str, set[str]] = {}
+        # 记录每个用户最后提取到的话题名称
+        self._last_topics: dict[str, set[str]] = {}
+        # 记录每个用户最后提取到的高频联系人及其相关话题 user_id -> target_uid -> topics
+        self._last_interactions: dict[str, dict[str, set[str]]] = {}
 
     async def process_user_memory(self, event: ChatEvent) -> int:
         """按配置的用户 ID 列表提取并累积用户画像。
@@ -1316,6 +1322,14 @@ class UserMemoryService:
         # 始终使用最新的 sender_name 作为昵称来源（若为空则回退 user_id）
         profile.user_name = event.message.sender_name or profile.user_name
 
+        current_msg_ids = {msg.message_id for msg in context_messages}
+        last_msg_ids = self._last_context_msg_ids.get(user_id, set())
+        has_overlap = bool(current_msg_ids & last_msg_ids)
+        last_topics = self._last_topics.get(user_id, set())
+        last_interactions = self._last_interactions.get(user_id, {})
+
+        new_extracted_topics = set()
+
         # 累积话题兴趣
         for topic_data in extract.get("topics", []):
             if not isinstance(topic_data, dict):
@@ -1323,7 +1337,14 @@ class UserMemoryService:
             name = str(topic_data.get("name", "")).strip()
             if not name:
                 continue
-            participation_count = 1  # 每检测到一次该话题，参与次数 +1
+            
+            new_extracted_topics.add(name)
+            participation_count = 1  # 每次检测到一次该话题，参与次数+1
+            
+            if has_overlap and name in last_topics:
+                logger.debug(f"⚠️ 用户 {user_id} 画像抑制: 话题 '{name}' 已在最近上下文提取过，跳过参与次数增加")
+                participation_count = 0
+
             keywords = [str(k).strip() for k in topic_data.get("keywords", []) if str(k).strip()]
 
             if name in profile.interests:
@@ -1364,6 +1385,7 @@ class UserMemoryService:
             if sender_id and sender_name:
                 sender_name_by_id[sender_id] = sender_name
 
+        new_extracted_interactions: dict[str, set[str]] = {}
         for interaction in extract.get("interactions", []):
             if not isinstance(interaction, dict):
                 continue
@@ -1372,6 +1394,12 @@ class UserMemoryService:
             interact_topics = [str(t).strip() for t in interaction.get("topics", []) if str(t).strip()]
             if not uid:
                 continue
+
+            new_extracted_interactions[uid] = set(interact_topics)
+            is_interaction_suppressed = False
+            if has_overlap and uid in last_interactions:
+                is_interaction_suppressed = True
+                logger.debug(f"⚠️ 用户 {user_id} 画像抑制: 与 '{uid}' 的互动已在最近上下文提取过，跳过互动次数增加")
 
             if uid not in profile.frequent_contacts:
                 profile.frequent_contacts[uid] = FrequentContactStat(
@@ -1382,18 +1410,44 @@ class UserMemoryService:
             contact = profile.frequent_contacts[uid]
             if uname:
                 contact.name = uname
-            contact.interaction_count += 1
+            
+            if not is_interaction_suppressed:
+                contact.interaction_count += 1
             contact.last_interact = now_str
             if event.chat_id not in contact.related_groups:
                 contact.related_groups.append(event.chat_id)
 
             for topic in interact_topics:
+                is_topic_suppressed = False
+                if is_interaction_suppressed and topic in last_interactions.get(uid, set()):
+                    is_topic_suppressed = True
+                    logger.debug(f"⚠️ 用户 {user_id} 画像抑制: 与 '{uid}' 的互动话题 '{topic}' 已提取过，跳过参与次数增加")
+
                 if topic in contact.related_topics:
-                    contact.related_topics[topic].score += 1
+                    if not is_topic_suppressed:
+                        contact.related_topics[topic].score += 1
                     contact.related_topics[topic].last_talk = now_str
                 else:
-                    contact.related_topics[topic] = RelatedTopicStat(score=1, last_talk=now_str)
-            logger.debug(f"    ✓ 更新互动: uid={uid} | 话题={interact_topics}")
+                    contact.related_topics[topic] = RelatedTopicStat(
+                        score=0 if is_topic_suppressed else 1,
+                        last_talk=now_str
+                    )
+            logger.debug(f"    ✔️ 更新互动: uid={uid} | 话题={interact_topics}")
+            
+        # 更新抑制状态
+        if has_overlap:
+            self._last_context_msg_ids[user_id].update(current_msg_ids)
+            self._last_topics[user_id].update(new_extracted_topics)
+            if user_id not in self._last_interactions:
+                self._last_interactions[user_id] = {}
+            for uid, topics in new_extracted_interactions.items():
+                if uid not in self._last_interactions[user_id]:
+                    self._last_interactions[user_id][uid] = set()
+                self._last_interactions[user_id][uid].update(topics)
+        else:
+            self._last_context_msg_ids[user_id] = current_msg_ids
+            self._last_topics[user_id] = new_extracted_topics
+            self._last_interactions[user_id] = new_extracted_interactions
 
         await self.memory_repository.upsert_profile(profile)
         logger.success(f"✅ 用户画像已更新 | 用户={user_id} | 话题总数={len(profile.interests)}")
