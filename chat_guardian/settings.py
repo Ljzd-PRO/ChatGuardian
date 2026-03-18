@@ -41,6 +41,9 @@ class Settings(BaseModel):
         llm_langchain_api_key: LangChain API 密钥（openai_compatible / gemini / anthropic / openrouter 后端均使用此字段）。
         llm_langchain_temperature: LangChain 采样温度。
         llm_display_timezone: LLM 输入展示时间的时区（IANA 时区名，例如 Asia/Shanghai）。
+        rule_detection_system_prompt: 规则检测系统提示词（留空使用内置默认）。
+        user_profile_system_prompt: 用户画像分析系统提示词（留空使用内置默认）。
+        admin_agent_system_prompt: 管理智能体系统提示词（留空使用内置默认）。
         memory_target_user_ids: 需要画像分析的用户 ID 列表（留空则不进行画像处理）。
         context_message_limit: 检测时回溯的历史消息条数。
         pending_queue_limit: 未处理消息队列上限。
@@ -119,6 +122,9 @@ class Settings(BaseModel):
     llm_langchain_api_key: Optional[str] = None
     llm_langchain_temperature: float = 0.0
     llm_display_timezone: str = "Asia/Shanghai"
+    rule_detection_system_prompt: Optional[str] = None
+    user_profile_system_prompt: Optional[str] = None
+    admin_agent_system_prompt: Optional[str] = None
 
     # 用户画像分析配置
     memory_target_user_ids: list[str] = []

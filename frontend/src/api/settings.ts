@@ -8,6 +8,9 @@ export interface AppSettings {
   llm_langchain_api_key: string | null;
   llm_langchain_temperature: number;
   llm_display_timezone: string;
+  rule_detection_system_prompt: string | null;
+  user_profile_system_prompt: string | null;
+  admin_agent_system_prompt: string | null;
   llm_batch_timeout_seconds: number;
   llm_batch_max_retries: number;
   llm_batch_rate_limit_per_second: number;

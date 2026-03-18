@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
-  Button, Card, CardBody, CardHeader, Chip, Divider, Input, Select, SelectItem, Spinner,
+  Button, Card, CardBody, CardHeader, Chip, Divider, Input, Select, SelectItem, Spinner, Textarea,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import boxBold from '@iconify/icons-solar/box-bold';
@@ -40,6 +40,9 @@ export default function LLMPage() {
         llm_max_parallel_batches: settings.llm_max_parallel_batches,
         llm_rules_per_batch: settings.llm_rules_per_batch,
         llm_display_timezone: settings.llm_display_timezone,
+        rule_detection_system_prompt: settings.rule_detection_system_prompt ?? '',
+        user_profile_system_prompt: settings.user_profile_system_prompt ?? '',
+        admin_agent_system_prompt: settings.admin_agent_system_prompt ?? '',
         llm_batch_timeout_seconds: settings.llm_batch_timeout_seconds,
         llm_batch_max_retries: settings.llm_batch_max_retries,
         llm_batch_rate_limit_per_second: settings.llm_batch_rate_limit_per_second,
@@ -195,6 +198,38 @@ export default function LLMPage() {
               startContent={<Icon icon={databaseBold} fontSize={ICON_SIZES.input} className="text-default-500" />}
               value={String(form.llm_batch_idempotency_cache_size ?? 1024)}
               onValueChange={v => setForm(f => ({ ...f, llm_batch_idempotency_cache_size: Number(v) }))}
+            />
+          </div>
+
+          <Divider />
+
+          <div className="space-y-3">
+            <Textarea
+              label="规则检测系统提示词"
+              minRows={4}
+              value={form.rule_detection_system_prompt ?? ''}
+              onValueChange={v => {
+                const trimmed = v.trim();
+                setForm(f => ({ ...f, rule_detection_system_prompt: trimmed === '' ? null : v }));
+              }}
+            />
+            <Textarea
+              label="用户画像分析系统提示词"
+              minRows={4}
+              value={form.user_profile_system_prompt ?? ''}
+              onValueChange={v => {
+                const trimmed = v.trim();
+                setForm(f => ({ ...f, user_profile_system_prompt: trimmed === '' ? null : v }));
+              }}
+            />
+            <Textarea
+              label="管理智能体系统提示词"
+              minRows={4}
+              value={form.admin_agent_system_prompt ?? ''}
+              onValueChange={v => {
+                const trimmed = v.trim();
+                setForm(f => ({ ...f, admin_agent_system_prompt: trimmed === '' ? null : v }));
+              }}
             />
           </div>
 

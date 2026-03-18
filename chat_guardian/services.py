@@ -51,6 +51,11 @@ from chat_guardian.domain import (
 from chat_guardian.models import RuleBatchSchedulerDiagnosticsModel, DiagnosticsModel
 from chat_guardian.models import RuleBatchSchedulerMetricsModel
 from chat_guardian.notifiers import Notifier
+from chat_guardian.prompts import (
+    RULE_DETECTION_SYSTEM_PROMPT,
+    USER_PROFILE_SYSTEM_PROMPT,
+    resolve_prompt,
+)
 from chat_guardian.repositories import (
     ChatHistoryStore,
     DetectionResultRepository,
@@ -98,7 +103,12 @@ def _messages_to_markdown(messages: list[ChatMessage]) -> str:
     for message in messages:
         display_name = message.sender_name or "无名称"
         human_time = _format_human_timestamp(message.timestamp, tz)
-        lines.append(f"- [{human_time}] ({display_name}|{message.sender_id}): {str(message)}")
+        lines.append("- [{time}] ({name}|{sender_id}): {message}".format(
+            time=human_time,
+            name=display_name,
+            sender_id=message.sender_id,
+            message=str(message),
+        ))
     return "\n".join(lines)
 
 
@@ -173,13 +183,16 @@ async def _build_rule_detection_content_blocks(
         (content_blocks, text_payload, image_block_count)
     """
     messages_payload = _messages_to_markdown(messages)
-    text_payload = f"""
+    text_payload = """
 ## 聊天消息
 {messages_payload}
 
 ## 规则列表
-{json.dumps(rules_payload, ensure_ascii=False, indent=4)}
-"""
+{rules_payload}
+""".format(
+        messages_payload=messages_payload,
+        rules_payload=json.dumps(rules_payload, ensure_ascii=False, indent=4),
+    )
 
     image_blocks, image_block_count = await _build_image_content_blocks(messages)
     content_blocks: list[dict[str, Any]] = [{"type": "text", "text": text_payload}, *image_blocks]
@@ -242,62 +255,14 @@ class LangChainLLMClient:
         )
 
         try:
+            detection_system_prompt = resolve_prompt(
+                settings.rule_detection_system_prompt,
+                RULE_DETECTION_SYSTEM_PROMPT,
+            )
             response = await self.model.ainvoke(
                 [
                     SystemMessage(
-                        content="""
-# 角色
-你是聊天规则检测模型。
-
-# 任务
-根据输入的聊天消息与规则列表，对每条规则给出是否触发的判断。
-
-# 输入格式
-- `聊天消息`：按时间顺序排列的可读消息列表，每条消息一行，格式如下：
-  - `[YYYY-MM-DD HH:MM:SS TZ] (发送者): 消息内容`
-    - 若消息内包含 `[image: XXXXX]`，表示该图片会通过同一条 HumanMessage 的 image content block 传入，
-        其中 image block 的 `id` 与 `XXXXX` 一致
-- `规则列表`：规则对象列表。每个规则包含以下字段：
-  - `rule_id`：规则唯一标识，字符串
-  - `name`：规则名称，字符串
-  - `description`：规则描述，字符串
-  - `topic_hints`：主题提示，字符串数组
-  - `score_threshold`：触发分数阈值，数字
-  - `parameters`：若触发，则需要根据消息内容填写的参数说明，数组，每项包含：
-    - `key`：参数名，字符串
-    - `description`：参数描述，字符串
-    - `required`：是否必填，布尔值
-
-# 判定原则
-- 仅依据提供的消息与规则内容做判断，不要臆造额外事实
-- `confidence` 必须在 0 到 1 之间
-- 若信息不足，应倾向 `triggered=false`，并在 `reason` 中说明
-
-# 输出要求（必须遵守）
-1. 只输出一个 JSON 对象，不要输出任何额外解释文本
-2. JSON 顶层必须包含 `decisions` 字段，且为数组
-3. 数组中每一项必须包含字段：
-     - `rule_id`: string
-     - `triggered`: boolean
-     - `confidence`: number (0~1)
-     - `reason`: string
-     - `extracted_params`: object
-
-# 输出示例
-```json
-{
-    "decisions": [
-        {
-            "rule_id": "rule-1",
-            "triggered": false,
-            "confidence": 0.23,
-            "reason": "证据不足，未达到触发阈值",
-            "extracted_params": {}
-        }
-    ]
-}
-```
-"""
+                        content=detection_system_prompt,
                     ),
                     HumanMessage(content=content_blocks),
                 ]
@@ -355,77 +320,43 @@ class LangChainLLMClient:
                 continue
             keywords = [str(k).strip() for k in topic.get("keywords", []) if str(k).strip()]
             if keywords:
-                topic_lines.append(f"- {name}（关键词：{'、'.join(keywords)}）")
+                topic_lines.append("- {name}（关键词：{keywords}）".format(
+                    name=name,
+                    keywords="、".join(keywords),
+                ))
             else:
-                topic_lines.append(f"- {name}")
+                topic_lines.append("- {name}".format(name=name))
 
         existing_topics_markdown = "\n".join(topic_lines) if topic_lines else "- （无）"
-        payload = f"""
+        payload = """
 ## 目标用户
-- 用户ID: {event.message.sender_id}
-- 名称: {event.message.sender_name or ''}
-- 消息： {str(event.message)}
+- 用户ID: {sender_id}
+- 名称: {sender_name}
+- 消息： {message}
 
 ## 上下文消息
-{context_markdown or '- （无）'}
+{context_markdown}
 
 ## 已有话题
 {existing_topics_markdown}
-"""
+""".format(
+            sender_id=event.message.sender_id,
+            sender_name=event.message.sender_name or "",
+            message=str(event.message),
+            context_markdown=context_markdown or "- （无）",
+            existing_topics_markdown=existing_topics_markdown,
+        )
         image_blocks, image_block_count = await _build_image_content_blocks(context)
         content_blocks: list[dict[str, Any]] = [{"type": "text", "text": payload}, *image_blocks]
         try:
+            profile_system_prompt = resolve_prompt(
+                settings.user_profile_system_prompt,
+                USER_PROFILE_SYSTEM_PROMPT,
+            )
             response = await self.model.ainvoke(
                 [
                     SystemMessage(
-                        content="""
-# 角色
-你是用户行为画像提取模型。
-
-# 任务
-分析目标用户在聊天记录中的参与情况，提取用户的话题偏好与社交互动关系，输出结构化 JSON。
-
-# 输入格式
-- 输入是一个 Markdown 文本块，包含三个小节：
-    - `## 目标用户`
-    - `## 上下文消息`：按时间顺序排列的上下文消息，每行格式：
-        - `[YYYY-MM-DD HH:MM:SS TZ] (发送者|发送者ID): 消息内容`
-        - 若消息内包含 `[image: XXXXX]`，表示对应图片通过同一条 HumanMessage 的 image content block 传入，
-            其中 image block 的 `id` 与 `XXXXX` 一致
-    - `## 已有话题`：历史话题列表，格式为 `- 话题名（关键词：词1、词2）`
-
-# 分析原则
-- 仅分析目标用户参与或主动发送的内容，不分析与目标用户无关的对话
-  - 如果用户只是被动接收消息但没有明显参与（如未回应、未提及相关话题等），则不视为参与
-  - 如果用户只是简单发送表情包，但没有其他文本或图片内容，也不视为有效参与
-- 提取出来的话题**不应过于细致**，如“甜点”、“日式料理”、“外出用餐体验”可以归为一个更高层次的“美食”话题
-- 若两人有明显的对话互动（问答、回应等），视为**互动关系**
-- 话题不得与 `existing_topics` 中的任何话题名称、关键词**语义重复**（即话题名称不能是近义词，新话题的关键词也不能和其他话题的关键词重复）
-- 若无明确话题或互动，对应列表留空即可
-
-# 输出要求（必须遵守）
-1. 只输出一个 JSON 对象，不要输出任何额外解释文本
-2. JSON 必须包含以下字段：
-     - `topics`: array，每项包含：
-         - `name`: string（话题名称，不能和 existing_topics 中的其他话题重复）
-         - `keywords`: string[]（可选，该话题新增关键词，不得和其他话题的关键词重复）
-     - `interactions`: array，每项包含：
-         - `user_id`: string（互动对象的用户 ID，从消息发送者 ID 中获取）
-         - `topics`: string[]（与该对象交流时涉及的话题名称）
-
-# 输出示例
-```json
-{
-    "topics": [
-        {"name": "美食", "keywords": ["拉面", "披萨"]},
-        {"name": "汽车", "keywords": ["续航"]}
-    ],
-    "interactions": [
-        {"user_id": "2233445566", "topics": ["美食"]}
-    ]
-}
-```
-"""
+                        content=profile_system_prompt,
                     ),
                     HumanMessage(content=content_blocks),
                 ]

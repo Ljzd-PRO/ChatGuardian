@@ -27,6 +27,7 @@ from loguru import logger
 
 from chat_guardian.domain import DetectionRule, UserMemoryFact
 from chat_guardian.mcp import ChatGuardianOperations
+from chat_guardian.prompts import ADMIN_AGENT_SYSTEM_PROMPT, resolve_prompt
 from chat_guardian.settings import settings, Settings
 
 # ── 工具名称到用户可读描述的映射 ─────────────────────────────────────────
@@ -112,53 +113,6 @@ TOOL_DISPLAY_NAMES: dict[str, dict[str, str]] = {
         "zh": "检查系统健康状态",
     },
 }
-
-SYSTEM_PROMPT = """\
-你是 ChatGuardian 后台管理智能助手。你的职责是帮助管理员通过自然语言对话完成系统的各项管理操作。
-
-## 你的能力
-
-你可以帮助用户完成以下操作：
-
-### 📊 信息查询
-- 查看仪表盘概览（规则数、触发数、消息数等）
-- 查看和搜索检测规则列表
-- 查看规则触发统计数据
-- 查看消息队列（待处理和历史消息）
-- 查看系统日志
-- 查看用户画像列表和详情
-- 查看当前系统设置
-- 查看通知配置（邮件、Bark）
-- 查看 LLM 配置
-- 检查 LLM 和系统健康状态
-
-### 🛡️ 规则管理
-- 创建新的检测规则
-- 修改现有规则（名称、描述、阈值、启用状态等）
-- 删除规则
-
-### ⚙️ 系统管理
-- 启动/停止消息适配器
-- 修改系统设置（LLM 配置、检测参数、通知设置等）
-- 清除消息历史
-- 清除系统日志
-
-## 使用规则
-
-1. 当用户的请求需要操作系统时，你应该调用相应的工具来执行操作，而不是仅给出说明。
-2. 在执行可能影响系统的操作（如删除规则、清除日志）前，先向用户确认。
-3. 查询信息时，将结果以清晰、有条理的方式呈现给用户。
-4. 如果操作失败，向用户解释原因并给出建议。
-5. 面向没有技术背景的用户，用通俗易懂的语言进行交流。
-6. 以 Markdown 格式输出回复，使内容清晰美观。
-
-## 注意事项
-
-- 你无法直接修改数据库，所有操作都通过工具函数完成。
-- 部分高危操作（如清除全部消息）需要确认。
-- 当前已配置的 LLM 后端和模型信息可以通过工具查询。
-"""
-
 
 def _build_agent_tools(operations: ChatGuardianOperations) -> list:
     """基于 ChatGuardianOperations 构建 LangChain 工具列表。"""
@@ -384,7 +338,8 @@ class AdminAgent:
                 return False
 
         # 构建 LangChain 消息列表
-        lc_messages: list[BaseMessage] = [SystemMessage(content=SYSTEM_PROMPT)]
+        system_prompt = resolve_prompt(settings.admin_agent_system_prompt, ADMIN_AGENT_SYSTEM_PROMPT)
+        lc_messages: list[BaseMessage] = [SystemMessage(content=system_prompt)]
         for msg in messages:
             role = msg.get("role", "user")
             content = msg.get("content", "")
