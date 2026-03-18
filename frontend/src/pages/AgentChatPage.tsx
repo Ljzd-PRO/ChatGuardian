@@ -1167,7 +1167,7 @@ export default function AgentChatPage() {
           >
             {showEmptyState ? (
               /* ── Empty / welcome state ── */
-              <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-7 py-8">
+              <div className="flex min-h-full flex-col items-center justify-start lg:justify-center gap-5 sm:gap-7 py-4 sm:py-8">
                 {/* Icon */}
                 <div className="relative">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center shadow-md">
@@ -1186,7 +1186,7 @@ export default function AgentChatPage() {
 
                 {/* Capabilities */}
                 {capabilities && (
-                  <div className="w-full max-w-xl space-y-4">
+                  <div className="w-full max-w-xl lg:max-w-2xl space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Card className="border border-divider shadow-none bg-content1/80">
                         <CardBody className="p-4">
@@ -1256,9 +1256,9 @@ export default function AgentChatPage() {
                     </div>
 
                     {/* Suggested prompts */}
-                    <div>
+                    <div className="w-full">
                       <p className="text-xs text-foreground/40 mb-2 font-medium">{t('agent.suggestedPrompts')}</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pb-1">
                         {suggestedPrompts.map((prompt) => (
                           <button
                             type="button"
