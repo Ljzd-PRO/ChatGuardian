@@ -53,7 +53,7 @@ npm run build
 3. 启动服务
 
 ```bash
-poetry run uvicorn chat_guardian.api.app:create_app --factory --reload --host 0.0.0.0 --port 8000
+poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
 ```
 
 > 注意：在全新 / 空数据库上首次部署时，需要先完成一次应用启动，让应用内部通过 `create_all()` 创建基础表结构。
