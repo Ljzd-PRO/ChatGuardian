@@ -6,8 +6,8 @@ services:
     container_name: chat-guardian
     ports:
       - "8000:8000"
-    env_file:
-      - .env
+    environment:
+      - CHAT_GUARDIAN_DATABASE_URL=sqlite:///./db.sqlite
     volumes:
       - ./db.sqlite:/app/db.sqlite
     healthcheck:
