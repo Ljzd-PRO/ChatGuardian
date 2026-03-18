@@ -40,53 +40,53 @@ const MAX_CONTACT_GROUP_CHIPS = 3;
 const ROWS_PER_PAGE = 10;
 
 const INTEREST_COL_STYLES: Record<string, string> = {
-  topic:        'w-28 min-w-[7rem]',
-  score:        'w-20 min-w-[5rem]',
-  last_active:  'w-28 min-w-[7rem]',
+  topic: 'w-28 min-w-[7rem]',
+  score: 'w-20 min-w-[5rem]',
+  last_active: 'w-28 min-w-[7rem]',
   related_chat: 'w-40 min-w-[10rem]',
-  keywords:     'w-40 min-w-[10rem]',
-  actions:      'w-16 min-w-[4rem]',
+  keywords: 'w-40 min-w-[10rem]',
+  actions: 'w-16 min-w-[4rem]',
 };
 
 const CONTACT_COL_STYLES: Record<string, string> = {
-  contact_id:        'w-28 min-w-[7rem]',
-  name:              'w-28 min-w-[7rem]',
+  contact_id: 'w-28 min-w-[7rem]',
+  name: 'w-28 min-w-[7rem]',
   interaction_count: 'w-24 min-w-[6rem]',
-  last_interact:     'w-28 min-w-[7rem]',
-  related_topics:    'w-40 min-w-[10rem]',
-  related_groups:    'w-36 min-w-[9rem]',
-  actions:           'w-16 min-w-[4rem]',
+  last_interact: 'w-28 min-w-[7rem]',
+  related_topics: 'w-40 min-w-[10rem]',
+  related_groups: 'w-36 min-w-[9rem]',
+  actions: 'w-16 min-w-[4rem]',
 };
 
 const INTEREST_COLUMNS: { key: string; labelKey: string; icon: IconifyIcon; sortable: boolean }[] = [
-  { key: 'topic',        labelKey: 'users.topic',       icon: hashtagCircleBold, sortable: false },
-  { key: 'score',        labelKey: 'users.score',       icon: starBold,          sortable: true },
-  { key: 'last_active',  labelKey: 'users.lastActive',  icon: clockCircleBold,   sortable: true },
-  { key: 'related_chat', labelKey: 'users.relatedChat', icon: chatDotsBold,      sortable: false },
-  { key: 'keywords',     labelKey: 'users.keywords',    icon: tagBold,           sortable: false },
-  { key: 'actions',      labelKey: 'common.actions',    icon: trashBin2Bold,     sortable: false },
+  { key: 'topic', labelKey: 'users.topic', icon: hashtagCircleBold, sortable: false },
+  { key: 'score', labelKey: 'users.score', icon: starBold, sortable: true },
+  { key: 'last_active', labelKey: 'users.lastActive', icon: clockCircleBold, sortable: true },
+  { key: 'related_chat', labelKey: 'users.relatedChat', icon: chatDotsBold, sortable: false },
+  { key: 'keywords', labelKey: 'users.keywords', icon: tagBold, sortable: false },
+  { key: 'actions', labelKey: 'common.actions', icon: trashBin2Bold, sortable: false },
 ];
 
 const CONTACT_COLUMNS: { key: string; labelKey: string; icon: IconifyIcon; sortable: boolean }[] = [
-  { key: 'contact_id',        labelKey: 'users.contactId',        icon: userRoundedBold,       sortable: true },
-  { key: 'name',              labelKey: 'users.contactName',      icon: userRoundedBold,       sortable: true },
-  { key: 'interaction_count', labelKey: 'users.interactionCount', icon: chatDotsBold,          sortable: true },
-  { key: 'last_interact',     labelKey: 'users.lastInteract',     icon: clockCircleBold,       sortable: false },
-  { key: 'related_topics',    labelKey: 'users.relatedTopics',    icon: hashtagCircleBold,     sortable: false },
-  { key: 'related_groups',    labelKey: 'users.relatedGroups',    icon: usersGroupRoundedBold, sortable: false },
-  { key: 'actions',           labelKey: 'common.actions',         icon: trashBin2Bold,         sortable: false },
+  { key: 'contact_id', labelKey: 'users.contactId', icon: userRoundedBold, sortable: true },
+  { key: 'name', labelKey: 'users.contactName', icon: userRoundedBold, sortable: true },
+  { key: 'interaction_count', labelKey: 'users.interactionCount', icon: chatDotsBold, sortable: true },
+  { key: 'last_interact', labelKey: 'users.lastInteract', icon: clockCircleBold, sortable: false },
+  { key: 'related_topics', labelKey: 'users.relatedTopics', icon: hashtagCircleBold, sortable: false },
+  { key: 'related_groups', labelKey: 'users.relatedGroups', icon: usersGroupRoundedBold, sortable: false },
+  { key: 'actions', labelKey: 'common.actions', icon: trashBin2Bold, sortable: false },
 ];
 
 /* ── Delete target type ─────────────────────────────────────────────── */
 
 type DeleteTarget =
-  | { kind: 'interest';        topic: string }
-  | { kind: 'group';           groupId: string }
-  | { kind: 'contact';         contactId: string }
-  | { kind: 'interest_chat';   topic: string; chatId: string }
-  | { kind: 'interest_kw';     topic: string; keyword: string }
-  | { kind: 'contact_topic';   contactId: string; topic: string }
-  | { kind: 'contact_group';   contactId: string; groupId: string };
+  | { kind: 'interest'; topic: string }
+  | { kind: 'group'; groupId: string }
+  | { kind: 'contact'; contactId: string }
+  | { kind: 'interest_chat'; topic: string; chatId: string }
+  | { kind: 'interest_kw'; topic: string; keyword: string }
+  | { kind: 'contact_topic'; contactId: string; topic: string }
+  | { kind: 'contact_group'; contactId: string; groupId: string };
 
 /* ── Component ──────────────────────────────────────────────────────── */
 
@@ -116,13 +116,13 @@ export default function UserProfileDetailPage() {
 
   const onError = useCallback(() => setDeleteError(true), []);
 
-  const delInterest       = useMutation({ mutationFn: (topic: string)                              => deleteProfileInterest(userId!, topic),                       onSuccess: invalidate, onError });
-  const delGroup          = useMutation({ mutationFn: (groupId: string)                            => deleteProfileActiveGroup(userId!, groupId),                  onSuccess: invalidate, onError });
-  const delContact        = useMutation({ mutationFn: (contactId: string)                          => deleteProfileContact(userId!, contactId),                    onSuccess: invalidate, onError });
-  const delInterestChat   = useMutation({ mutationFn: ({ topic, chatId }: { topic: string; chatId: string })           => deleteProfileInterestChat(userId!, topic, chatId),           onSuccess: invalidate, onError });
-  const delInterestKw     = useMutation({ mutationFn: ({ topic, keyword }: { topic: string; keyword: string })         => deleteProfileInterestKeyword(userId!, topic, keyword),        onSuccess: invalidate, onError });
-  const delContactTopic   = useMutation({ mutationFn: ({ contactId, topic }: { contactId: string; topic: string })     => deleteProfileContactTopic(userId!, contactId, topic),         onSuccess: invalidate, onError });
-  const delContactGroup   = useMutation({ mutationFn: ({ contactId, groupId }: { contactId: string; groupId: string }) => deleteProfileContactGroup(userId!, contactId, groupId),       onSuccess: invalidate, onError });
+  const delInterest = useMutation({ mutationFn: (topic: string) => deleteProfileInterest(userId!, topic), onSuccess: invalidate, onError });
+  const delGroup = useMutation({ mutationFn: (groupId: string) => deleteProfileActiveGroup(userId!, groupId), onSuccess: invalidate, onError });
+  const delContact = useMutation({ mutationFn: (contactId: string) => deleteProfileContact(userId!, contactId), onSuccess: invalidate, onError });
+  const delInterestChat = useMutation({ mutationFn: ({ topic, chatId }: { topic: string; chatId: string }) => deleteProfileInterestChat(userId!, topic, chatId), onSuccess: invalidate, onError });
+  const delInterestKw = useMutation({ mutationFn: ({ topic, keyword }: { topic: string; keyword: string }) => deleteProfileInterestKeyword(userId!, topic, keyword), onSuccess: invalidate, onError });
+  const delContactTopic = useMutation({ mutationFn: ({ contactId, topic }: { contactId: string; topic: string }) => deleteProfileContactTopic(userId!, contactId, topic), onSuccess: invalidate, onError });
+  const delContactGroup = useMutation({ mutationFn: ({ contactId, groupId }: { contactId: string; groupId: string }) => deleteProfileContactGroup(userId!, contactId, groupId), onSuccess: invalidate, onError });
 
   const isDeletePending =
     delInterest.isPending || delGroup.isPending || delContact.isPending ||
@@ -133,26 +133,26 @@ export default function UserProfileDetailPage() {
     if (!deleteTarget) return;
     setDeleteError(false);
     switch (deleteTarget.kind) {
-      case 'interest':       delInterest.mutate(deleteTarget.topic);                                                                     break;
-      case 'group':          delGroup.mutate(deleteTarget.groupId);                                                                      break;
-      case 'contact':        delContact.mutate(deleteTarget.contactId);                                                                  break;
-      case 'interest_chat':  delInterestChat.mutate({ topic: deleteTarget.topic, chatId: deleteTarget.chatId });                        break;
-      case 'interest_kw':    delInterestKw.mutate({ topic: deleteTarget.topic, keyword: deleteTarget.keyword });                        break;
-      case 'contact_topic':  delContactTopic.mutate({ contactId: deleteTarget.contactId, topic: deleteTarget.topic });                  break;
-      case 'contact_group':  delContactGroup.mutate({ contactId: deleteTarget.contactId, groupId: deleteTarget.groupId });              break;
+      case 'interest': delInterest.mutate(deleteTarget.topic); break;
+      case 'group': delGroup.mutate(deleteTarget.groupId); break;
+      case 'contact': delContact.mutate(deleteTarget.contactId); break;
+      case 'interest_chat': delInterestChat.mutate({ topic: deleteTarget.topic, chatId: deleteTarget.chatId }); break;
+      case 'interest_kw': delInterestKw.mutate({ topic: deleteTarget.topic, keyword: deleteTarget.keyword }); break;
+      case 'contact_topic': delContactTopic.mutate({ contactId: deleteTarget.contactId, topic: deleteTarget.topic }); break;
+      case 'contact_group': delContactGroup.mutate({ contactId: deleteTarget.contactId, groupId: deleteTarget.groupId }); break;
     }
   }
 
   function deleteConfirmText(): string {
     if (!deleteTarget) return '';
     switch (deleteTarget.kind) {
-      case 'interest':       return t('users.deleteInterestConfirm',      { item: deleteTarget.topic });
-      case 'group':          return t('users.deleteGroupConfirm',         { item: deleteTarget.groupId });
-      case 'contact':        return t('users.deleteContactConfirm',       { item: deleteTarget.contactId });
-      case 'interest_chat':  return t('users.deleteChatConfirm',         { item: deleteTarget.chatId,  parent: deleteTarget.topic });
-      case 'interest_kw':    return t('users.deleteKeywordConfirm',      { item: deleteTarget.keyword, parent: deleteTarget.topic });
-      case 'contact_topic':  return t('users.deleteContactTopicConfirm', { item: deleteTarget.topic,   parent: deleteTarget.contactId });
-      case 'contact_group':  return t('users.deleteContactGroupConfirm', { item: deleteTarget.groupId, parent: deleteTarget.contactId });
+      case 'interest': return t('users.deleteInterestConfirm', { item: deleteTarget.topic });
+      case 'group': return t('users.deleteGroupConfirm', { item: deleteTarget.groupId });
+      case 'contact': return t('users.deleteContactConfirm', { item: deleteTarget.contactId });
+      case 'interest_chat': return t('users.deleteChatConfirm', { item: deleteTarget.chatId, parent: deleteTarget.topic });
+      case 'interest_kw': return t('users.deleteKeywordConfirm', { item: deleteTarget.keyword, parent: deleteTarget.topic });
+      case 'contact_topic': return t('users.deleteContactTopicConfirm', { item: deleteTarget.topic, parent: deleteTarget.contactId });
+      case 'contact_group': return t('users.deleteContactGroupConfirm', { item: deleteTarget.groupId, parent: deleteTarget.contactId });
     }
   }
 
@@ -416,7 +416,7 @@ export default function UserProfileDetailPage() {
                     {row.topic}
                   </TableCell>
                   <TableCell className={cn('text-sm text-default-700', INTEREST_COL_STYLES.score)}>
-                    {row.score.toFixed(2)}
+                    {row.score}
                   </TableCell>
                   <TableCell className={cn('text-xs text-default-400', INTEREST_COL_STYLES.last_active)}>
                     {parseBackendDate(row.last_active).toLocaleString()}

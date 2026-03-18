@@ -410,7 +410,7 @@ export default function UserProfilesPage() {
                               color="secondary"
                               startContent={<Icon icon={hashtagCircleBold} fontSize={ICON_SIZES.chip} />}
                             >
-                              {i.topic} ({i.score.toFixed(1)})
+                              {i.topic} ({i.score})
                             </Chip>
                           ))}
                         </div>

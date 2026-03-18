@@ -1325,12 +1325,12 @@ class UserMemoryService:
             name = str(topic_data.get("name", "")).strip()
             if not name:
                 continue
-            score = 1  # 每检测到一次该话题，固定 +1
+            participation_count = 1  # 每检测到一次该话题，参与次数 +1
             keywords = [str(k).strip() for k in topic_data.get("keywords", []) if str(k).strip()]
 
             if name in profile.interests:
                 stat = profile.interests[name]
-                stat.score += score
+                stat.score += participation_count
                 stat.last_active = now_str
                 existing_kw = set(stat.keywords)
                 stat.keywords.extend(kw for kw in keywords if kw not in existing_kw)
@@ -1338,12 +1338,12 @@ class UserMemoryService:
                     stat.related_chat.append(event.chat_id)
             else:
                 profile.interests[name] = InterestTopicStat(
-                    score=score,
+                    score=participation_count,
                     last_active=now_str,
                     related_chat=[event.chat_id],
                     keywords=keywords,
                 )
-            logger.debug(f"    ✓ 更新话题: {name} | score+={score}")
+            logger.debug(f"    ✓ 更新话题: {name} | 参与次数+={participation_count}")
 
         # 累积活跃群聊
         for group_stat in profile.active_groups:

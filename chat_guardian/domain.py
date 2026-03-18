@@ -250,7 +250,7 @@ class InterestTopicStat(BaseModel):
     某一话题的兴趣统计数据。
 
     Attributes:
-        score: 累计参与分（每次检测到参与则累加）。
+        score: 参与次数（每次检测到参与则累加）。
         last_active: 最近活跃时间，格式为 YYYY-MM-DD HH:MM:SS。
         related_chat: 涉及该话题的群聊/会话 ID 列表。
         keywords: 该话题相关的核心关键词列表。
@@ -282,7 +282,7 @@ class RelatedTopicStat(BaseModel):
     与某联系人在某话题下的互动统计。
 
     Attributes:
-        score: 该话题下的互动分。
+        score: 该话题下的参与次数。
         last_talk: 最近互动时间，格式为 YYYY-MM-DD HH:MM:SS。
     """
 
