@@ -795,14 +795,14 @@ def create_app() -> FastAPI:
         if os.path.exists(_assets_dir):
             app.mount("/app/assets", StaticFiles(directory=_assets_dir), name="assets")
 
-        @app.get("/app/{full_path:path}")
-        async def serve_frontend(full_path: str):
-            """返回构建后的前端页面（任意子路径）。"""
-            return FileResponse(os.path.join(_frontend_dist, "index.html"))
-
         @app.get("/app")
         async def serve_frontend_root():
-            """返回前端入口页面。"""
+            """重定向 /app 到 /app/，确保前端资源正确加载。"""
+            return RedirectResponse(url="/app/")
+
+        @app.get("/app/{full_path:path}")
+        async def serve_frontend_with_path(full_path: str):
+            """返回构建后的前端页面（任意子路径）。"""
             return FileResponse(os.path.join(_frontend_dist, "index.html"))
 
         @app.get("/", include_in_schema=False)
