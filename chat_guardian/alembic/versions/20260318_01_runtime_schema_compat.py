@@ -59,8 +59,10 @@ def upgrade() -> None:
 def downgrade() -> None:
     detection_columns = _column_names("detection_results")
     if "result_id" in detection_columns:
-        op.drop_column("detection_results", "result_id")
+        with op.batch_alter_table("detection_results") as batch_op:
+            batch_op.drop_column("result_id")
 
     agent_columns = _column_names("agent_messages")
     if "total_tokens" in agent_columns:
-        op.drop_column("agent_messages", "total_tokens")
+        with op.batch_alter_table("agent_messages") as batch_op:
+            batch_op.drop_column("total_tokens")
