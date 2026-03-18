@@ -7,9 +7,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - CHAT_GUARDIAN_DATABASE_URL=sqlite:///./db.sqlite
+      - CHAT_GUARDIAN_DATABASE_URL=sqlite:///./data/db.sqlite
     volumes:
-      - ./db.sqlite:/app/db.sqlite
+      - ./data:/app/data
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 30s
