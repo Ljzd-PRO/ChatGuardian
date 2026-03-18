@@ -15,6 +15,7 @@ from collections import defaultdict, deque
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
+import logging
 
 from alembic import command
 from alembic.config import Config
@@ -105,8 +106,17 @@ class _AgentMessageRecord(_Base):
 
 class _RepositoryDatabase:
     def _run_alembic_migrations(self) -> None:
+        script_location = Path(__file__).with_name("alembic")
+        if not script_location.exists():
+            logging.getLogger(__name__).warning(
+                "Alembic migrations directory '%s' not found; skipping database migrations. "
+                "This may indicate a packaging/configuration issue.",
+                script_location,
+            )
+            return
+
         config = Config()
-        config.set_main_option("script_location", str(Path(__file__).with_name("alembic")))
+        config.set_main_option("script_location", str(script_location))
         with self.engine.begin() as connection:
             config.attributes["connection"] = connection
             command.upgrade(config, "head")
