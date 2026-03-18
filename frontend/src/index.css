@@ -6,17 +6,35 @@
   html {
     font-size: 15px;
   }
+
   @media (min-width: 1024px) {
     html {
       font-size: 17px;
     }
   }
+
   body {
     @apply text-default-900 bg-default-50;
     font-feature-settings: "case" 1, "liga" 1;
   }
+
   svg {
     width: 1.05em;
     height: 1.05em;
+  }
+
+  /* 移除输入框的浏览器默认 outline */
+  input,
+  textarea,
+  select,
+  button {
+    outline: none;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus,
+  button:focus {
+    outline: none;
   }
 }
