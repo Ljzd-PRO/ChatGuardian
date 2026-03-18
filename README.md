@@ -56,7 +56,10 @@ npm run build
 poetry run uvicorn chat_guardian.api.app:create_app --factory --reload --host 0.0.0.0 --port 8000
 ```
 
-如需手动执行数据库迁移：
+> 注意：在全新 / 空数据库上首次部署时，需要先完成一次应用启动，让应用内部通过 `create_all()` 创建基础表结构。
+> 之后在升级版本、变更数据结构时，再使用 Alembic 进行迁移。
+
+如需手动执行数据库迁移（假设基础表已经存在）：
 
 ```bash
 poetry run alembic upgrade head
