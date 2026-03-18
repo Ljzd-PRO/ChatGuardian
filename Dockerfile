@@ -7,7 +7,7 @@ COPY frontend .
 ENV VITE_API_BASE_URL=/
 RUN npm run build
 
-FROM python:3.11-slim AS runtime
+FROM python:3.13-slim AS runtime
 
 ENV POETRY_VERSION=2.3.2 \
     POETRY_NO_INTERACTION=1 \
