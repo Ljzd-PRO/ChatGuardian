@@ -13,13 +13,39 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 
+def _normalize_sync_url(url: str) -> str:
+    """Normalize database URLs for use with Alembic's synchronous engine.
+
+    - Convert `sqlite+aiosqlite://` URLs to `sqlite://` while preserving the rest
+      of the URL.
+    - Reject other async driver URLs (e.g. `postgresql+asyncpg`) with a clear
+      error message, since Alembic uses synchronous SQLAlchemy engines here.
+    """
+    if "://" not in url:
+        return url
+    scheme, rest = url.split("://", 1)
+
+    if scheme == "sqlite+aiosqlite":
+        return "sqlite://" + rest
+
+    if "+" in scheme:
+        raise RuntimeError(
+            f"Unsupported async database URL for Alembic migrations: {url!r}. "
+            "Please use a synchronous SQLAlchemy URL (for example, replace "
+            "'+aiosqlite' or other async drivers with their synchronous "
+            "equivalents)."
+        )
+
+    return url
+
+
 def _configured_url() -> str:
     env_url = os.getenv("CHAT_GUARDIAN_DATABASE_URL")
     if env_url:
-        return env_url
+        return _normalize_sync_url(env_url)
     configured = config.get_main_option("sqlalchemy.url")
     if configured:
-        return configured
+        return _normalize_sync_url(configured)
     return "sqlite:///./db.sqlite"
 
 
