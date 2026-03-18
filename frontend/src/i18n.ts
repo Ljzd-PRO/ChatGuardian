@@ -516,7 +516,7 @@ const resources = {
         tokens: '{{count}} tokens',
         agentConfig: {
           title: 'Agent Configuration',
-          desc: 'Advanced settings such as HTTP MCP. Collapsed by default.',
+          desc: 'Advanced settings such as HTTP MCP.',
           mcpHttpEnabled: 'Enable HTTP MCP',
           mcpHttpEnabledDesc: 'Expose the MCP server over HTTP for external tool access.',
           mcpHttpTransport: 'Transport Protocol',
@@ -1025,7 +1025,7 @@ const resources = {
         tokens: '{{count}} tokens',
         agentConfig: {
           title: '智能体配置',
-          desc: 'HTTP MCP 等高级配置，默认折叠。',
+          desc: 'HTTP MCP 等高级配置。',
           mcpHttpEnabled: '启用 HTTP MCP',
           mcpHttpEnabledDesc: '通过 HTTP 向外部工具暴露 MCP 服务。',
           mcpHttpTransport: '传输协议',
@@ -1534,7 +1534,7 @@ const resources = {
         tokens: '{{count}} tokens',
         agentConfig: {
           title: '智能體配置',
-          desc: 'HTTP MCP 等進階設定，預設折疊。',
+          desc: 'HTTP MCP 等進階設定。',
           mcpHttpEnabled: '啟用 HTTP MCP',
           mcpHttpEnabledDesc: '透過 HTTP 向外部工具暴露 MCP 服務。',
           mcpHttpTransport: '傳輸協議',
@@ -2024,7 +2024,7 @@ const resources = {
         tokens: '{{count}} トークン',
         agentConfig: {
           title: 'エージェント設定',
-          desc: 'HTTP MCP などの詳細設定。デフォルトで折りたたまれています。',
+          desc: 'HTTP MCP などの詳細設定。',
           mcpHttpEnabled: 'HTTP MCP を有効化',
           mcpHttpEnabledDesc: 'HTTP 経由で外部ツールに MCP サーバーを公開します。',
           mcpHttpTransport: '転送プロトコル',
@@ -2514,7 +2514,7 @@ const resources = {
         tokens: '{{count}} 토큰',
         agentConfig: {
           title: '에이전트 설정',
-          desc: 'HTTP MCP 등 고급 설정. 기본적으로 접혀 있습니다.',
+          desc: 'HTTP MCP 등 고급 설정.',
           mcpHttpEnabled: 'HTTP MCP 사용',
           mcpHttpEnabledDesc: 'HTTP를 통해 외부 도구에 MCP 서버를 노출합니다.',
           mcpHttpTransport: '전송 프로토콜',
@@ -3004,7 +3004,7 @@ const resources = {
         tokens: '{{count}} jetons',
         agentConfig: {
           title: "Configuration de l'agent",
-          desc: 'Paramètres avancés tels que HTTP MCP. Réduit par défaut.',
+          desc: 'Paramètres avancés tels que HTTP MCP.',
           mcpHttpEnabled: 'Activer HTTP MCP',
           mcpHttpEnabledDesc: 'Exposer le serveur MCP via HTTP pour les outils externes.',
           mcpHttpTransport: 'Protocole de transport',
@@ -3494,7 +3494,7 @@ const resources = {
         tokens: '{{count}} Token',
         agentConfig: {
           title: 'Agentenkonfiguration',
-          desc: 'Erweiterte Einstellungen wie HTTP MCP. Standardmäßig eingeklappt.',
+          desc: 'Erweiterte Einstellungen wie HTTP MCP.',
           mcpHttpEnabled: 'HTTP MCP aktivieren',
           mcpHttpEnabledDesc: 'MCP-Server über HTTP für externe Tools bereitstellen.',
           mcpHttpTransport: 'Transportprotokoll',
@@ -3984,7 +3984,7 @@ const resources = {
         tokens: '{{count}} токенов',
         agentConfig: {
           title: 'Настройки агента',
-          desc: 'Расширенные настройки, такие как HTTP MCP. Свёрнуто по умолчанию.',
+          desc: 'Расширенные настройки, такие как HTTP MCP.',
           mcpHttpEnabled: 'Включить HTTP MCP',
           mcpHttpEnabledDesc: 'Предоставить MCP-сервер через HTTP для внешних инструментов.',
           mcpHttpTransport: 'Транспортный протокол',
