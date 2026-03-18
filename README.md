@@ -56,6 +56,12 @@ npm run build
 poetry run uvicorn chat_guardian.api.app:create_app --factory --reload --host 0.0.0.0 --port 8000
 ```
 
+如需手动执行数据库迁移：
+
+```bash
+poetry run alembic upgrade head
+```
+
 4. 访问
 
 - Web UI（单端口构建版）: `http://127.0.0.1:8000/app/`

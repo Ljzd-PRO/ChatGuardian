@@ -13,10 +13,12 @@ import os
 import secrets
 from collections import defaultdict, deque
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, delete, select, text
-from sqlalchemy.exc import OperationalError
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, delete, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from chat_guardian.domain import ChatMessage, ChatType, DetectionResult, DetectionRule, UserMemoryFact
@@ -102,20 +104,17 @@ class _AgentMessageRecord(_Base):
 
 
 class _RepositoryDatabase:
-    def _migrate_agent_messages_total_tokens(self) -> None:
-        """Ensure `agent_messages.total_tokens` column exists for older databases."""
-        # This migration mirrors the style of other incremental migrations (e.g., detection_results.result_id).
-        # It is safe to run multiple times; duplicate-column errors are ignored.
-        with self.engine.begin() as conn:
+    def _run_alembic_migrations(self) -> None:
+        from loguru import logger
+
+        config = Config()
+        config.set_main_option("script_location", str(Path(__file__).with_name("alembic")))
+        with self.engine.begin() as connection:
+            config.attributes["connection"] = connection
             try:
-                conn.execute(text("ALTER TABLE agent_messages ADD COLUMN total_tokens INTEGER"))
-            except OperationalError as exc:
-                msg = str(exc).lower()
-                # SQLite typically reports "duplicate column name: total_tokens" if the column already exists.
-                # Other databases may use "already exists" in the error message.
-                if "duplicate column name" in msg or "already exists" in msg:
-                    return
-                raise
+                command.upgrade(config, "head")
+            except Exception as exc:
+                logger.warning(f"⚠️ Alembic migration failed, fallback to runtime-compat mode: {exc}")
 
     def __init__(self, database_url: str):
         normalized_url = normalize_database_url(database_url)
@@ -126,34 +125,7 @@ class _RepositoryDatabase:
         self.engine = create_engine(normalized_url, **engine_kwargs)
         self.session_factory = sessionmaker(bind=self.engine, expire_on_commit=False)
         _Base.metadata.create_all(self.engine)
-        self._migrate()
-        self._migrate_agent_messages_total_tokens()
-
-    def _migrate(self) -> None:
-        """Apply incremental schema migrations for new columns added after initial creation."""
-        from loguru import logger
-        with self.engine.connect() as conn:
-            # Add result_id column to detection_results if it doesn't exist yet.
-            # OperationalError is raised when the column already exists; any other
-            # exception indicates a genuine failure that we should surface.
-            try:
-                conn.execute(text("ALTER TABLE detection_results ADD COLUMN result_id TEXT"))
-                conn.commit()
-            except OperationalError as exc:
-                if "duplicate column" not in str(exc).lower() and "already exists" not in str(exc).lower():
-                    logger.warning(f"⚠️ Migration: unexpected error adding result_id column: {exc}")
-            # Backfill result_id for rows that were inserted before this migration.
-            # json_extract is SQLite-specific; on other backends this is a no-op.
-            try:
-                conn.execute(
-                    text(
-                        "UPDATE detection_results SET result_id = json_extract(payload_json, '$.result_id')"
-                        " WHERE result_id IS NULL"
-                    )
-                )
-                conn.commit()
-            except OperationalError as exc:
-                logger.debug(f"Migration backfill skipped (DB may not support json_extract): {exc}")
+        self._run_alembic_migrations()
 
 
 def normalize_database_url(database_url: str) -> str:
