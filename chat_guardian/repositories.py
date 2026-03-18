@@ -105,16 +105,11 @@ class _AgentMessageRecord(_Base):
 
 class _RepositoryDatabase:
     def _run_alembic_migrations(self) -> None:
-        from loguru import logger
-
         config = Config()
         config.set_main_option("script_location", str(Path(__file__).with_name("alembic")))
         with self.engine.begin() as connection:
             config.attributes["connection"] = connection
-            try:
-                command.upgrade(config, "head")
-            except Exception as exc:
-                logger.warning(f"⚠️ Alembic migration failed, fallback to runtime-compat mode: {exc}")
+            command.upgrade(config, "head")
 
     def __init__(self, database_url: str):
         normalized_url = normalize_database_url(database_url)

@@ -7,8 +7,6 @@ Create Date: 2026-03-18 01:00:00
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-
 import sqlalchemy as sa
 from alembic import op
 
@@ -17,6 +15,8 @@ revision = "20260318_01"
 down_revision = None
 branch_labels = None
 depends_on = None
+
+RESULT_ID_LENGTH = 128
 
 
 def _column_names(table_name: str) -> set[str]:
@@ -27,30 +27,29 @@ def _column_names(table_name: str) -> set[str]:
     return {column["name"] for column in inspector.get_columns(table_name)}
 
 
-def _try_execute(statements: Iterable[str]) -> None:
+def _try_backfill_result_id() -> None:
     bind = op.get_bind()
-    for statement in statements:
-        try:
-            bind.execute(sa.text(statement))
-        except Exception:
-            # Keep migration idempotent across SQLite dialect/runtime combinations.
-            return
+    try:
+        bind.execute(
+            sa.text(
+                "UPDATE detection_results "
+                "SET result_id = json_extract(payload_json, '$.result_id') "
+                "WHERE result_id IS NULL"
+            )
+        )
+    except sa.exc.OperationalError:
+        # Keep migration compatible with databases that don't provide json_extract.
+        return
 
 
 def upgrade() -> None:
     detection_columns = _column_names("detection_results")
     if detection_columns and "result_id" not in detection_columns:
-        op.add_column("detection_results", sa.Column("result_id", sa.String(length=128), nullable=True))
+        op.add_column("detection_results", sa.Column("result_id", sa.String(length=RESULT_ID_LENGTH), nullable=True))
 
     detection_columns = _column_names("detection_results")
     if "result_id" in detection_columns:
-        _try_execute(
-            [
-                "UPDATE detection_results "
-                "SET result_id = json_extract(payload_json, '$.result_id') "
-                "WHERE result_id IS NULL"
-            ]
-        )
+        _try_backfill_result_id()
 
     agent_columns = _column_names("agent_messages")
     if agent_columns and "total_tokens" not in agent_columns:
