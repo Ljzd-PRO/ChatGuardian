@@ -271,6 +271,13 @@ def test_update_settings_rejects_enabling_mcp_http_without_auth_key() -> None:
     assert resp.status_code == 400
     assert "auth key" in resp.text
 
+    # Ensure that the invalid update did not persist/enable MCP HTTP.
+    settings_resp = client.get("/api/settings", headers=headers)
+    assert settings_resp.status_code == 200, settings_resp.text
+    settings_data = settings_resp.json()
+    # `mcp_http_enabled` should not have been enabled by the rejected update.
+    assert not settings_data.get("mcp_http_enabled", False)
+
 
 def _make_detection_result(rule_id: str, result_id: str, triggered: bool = True) -> DetectionResult:
     """Helper to build a minimal DetectionResult for testing."""
