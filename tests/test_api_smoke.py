@@ -263,6 +263,12 @@ def test_update_settings_rejects_enabling_mcp_http_without_auth_key() -> None:
     client = TestClient(app)
     headers = _register_and_login(client)
 
+    # Pre-condition: Set to False first
+    client.post("/api/settings", json={"mcp_http_enabled": False}, headers=headers)
+    
+    # Pre-condition: Set to False first
+    client.post("/api/settings", json={"mcp_http_enabled": False}, headers=headers)
+    
     resp = client.post(
         "/api/settings",
         json={"mcp_http_enabled": True, "mcp_http_auth_key": ""},

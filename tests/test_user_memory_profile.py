@@ -138,9 +138,12 @@ async def test_memory_repository_get_missing_returns_none() -> None:
 # ---------------------------------------------------------------------------
 
 class FakeContextService:
+    def __init__(self):
+        self.count = 0
     async def build_context(self, event):
+        self.count += 1
         peer_message = ChatMessage(
-            message_id="m-peer",
+            message_id=f"m-peer-{self.count}",
             chat_id=event.chat_id,
             sender_id="u-456",
             sender_name="小李",
@@ -204,9 +207,13 @@ async def test_self_message_service_accumulates_on_repeated_calls() -> None:
     repo = MemoryRepository()
     service = UserMemoryService(FakeLLMReturnsTopics(), repo, FakeContextService())
     settings.memory_target_user_ids = ["u-self"]
-    event = _build_event()
-    await service.process_user_memory(event)
-    await service.process_user_memory(event)
+    event1 = _build_event()
+    event1.message.message_id = "m-1"
+    event2 = _build_event()
+    event2.message.message_id = "m-2"
+    # Note: suppression also looks at recent context. Ensure fake context returns diff?
+    await service.process_user_memory(event1)
+    await service.process_user_memory(event2)
 
     profile = await repo.get_profile("u-self")
     assert profile is not None

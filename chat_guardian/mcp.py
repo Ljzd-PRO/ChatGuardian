@@ -543,14 +543,7 @@ class ChatGuardianOperations:
             except Exception as exc:
                 raise OperationError(str(exc), status_code=422) from exc
 
-        validated_dict = validated.model_dump(exclude={"database_url"})
-        to_save = {k: validated_dict[k] for k in updates.keys()}
-        self.container.settings_repository.save(to_save)
-
-        for key, value in to_save.items():
-            setattr(settings, key, value)
-
-        # 处理 MCP HTTP 配置动态生效
+        # 处理 MCP HTTP 配置动态生效（先校验，后保存）
         mcp_keys = {
             "mcp_http_enabled",
             "mcp_http_transport",
@@ -560,32 +553,55 @@ class ChatGuardianOperations:
             "mcp_http_auth_key",
         }
         mcp_updates = mcp_keys & update_keys
+        mcp_changed = {
+            key for key in mcp_updates if getattr(settings, key) != getattr(validated, key)
+        }
+        mcp_restart_keys = {
+            "mcp_http_enabled",
+            "mcp_http_transport",
+            "mcp_http_host",
+            "mcp_http_port",
+            "mcp_http_path",
+        }
+        mcp_requires_restart = bool(mcp_changed & mcp_restart_keys)
         if mcp_updates:
-            if not _is_loopback_host(settings.mcp_http_host):
+            if not _is_loopback_host(validated.mcp_http_host):
                 raise OperationError(
                     "MCP HTTP host must be loopback only (e.g., 127.0.0.1/localhost).",
                     status_code=400,
                 )
-            if settings.mcp_http_enabled and not (settings.mcp_http_auth_key or "").strip():
+            if validated.mcp_http_enabled and not (validated.mcp_http_auth_key or "").strip():
                 raise OperationError(
                     "MCP HTTP auth key is required when HTTP MCP is enabled.",
                     status_code=400,
                 )
+
+        validated_dict = validated.model_dump(exclude={"database_url"})
+        to_save = {k: validated_dict[k] for k in updates.keys()}
+        self.container.settings_repository.save(to_save)
+
+        for key, value in to_save.items():
+            setattr(settings, key, value)
+
+        if mcp_updates:
             mcp_service = getattr(self.container, "mcp_service", None)
             if mcp_service:
-                await mcp_service.stop_http_server()
-                if settings.mcp_http_enabled:
-                    try:
-                        await mcp_service.start_http_server(
-                            transport=settings.mcp_http_transport,
-                            host=settings.mcp_http_host,
-                            port=settings.mcp_http_port,
-                            path=settings.mcp_http_path,
-                        )
-                    except Exception as exc:
-                        raise OperationError(
-                            f"Failed to start MCP HTTP server: {exc}", status_code=500
-                        ) from exc
+                if mcp_requires_restart:
+                    await mcp_service.stop_http_server()
+                    if settings.mcp_http_enabled:
+                        try:
+                            await mcp_service.start_http_server(
+                                transport=settings.mcp_http_transport,
+                                host=settings.mcp_http_host,
+                                port=settings.mcp_http_port,
+                                path=settings.mcp_http_path,
+                            )
+                        except Exception as exc:
+                            raise OperationError(
+                                f"Failed to start MCP HTTP server: {exc}", status_code=500
+                            ) from exc
+                elif "mcp_http_auth_key" in mcp_changed:
+                    logger.info("🔑 MCP HTTP auth key updated without restarting HTTP server")
 
         if adapter_updates and new_adapters is not None:
             try:
@@ -1001,11 +1017,13 @@ class ChatGuardianMCPService:
         auth_key = (settings.mcp_http_auth_key or "").strip()
         middleware = None
         if auth_key:
-            expected_key = auth_key
 
             class MCPKeyAuthMiddleware(BaseHTTPMiddleware):
                 async def dispatch(self, request: Request, call_next):
-                    provided_key = request.headers.get("X-MCP-Key")
+                    expected_key = (settings.mcp_http_auth_key or "").strip()
+                    provided_key = request.headers.get("Authorization")
+                    if provided_key and provided_key.lower().startswith("bearer "):
+                        provided_key = provided_key[7:].strip()
                     if provided_key != expected_key:
                         return JSONResponse(status_code=401, content={"detail": "Invalid MCP key"})
                     return await call_next(request)
@@ -1024,7 +1042,16 @@ class ChatGuardianMCPService:
                 )
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except SystemExit as exc:
+                logger.exception(
+                    "HTTP/SSE server terminated unexpectedly (transport={}, host={}, port={}, path={})",
+                    transport,
+                    host,
+                    port,
+                    path,
+                )
+                raise RuntimeError("HTTP/SSE server exited during startup") from exc
+            except Exception as exc:
                 logger.exception(
                     "HTTP/SSE server failed to start (transport={}, host={}, port={}, path={})",
                     transport,
@@ -1032,7 +1059,7 @@ class ChatGuardianMCPService:
                     port,
                     path,
                 )
-                raise
+                raise RuntimeError("HTTP/SSE server failed to start") from exc
 
         def _on_done(task: asyncio.Task) -> None:
             with suppress(asyncio.CancelledError):
@@ -1048,7 +1075,7 @@ class ChatGuardianMCPService:
         """Stop the background HTTP/SSE server task."""
         if self._http_task:
             self._http_task.cancel()
-            with suppress(asyncio.CancelledError):
+            with suppress(asyncio.CancelledError, RuntimeError):
                 await self._http_task
             self._http_task = None
 

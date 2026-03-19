@@ -100,7 +100,7 @@ class Settings(BaseModel):
         mcp_http_host: MCP HTTP 监听地址。
         mcp_http_port: MCP HTTP 监听端口。
         mcp_http_path: MCP HTTP 路径。
-        mcp_http_auth_key: MCP HTTP 专用鉴权密钥（通过请求头 X-MCP-Key 校验）。
+        mcp_http_auth_key: MCP HTTP 专用鉴权密钥（通过请求头 Authorization 校验）。
     """
 
     model_config = ConfigDict(extra="ignore", validate_assignment=True)

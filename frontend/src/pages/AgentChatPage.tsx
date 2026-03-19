@@ -47,6 +47,8 @@ import chatBold from '@iconify/icons-solar/chat-round-dots-bold';
 import addBold from '@iconify/icons-solar/add-circle-bold';
 import menuBold from '@iconify/icons-solar/hamburger-menu-bold';
 import penBold from '@iconify/icons-solar/pen-bold';
+import eyeBold from '@iconify/icons-solar/eye-bold';
+import eyeClosedLinear from '@iconify/icons-solar/eye-closed-linear';
 import checkCircleBold from '@iconify/icons-solar/check-circle-bold';
 import closeCircleBold from '@iconify/icons-solar/close-circle-bold';
 import arrowDownBold from '@iconify/icons-solar/alt-arrow-down-bold';
@@ -257,8 +259,8 @@ function CopyButton({ text, t }: { text: string; t: (key: string) => string }) {
         type="button"
         onClick={handleCopy}
         className={`p-1.5 rounded-lg transition-all duration-200 ${copied
-            ? 'bg-success/20 text-success'
-            : 'hover:bg-content3 text-foreground/40 hover:text-foreground/70'
+          ? 'bg-success/20 text-success'
+          : 'hover:bg-content3 text-foreground/40 hover:text-foreground/70'
           }`}
         aria-label={t('agent.copy')}
       >
@@ -332,8 +334,8 @@ function ToolCallCard({ toolCall }: { toolCall: ToolCallInfo }) {
             <div>
               <p className="text-xs font-medium text-foreground/50 mb-1.5">{t('agent.toolResult')}</p>
               <pre className={`text-xs border rounded-lg p-3 overflow-x-auto max-h-52 font-mono leading-relaxed ${isError
-                  ? 'bg-danger/5 border-danger/20 text-danger/80'
-                  : 'bg-default-100 dark:bg-default-50/10 border-divider text-foreground/75'
+                ? 'bg-danger/5 border-danger/20 text-danger/80'
+                : 'bg-default-100 dark:bg-default-50/10 border-divider text-foreground/75'
                 }`}>
                 {resultStr.length > MAX_TOOL_RESULT_LENGTH ? resultStr.slice(0, MAX_TOOL_RESULT_LENGTH) + '\n…(truncated)' : resultStr}
               </pre>
@@ -385,6 +387,8 @@ function formatElapsed(ms: number): string {
 
 function AgentConfigSection() {
   const { t } = useTranslation();
+  const [showMcpKey, setShowMcpKey] = useState(false);
+  const [copiedMcpKey, setCopiedMcpKey] = useState(false);
   const { data: settings } = useQuery({
     queryKey: ['settings'],
     queryFn: fetchSettings,
@@ -415,6 +419,43 @@ function AgentConfigSection() {
   const saveMutation = useMutation({
     mutationFn: () => updateSettings(form ?? {}),
   });
+
+  const generateRandomKey = useCallback(() => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const length = 32;
+    let generated = '';
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+      const values = new Uint8Array(length);
+      crypto.getRandomValues(values);
+      for (let i = 0; i < length; i += 1) {
+        generated += chars[values[i] % chars.length];
+      }
+    } else {
+      for (let i = 0; i < length; i += 1) {
+        generated += chars[Math.floor(Math.random() * chars.length)];
+      }
+    }
+    setForm(f => (f ? { ...f, mcp_http_auth_key: generated } : f));
+  }, []);
+
+  const copyMcpKey = useCallback(async () => {
+    const text = form?.mcp_http_auth_key ?? '';
+    if (!text) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setCopiedMcpKey(true);
+    window.setTimeout(() => setCopiedMcpKey(false), 1500);
+  }, [form?.mcp_http_auth_key]);
 
   if (!form) return null;
 
@@ -489,12 +530,56 @@ function AgentConfigSection() {
                 />
                 <Input
                   label={t('agent.agentConfig.mcpHttpAuthKey')}
-                  type="password"
+                  type={showMcpKey ? 'text' : 'password'}
                   value={form.mcp_http_auth_key}
                   onValueChange={(v) => setForm(f => f ? { ...f, mcp_http_auth_key: v } : f)}
                   description={t('agent.agentConfig.mcpHttpAuthKeyDesc')}
+                  endContent={(
+                    <button
+                      type="button"
+                      onClick={() => setShowMcpKey(v => !v)}
+                      aria-label={t('agent.agentConfig.toggleMcpHttpAuthKeyVisibility')}
+                    >
+                      <Icon
+                        className="text-default-400 pointer-events-none text-base"
+                        icon={showMcpKey ? eyeClosedLinear : eyeBold}
+                      />
+                    </button>
+                  )}
                   size="sm"
                 />
+                <div className="sm:col-span-2 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="flat"
+                    startContent={<Icon icon={showMcpKey ? eyeClosedLinear : eyeBold} fontSize={14} />}
+                    onPress={() => setShowMcpKey(v => !v)}
+                  >
+                    {showMcpKey ? t('agent.agentConfig.hideMcpHttpAuthKey') : t('agent.agentConfig.showMcpHttpAuthKey')}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="flat"
+                    color="secondary"
+                    startContent={<Icon icon={restartBold} fontSize={14} />}
+                    onPress={generateRandomKey}
+                  >
+                    {t('agent.agentConfig.generateMcpHttpAuthKey')}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="flat"
+                    color={copiedMcpKey ? 'success' : 'default'}
+                    startContent={<Icon icon={copiedMcpKey ? checkCircleBold : copyBold} fontSize={14} />}
+                    isDisabled={!form.mcp_http_auth_key}
+                    onPress={copyMcpKey}
+                  >
+                    {copiedMcpKey ? t('agent.copied') : t('agent.agentConfig.copyMcpHttpAuthKey')}
+                  </Button>
+                </div>
               </div>
             )}
             <div className="flex items-center justify-end gap-3">
@@ -593,8 +678,8 @@ function SessionSidebar({
               <div
                 key={session.session_id}
                 className={`group flex items-center gap-1.5 px-3 py-2.5 rounded-xl transition-all duration-150 ${isStreaming
-                    ? 'cursor-not-allowed opacity-60'
-                    : 'cursor-pointer'
+                  ? 'cursor-not-allowed opacity-60'
+                  : 'cursor-pointer'
                   } ${currentSessionId === session.session_id
                     ? 'bg-primary/15 text-primary shadow-sm'
                     : isStreaming
@@ -1325,8 +1410,8 @@ export default function AgentChatPage() {
                         {/* Bubble */}
                         <div
                           className={`group relative rounded-2xl ${isUser
-                              ? 'bg-primary text-primary-foreground rounded-br-sm shadow-sm px-4 py-3'
-                              : 'bg-content2/80 backdrop-blur-sm rounded-bl-sm shadow-sm border border-divider/50 px-4 pt-3 pb-3'
+                            ? 'bg-primary text-primary-foreground rounded-br-sm shadow-sm px-4 py-3'
+                            : 'bg-content2/80 backdrop-blur-sm rounded-bl-sm shadow-sm border border-divider/50 px-4 pt-3 pb-3'
                             }`}
                         >
                           {!isUser ? (

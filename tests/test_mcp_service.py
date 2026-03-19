@@ -1,4 +1,5 @@
 import pytest
+from types import SimpleNamespace
 from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
 
@@ -23,6 +24,35 @@ class _DummyContainer:
         self.admin_password = "secret"
         self.using_default_credentials = False
         self.token_manager = _DummyTokenManager()
+
+
+class _DummySettingsRepository:
+    def __init__(self):
+        self.last_saved = None
+
+    def save(self, payload):
+        self.last_saved = payload
+
+
+class _DummyAdapterManager:
+    def __init__(self):
+        self.adapters = []
+
+    async def stop_all(self):
+        return None
+
+
+class _DummyMCPRuntimeService:
+    def __init__(self):
+        self.stop_calls = 0
+        self.start_calls = 0
+
+    async def stop_http_server(self):
+        self.stop_calls += 1
+
+    async def start_http_server(self, **_kwargs):
+        self.start_calls += 1
+        return None
 
 
 @pytest.fixture
@@ -101,3 +131,52 @@ def test_get_default_notification_template_contains_template() -> None:
     assert set(defaults.keys()) == {"notification_text_template"}
     assert isinstance(defaults["notification_text_template"], str)
     assert "{rule_id}" in defaults["notification_text_template"]
+
+
+@pytest.mark.asyncio
+async def test_update_mcp_auth_key_does_not_restart_http_server() -> None:
+    previous = {
+        "mcp_http_enabled": settings.mcp_http_enabled,
+        "mcp_http_transport": settings.mcp_http_transport,
+        "mcp_http_host": settings.mcp_http_host,
+        "mcp_http_port": settings.mcp_http_port,
+        "mcp_http_path": settings.mcp_http_path,
+        "mcp_http_auth_key": settings.mcp_http_auth_key,
+    }
+    settings.mcp_http_enabled = True
+    settings.mcp_http_transport = "streamable-http"
+    settings.mcp_http_host = "127.0.0.1"
+    settings.mcp_http_port = 18080
+    settings.mcp_http_path = "/mcp"
+    settings.mcp_http_auth_key = "old-key"
+
+    runtime_mcp = _DummyMCPRuntimeService()
+    container = SimpleNamespace(
+        settings_repository=_DummySettingsRepository(),
+        mcp_service=runtime_mcp,
+        adapter_manager=_DummyAdapterManager(),
+    )
+    ops = ChatGuardianOperations(container=container, env_only_keys=[])
+
+    try:
+        result = await ops.update_settings(
+            {
+                "mcp_http_enabled": True,
+                "mcp_http_transport": "streamable-http",
+                "mcp_http_host": "127.0.0.1",
+                "mcp_http_port": 18080,
+                "mcp_http_path": "/mcp",
+                "mcp_http_auth_key": "new-key",
+            }
+        )
+        assert result["status"] == "saved"
+        assert settings.mcp_http_auth_key == "new-key"
+        assert runtime_mcp.stop_calls == 0
+        assert runtime_mcp.start_calls == 0
+    finally:
+        settings.mcp_http_enabled = previous["mcp_http_enabled"]
+        settings.mcp_http_transport = previous["mcp_http_transport"]
+        settings.mcp_http_host = previous["mcp_http_host"]
+        settings.mcp_http_port = previous["mcp_http_port"]
+        settings.mcp_http_path = previous["mcp_http_path"]
+        settings.mcp_http_auth_key = previous["mcp_http_auth_key"]
