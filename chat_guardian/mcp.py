@@ -18,6 +18,7 @@ from chat_guardian.prompts import (
     RULE_DETECTION_SYSTEM_PROMPT,
     USER_PROFILE_SYSTEM_PROMPT,
 )
+from chat_guardian.notifiers.base import get_default_notification_template
 from chat_guardian.services import build_llm_client
 from chat_guardian.settings import Settings, settings
 
@@ -478,6 +479,12 @@ class ChatGuardianOperations:
             "rule_detection_system_prompt": RULE_DETECTION_SYSTEM_PROMPT,
             "user_profile_system_prompt": USER_PROFILE_SYSTEM_PROMPT,
             "admin_agent_system_prompt": ADMIN_AGENT_SYSTEM_PROMPT,
+        }
+
+    @staticmethod
+    def get_default_notification_template() -> dict[str, str]:
+        return {
+            "notification_text_template": get_default_notification_template(),
         }
 
     async def update_settings(self, payload: dict) -> dict[str, Any]:

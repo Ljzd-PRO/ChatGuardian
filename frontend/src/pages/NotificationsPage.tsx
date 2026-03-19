@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Button, Card, CardBody, CardHeader, Input, Spinner, Switch, Textarea,
+  Dropdown, DropdownTrigger, DropdownMenu, DropdownItem,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import bellBingBold from '@iconify/icons-solar/bell-bing-bold';
@@ -17,8 +18,16 @@ import smartphone2Bold from '@iconify/icons-solar/smartphone-2-bold';
 import tagBold from '@iconify/icons-solar/tag-bold';
 import userRoundedBold from '@iconify/icons-solar/user-rounded-bold';
 import playCircleBold from '@iconify/icons-solar/play-circle-bold';
+import addCircleBold from '@iconify/icons-solar/add-circle-bold';
+import eyeBold from '@iconify/icons-solar/eye-bold';
 import { useTranslation } from 'react-i18next';
-import { fetchNotificationsConfig, fetchSettings, updateSettings, testNotification } from '../api/settings';
+import {
+  fetchDefaultNotificationTemplate,
+  fetchNotificationsConfig,
+  fetchSettings,
+  updateSettings,
+  testNotification,
+} from '../api/settings';
 import { ApiError } from '../api/client';
 import type { AppSettings } from '../api/settings';
 import { ICON_SIZES } from '../constants/iconSizes';
@@ -27,10 +36,34 @@ export default function NotificationsPage() {
   const { t } = useTranslation();
   const { data, isLoading } = useQuery({ queryKey: ['notifications_config'], queryFn: fetchNotificationsConfig });
   const { data: settingsData } = useQuery({ queryKey: ['settings'], queryFn: fetchSettings });
+  const { data: defaultTemplateData } = useQuery({
+    queryKey: ['notification_default_template'],
+    queryFn: fetchDefaultNotificationTemplate,
+  });
   const [form, setForm] = useState<Partial<AppSettings>>({});
   const [emailTestState, setEmailTestState] = useState<'idle' | 'loading' | 'success' | 'error' | 'notConfigured'>('idle');
   const [barkTestState, setBarkTestState] = useState<'idle' | 'loading' | 'success' | 'error' | 'notConfigured'>('idle');
   const testResetTimers = useRef<{ email: ReturnType<typeof setTimeout> | null; bark: ReturnType<typeof setTimeout> | null }>({ email: null, bark: null });
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertVariable = (variable: string) => {
+    const el = textareaRef.current;
+    if (!el) {
+      setForm(f => ({ ...f, notification_text_template: (f.notification_text_template ?? '') + `{${variable}}` }));
+      return;
+    }
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const currentText = form.notification_text_template ?? '';
+    const varText = `{${variable}}`;
+    const newText = currentText.substring(0, start) + varText + currentText.substring(end);
+    setForm(f => ({ ...f, notification_text_template: newText }));
+    
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + varText.length, start + varText.length);
+    }, 0);
+  };
 
   // Clear timers on unmount to avoid state updates on unmounted component
   useEffect(() => {
@@ -253,13 +286,64 @@ export default function NotificationsPage() {
         <CardHeader className="flex items-start justify-between gap-2">
           <div className="space-y-1">
             <span className="font-semibold">{t('notifications.textTemplate')}</span>
-            <p className="text-xs text-default-500 max-w-lg">{t('notifications.textTemplateDesc')}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Dropdown>
+              <DropdownTrigger>
+                <Button size="sm" variant="flat" startContent={<Icon icon={addCircleBold} fontSize={ICON_SIZES.button} />}>
+                  {t('notifications.insertVariable')}
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Insert Variables"
+                onAction={(key) => insertVariable(key as string)}
+              >
+                <DropdownItem key="chat_type" startContent={<Icon icon={tagBold} className="text-default-500" fontSize={18} />}>
+                  {t('notifications.varChatType')}
+                </DropdownItem>
+                <DropdownItem key="chat_id" startContent={<Icon icon={hashtagBold} className="text-default-500" fontSize={18} />}>
+                  {t('notifications.varChatId')}
+                </DropdownItem>
+                <DropdownItem key="platform" startContent={<Icon icon={earthBold} className="text-default-500" fontSize={18} />}>
+                  {t('notifications.varPlatform')}
+                </DropdownItem>
+                <DropdownItem key="message" startContent={<Icon icon={letterBold} className="text-default-500" fontSize={18} />}>
+                  {t('notifications.varMessage')}
+                </DropdownItem>
+                <DropdownItem key="rule_id" startContent={<Icon icon={keyBold} className="text-default-500" fontSize={18} />}>
+                  {t('notifications.varRuleId')}
+                </DropdownItem>
+                <DropdownItem key="confidence" startContent={<Icon icon={chart2Bold} className="text-default-500" fontSize={18} />}>
+                  {t('notifications.varConfidence')}
+                </DropdownItem>
+                <DropdownItem key="reason" startContent={<Icon icon={bellBingBold} className="text-default-500" fontSize={18} />}>
+                  {t('notifications.varReason')}
+                </DropdownItem>
+                <DropdownItem key="extracted_params" startContent={<Icon icon={server2Bold} className="text-default-500" fontSize={18} />}>
+                  {t('notifications.varExtractedParams')}
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+            <Button
+              size="sm"
+              variant="flat"
+              color="primary"
+              startContent={<Icon icon={eyeBold} fontSize={ICON_SIZES.button} />}
+              isDisabled={!defaultTemplateData?.notification_text_template}
+              onPress={() => {
+                if (defaultTemplateData?.notification_text_template) {
+                  setForm(f => ({ ...f, notification_text_template: defaultTemplateData.notification_text_template }));
+                }
+              }}
+            >
+              {t('notifications.showDefaultTemplate')}
+            </Button>
           </div>
         </CardHeader>
         <CardBody className="space-y-3">
           <Textarea
+            ref={textareaRef}
             label={t('notifications.textTemplate')}
-            placeholder={t('notifications.textTemplatePlaceholder')}
             minRows={3}
             value={form.notification_text_template ?? ''}
             onValueChange={v => {

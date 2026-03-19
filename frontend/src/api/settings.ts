@@ -114,10 +114,15 @@ export interface DefaultPrompts {
   admin_agent_system_prompt: string;
 }
 
+export interface DefaultNotificationTemplate {
+  notification_text_template: string;
+}
+
 export const fetchSettings = () => apiFetch<AppSettings>('/api/settings');
 export const updateSettings = (s: Partial<AppSettings>) =>
   apiFetch<{ status: string }>('/api/settings', { method: 'POST', body: JSON.stringify(s) });
 export const fetchDefaultPrompts = () => apiFetch<DefaultPrompts>('/api/prompts/defaults');
+export const fetchDefaultNotificationTemplate = () => apiFetch<DefaultNotificationTemplate>('/api/notifications/default-template');
 export const fetchNotificationsConfig = () => apiFetch<NotificationsConfig>('/api/notifications/config');
 export const fetchLLMConfig = () => apiFetch<LLMConfig>('/api/llm/config');
 export const fetchLLMHealth = () => apiFetch<Record<string, unknown>>('/llm/health');

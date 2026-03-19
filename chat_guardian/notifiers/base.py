@@ -4,7 +4,7 @@ from typing import Protocol
 
 from chat_guardian.domain import ChatEvent, ChatMessage, RuleDecision
 
-_DEFAULT_NOTIFICATION_TEMPLATE = (
+DEFAULT_NOTIFICATION_TEMPLATE = (
     "Rule: {rule_id}\n"
     "Chat: {chat_id}\n"
     "Message ID: {message_id}\n"
@@ -27,27 +27,40 @@ def format_notification_text(event: ChatEvent, decision: RuleDecision) -> str:
     else:
         params_text = "-"
 
-    template = settings.notification_text_template or _DEFAULT_NOTIFICATION_TEMPLATE
+    template = settings.notification_text_template or DEFAULT_NOTIFICATION_TEMPLATE
 
     try:
         return template.format(
-            rule_id=decision.rule_id,
+            chat_type=event.chat_type,
             chat_id=event.chat_id,
+            platform=event.platform,
+            message=str(event.message),
             message_id=event.message.message_id,
+            rule_id=decision.rule_id,
             confidence=decision.confidence,
             reason=decision.reason or "",
+            extracted_params=decision.extracted_params or {},
             params_text=params_text,
         )
     except (KeyError, ValueError, IndexError):
         # 模板格式错误时回退到默认模板
-        return _DEFAULT_NOTIFICATION_TEMPLATE.format(
-            rule_id=decision.rule_id,
+        return DEFAULT_NOTIFICATION_TEMPLATE.format(
+            chat_type=event.chat_type,
             chat_id=event.chat_id,
+            platform=event.platform,
+            message=str(event.message),
             message_id=event.message.message_id,
+            rule_id=decision.rule_id,
             confidence=decision.confidence,
             reason=decision.reason or "",
+            extracted_params=decision.extracted_params or {},
             params_text=params_text,
         )
+
+
+def get_default_notification_template() -> str:
+    """Return built-in default notification text template."""
+    return DEFAULT_NOTIFICATION_TEMPLATE
 
 
 class Notifier(Protocol):

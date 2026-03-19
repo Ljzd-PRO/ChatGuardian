@@ -92,3 +92,12 @@ def test_get_default_prompts_contains_three_templates() -> None:
         "admin_agent_system_prompt",
     }
     assert all(isinstance(value, str) and value.strip() for value in defaults.values())
+
+
+def test_get_default_notification_template_contains_template() -> None:
+    ops = ChatGuardianOperations(container=_DummyContainer(), env_only_keys=[])
+    defaults = ops.get_default_notification_template()
+
+    assert set(defaults.keys()) == {"notification_text_template"}
+    assert isinstance(defaults["notification_text_template"], str)
+    assert "{rule_id}" in defaults["notification_text_template"]

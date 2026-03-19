@@ -610,6 +610,11 @@ def create_app() -> FastAPI:
         """返回系统内置默认提示词模板。"""
         return operations.get_default_prompts()
 
+    @app.get("/api/notifications/default-template")
+    async def get_default_notification_template_api() -> dict[str, str]:
+        """返回系统内置默认通知文本模板。"""
+        return operations.get_default_notification_template()
+
     # ── Notifications config ──────────────────────────────────────────────────
 
     @app.get("/api/notifications/config")
