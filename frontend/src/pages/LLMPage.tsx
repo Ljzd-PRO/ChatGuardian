@@ -185,6 +185,7 @@ export default function LLMPage() {
             <Button
               size="sm"
               color="success"
+              startContent={!save.isPending ? <Icon icon={disketteBold} fontSize={ICON_SIZES.button} /> : undefined}
               isLoading={save.isPending}
               onPress={() => save.mutate()}
             >
