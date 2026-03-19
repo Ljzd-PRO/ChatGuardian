@@ -605,6 +605,11 @@ def create_app() -> FastAPI:
         except OperationError as exc:
             raise _to_http_error(exc) from exc
 
+    @app.get("/api/prompts/defaults")
+    async def get_default_prompts_api() -> dict[str, str]:
+        """返回系统内置默认提示词模板。"""
+        return operations.get_default_prompts()
+
     # ── Notifications config ──────────────────────────────────────────────────
 
     @app.get("/api/notifications/config")

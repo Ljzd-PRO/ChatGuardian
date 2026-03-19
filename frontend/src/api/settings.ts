@@ -108,9 +108,16 @@ export interface LLMConfig {
   ollama_base_url: string;
 }
 
+export interface DefaultPrompts {
+  rule_detection_system_prompt: string;
+  user_profile_system_prompt: string;
+  admin_agent_system_prompt: string;
+}
+
 export const fetchSettings = () => apiFetch<AppSettings>('/api/settings');
 export const updateSettings = (s: Partial<AppSettings>) =>
   apiFetch<{ status: string }>('/api/settings', { method: 'POST', body: JSON.stringify(s) });
+export const fetchDefaultPrompts = () => apiFetch<DefaultPrompts>('/api/prompts/defaults');
 export const fetchNotificationsConfig = () => apiFetch<NotificationsConfig>('/api/notifications/config');
 export const fetchLLMConfig = () => apiFetch<LLMConfig>('/api/llm/config');
 export const fetchLLMHealth = () => apiFetch<Record<string, unknown>>('/llm/health');

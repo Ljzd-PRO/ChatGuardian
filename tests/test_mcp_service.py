@@ -61,7 +61,7 @@ async def test_start_http_server_rejects_non_loopback(mcp_service: ChatGuardianM
 
 
 @pytest.mark.asyncio
-async def test_get_settings_returns_default_prompt_texts_when_unset() -> None:
+async def test_get_settings_keeps_raw_prompt_values() -> None:
     old_rule = settings.rule_detection_system_prompt
     old_profile = settings.user_profile_system_prompt
     old_admin = settings.admin_agent_system_prompt
@@ -73,13 +73,22 @@ async def test_get_settings_returns_default_prompt_texts_when_unset() -> None:
         ops = ChatGuardianOperations(container=_DummyContainer(), env_only_keys=[])
         current = await ops.get_settings()
 
-        assert isinstance(current.rule_detection_system_prompt, str)
-        assert current.rule_detection_system_prompt.strip()
-        assert isinstance(current.user_profile_system_prompt, str)
-        assert current.user_profile_system_prompt.strip()
-        assert isinstance(current.admin_agent_system_prompt, str)
-        assert current.admin_agent_system_prompt.strip()
+        assert current.rule_detection_system_prompt is None
+        assert current.user_profile_system_prompt == ""
+        assert current.admin_agent_system_prompt is None
     finally:
         settings.rule_detection_system_prompt = old_rule
         settings.user_profile_system_prompt = old_profile
         settings.admin_agent_system_prompt = old_admin
+
+
+def test_get_default_prompts_contains_three_templates() -> None:
+    ops = ChatGuardianOperations(container=_DummyContainer(), env_only_keys=[])
+    defaults = ops.get_default_prompts()
+
+    assert set(defaults.keys()) == {
+        "rule_detection_system_prompt",
+        "user_profile_system_prompt",
+        "admin_agent_system_prompt",
+    }
+    assert all(isinstance(value, str) and value.strip() for value in defaults.values())

@@ -1,4 +1,4 @@
-import i18n from 'i18next';
+﻿import i18n from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
 
@@ -247,6 +247,10 @@ const resources = {
         batchScheduler: 'Batch Scheduler',
         noScheduler: 'No scheduler data',
         status: 'Status',
+        ruleDetectionPrompt: 'Rule Detection System Prompt',
+        userProfilePrompt: 'User Profile Analysis System Prompt',
+        adminAgentPrompt: 'Admin Agent System Prompt',
+        showDefaultPrompt: 'Show Default Prompt',
       },
       notifications: {
         loading: 'Loading…',
@@ -757,6 +761,10 @@ const resources = {
         batchScheduler: '批调度器',
         noScheduler: '暂无调度数据',
         status: '状态',
+        ruleDetectionPrompt: '规则检测系统提示词',
+        userProfilePrompt: '用户画像分析系统提示词',
+        adminAgentPrompt: '管理智能体系统提示词',
+        showDefaultPrompt: '显示默认提示词',
       },
       notifications: {
         loading: '加载中…',
@@ -1266,6 +1274,10 @@ const resources = {
         batchScheduler: '批次排程器',
         noScheduler: '暫無排程資料',
         status: '狀態',
+        ruleDetectionPrompt: '規則檢測系統提示詞',
+        userProfilePrompt: '使用者畫像分析系統提示詞',
+        adminAgentPrompt: '管理智能體系統提示詞',
+        showDefaultPrompt: '顯示預設提示詞',
       },
       notifications: {
         loading: '載入中…',
@@ -1756,6 +1768,10 @@ const resources = {
         batchScheduler: 'バッチスケジューラ',
         noScheduler: 'スケジュールデータなし',
         status: 'ステータス',
+        ruleDetectionPrompt: 'ルール検出システムプロンプト',
+        userProfilePrompt: 'ユーザープロファイル分析システムプロンプト',
+        adminAgentPrompt: '管理エージェントシステムプロンプト',
+        showDefaultPrompt: 'デフォルトプロンプトを表示',
       },
       notifications: {
         loading: '読み込み中…',
@@ -2246,6 +2262,10 @@ const resources = {
         batchScheduler: '배치 스케줄러',
         noScheduler: '스케줄 데이터 없음',
         status: '상태',
+        ruleDetectionPrompt: '규칙 탐지 시스템 프롬프트',
+        userProfilePrompt: '사용자 프로필 분석 시스템 프롬프트',
+        adminAgentPrompt: '관리 에이전트 시스템 프롬프트',
+        showDefaultPrompt: '기본 프롬프트 표시',
       },
       notifications: {
         loading: '불러오는 중…',
@@ -2736,6 +2756,10 @@ const resources = {
         batchScheduler: 'Planificateur de lots',
         noScheduler: 'Aucune donnée de planification',
         status: 'Statut',
+        ruleDetectionPrompt: 'Prompt système de détection des règles',
+        userProfilePrompt: 'Prompt système d\'analyse de profil utilisateur',
+        adminAgentPrompt: 'Prompt système de l\'agent d\'administration',
+        showDefaultPrompt: 'Afficher le prompt par défaut',
       },
       notifications: {
         loading: 'Chargement…',
@@ -3226,6 +3250,10 @@ const resources = {
         batchScheduler: 'Batch-Planer',
         noScheduler: 'Keine Planungsdaten',
         status: 'Status',
+        ruleDetectionPrompt: 'System-Prompt für Regelerkennung',
+        userProfilePrompt: 'System-Prompt für Benutzerprofilanalyse',
+        adminAgentPrompt: 'System-Prompt für Admin-Agent',
+        showDefaultPrompt: 'Standard-Prompt anzeigen',
       },
       notifications: {
         loading: 'Laden…',
@@ -3716,6 +3744,10 @@ const resources = {
         batchScheduler: 'Планировщик партий',
         noScheduler: 'Данные планировщика отсутствуют',
         status: 'Статус',
+        ruleDetectionPrompt: 'Системный промпт детекции правил',
+        userProfilePrompt: 'Системный промпт анализа профиля пользователя',
+        adminAgentPrompt: 'Системный промпт админ-агента',
+        showDefaultPrompt: 'Показать промпт по умолчанию',
       },
       notifications: {
         loading: 'Загрузка…',

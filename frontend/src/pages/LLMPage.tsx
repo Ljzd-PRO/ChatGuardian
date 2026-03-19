@@ -18,21 +18,75 @@ import lightningBold from '@iconify/icons-solar/lightning-bold';
 import linkBold from '@iconify/icons-solar/link-bold';
 import pulse2Bold from '@iconify/icons-solar/pulse-2-bold';
 import thermometerBold from '@iconify/icons-solar/thermometer-bold';
+import eyeBold from '@iconify/icons-solar/eye-bold';
+import shieldCheckBold from '@iconify/icons-solar/shield-check-bold';
+import userBold from '@iconify/icons-solar/user-bold';
+import crownStarBold from '@iconify/icons-solar/crown-star-bold';
+import disketteBold from '@iconify/icons-solar/diskette-bold';
 import { useTranslation } from 'react-i18next';
-import { fetchLLMHealth, fetchSettings, updateSettings } from '../api/settings';
-import type { AppSettings } from '../api/settings';
+import { fetchDefaultPrompts, fetchLLMHealth, fetchSettings, updateSettings } from '../api/settings';
+import type { AppSettings, DefaultPrompts } from '../api/settings';
 import { ICON_SIZES } from '../constants/iconSizes';
+import type { IconifyIcon } from '@iconify/react';
 
 type PromptEditorProps = {
   label: string;
   value: string;
+  defaultValue?: string;
+  showDefaultLabel: string;
+  icon: IconifyIcon;
+  saveLabel: string;
+  onSave: () => void;
+  isSaving: boolean;
+  onFillDefault: (value: string) => void;
   onChange: (value: string) => void;
 };
 
-function PromptEditor({ label, value, onChange }: PromptEditorProps) {
+function PromptEditor({
+  label,
+  value,
+  defaultValue,
+  showDefaultLabel,
+  icon,
+  saveLabel,
+  onSave,
+  isSaving,
+  onFillDefault,
+  onChange,
+}: PromptEditorProps) {
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-default-700">{label}</label>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Icon icon={icon} fontSize={20} className="text-default-500" />
+          <label className="text-sm font-medium text-default-700">{label}</label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="flat"
+            color="primary"
+            startContent={<Icon icon={eyeBold} fontSize={ICON_SIZES.button} />}
+            isDisabled={!defaultValue}
+            onPress={() => {
+              if (defaultValue) {
+                onFillDefault(defaultValue);
+              }
+            }}
+          >
+            {showDefaultLabel}
+          </Button>
+          <Button
+            size="sm"
+            color="success"
+            startContent={!isSaving ? <Icon icon={disketteBold} fontSize={ICON_SIZES.button} /> : undefined}
+            isLoading={isSaving}
+            onPress={onSave}
+          >
+            {saveLabel}
+          </Button>
+        </div>
+      </div>
       <div
         className="rounded-large border border-default-200 overflow-auto"
         style={{
@@ -56,7 +110,6 @@ function PromptEditor({ label, value, onChange }: PromptEditorProps) {
           onChange={onChange}
         />
       </div>
-      <p className="text-xs text-default-500">支持 Markdown 语法高亮，可拖拽右下角手动调整高度。</p>
     </div>
   );
 }
@@ -64,6 +117,10 @@ function PromptEditor({ label, value, onChange }: PromptEditorProps) {
 export default function LLMPage() {
   const { t } = useTranslation();
   const { data: settings, isLoading } = useQuery({ queryKey: ['settings'], queryFn: fetchSettings });
+  const { data: defaultPrompts } = useQuery<DefaultPrompts>({
+    queryKey: ['default_prompts'],
+    queryFn: fetchDefaultPrompts,
+  });
   const [pinging, setPinging] = useState(false);
   const [form, setForm] = useState<Partial<AppSettings>>({});
   const [pingResult, setPingResult] = useState<{ ok: boolean; latency_ms: number; error?: string } | null>(null);
@@ -245,24 +302,45 @@ export default function LLMPage() {
 
           <div className="space-y-3">
             <PromptEditor
-              label="规则检测系统提示词"
+              label={t('llm.ruleDetectionPrompt')}
               value={form.rule_detection_system_prompt ?? ''}
+              defaultValue={defaultPrompts?.rule_detection_system_prompt}
+              showDefaultLabel={t('llm.showDefaultPrompt')}
+              icon={shieldCheckBold}
+              saveLabel={t('common.save')}
+              onSave={() => save.mutate()}
+              isSaving={save.isPending}
+              onFillDefault={value => setForm(f => ({ ...f, rule_detection_system_prompt: value }))}
               onChange={v => {
                 const trimmed = v.trim();
                 setForm(f => ({ ...f, rule_detection_system_prompt: trimmed === '' ? null : v }));
               }}
             />
             <PromptEditor
-              label="用户画像分析系统提示词"
+              label={t('llm.userProfilePrompt')}
               value={form.user_profile_system_prompt ?? ''}
+              defaultValue={defaultPrompts?.user_profile_system_prompt}
+              showDefaultLabel={t('llm.showDefaultPrompt')}
+              icon={userBold}
+              saveLabel={t('common.save')}
+              onSave={() => save.mutate()}
+              isSaving={save.isPending}
+              onFillDefault={value => setForm(f => ({ ...f, user_profile_system_prompt: value }))}
               onChange={v => {
                 const trimmed = v.trim();
                 setForm(f => ({ ...f, user_profile_system_prompt: trimmed === '' ? null : v }));
               }}
             />
             <PromptEditor
-              label="管理智能体系统提示词"
+              label={t('llm.adminAgentPrompt')}
               value={form.admin_agent_system_prompt ?? ''}
+              defaultValue={defaultPrompts?.admin_agent_system_prompt}
+              showDefaultLabel={t('llm.showDefaultPrompt')}
+              icon={crownStarBold}
+              saveLabel={t('common.save')}
+              onSave={() => save.mutate()}
+              isSaving={save.isPending}
+              onFillDefault={value => setForm(f => ({ ...f, admin_agent_system_prompt: value }))}
               onChange={v => {
                 const trimmed = v.trim();
                 setForm(f => ({ ...f, admin_agent_system_prompt: trimmed === '' ? null : v }));
