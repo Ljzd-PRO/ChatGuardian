@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
-  Button, Card, CardBody, CardHeader, Chip, Divider, Input, Select, SelectItem, Spinner, Textarea,
+  Button, Card, CardBody, CardHeader, Chip, Divider, Input, Select, SelectItem, Spinner,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import CodeMirror from '@uiw/react-codemirror';
+import { markdown } from '@codemirror/lang-markdown';
 import boxBold from '@iconify/icons-solar/box-bold';
 import chart2Bold from '@iconify/icons-solar/chart-2-bold';
 import clockCircleBold from '@iconify/icons-solar/clock-circle-bold';
@@ -20,6 +22,44 @@ import { useTranslation } from 'react-i18next';
 import { fetchLLMHealth, fetchSettings, updateSettings } from '../api/settings';
 import type { AppSettings } from '../api/settings';
 import { ICON_SIZES } from '../constants/iconSizes';
+
+type PromptEditorProps = {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+};
+
+function PromptEditor({ label, value, onChange }: PromptEditorProps) {
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-default-700">{label}</label>
+      <div
+        className="rounded-large border border-default-200 overflow-auto"
+        style={{
+          resize: 'vertical',
+          minHeight: '180px',
+          height: '260px',
+        }}
+      >
+        <CodeMirror
+          value={value}
+          height="100%"
+          minHeight="180px"
+          extensions={[markdown()]}
+          basicSetup={{
+            lineNumbers: true,
+            foldGutter: true,
+            highlightActiveLine: true,
+            highlightActiveLineGutter: true,
+            autocompletion: false,
+          }}
+          onChange={onChange}
+        />
+      </div>
+      <p className="text-xs text-default-500">支持 Markdown 语法高亮，可拖拽右下角手动调整高度。</p>
+    </div>
+  );
+}
 
 export default function LLMPage() {
   const { t } = useTranslation();
@@ -204,29 +244,26 @@ export default function LLMPage() {
           <Divider />
 
           <div className="space-y-3">
-            <Textarea
+            <PromptEditor
               label="规则检测系统提示词"
-              minRows={4}
               value={form.rule_detection_system_prompt ?? ''}
-              onValueChange={v => {
+              onChange={v => {
                 const trimmed = v.trim();
                 setForm(f => ({ ...f, rule_detection_system_prompt: trimmed === '' ? null : v }));
               }}
             />
-            <Textarea
+            <PromptEditor
               label="用户画像分析系统提示词"
-              minRows={4}
               value={form.user_profile_system_prompt ?? ''}
-              onValueChange={v => {
+              onChange={v => {
                 const trimmed = v.trim();
                 setForm(f => ({ ...f, user_profile_system_prompt: trimmed === '' ? null : v }));
               }}
             />
-            <Textarea
+            <PromptEditor
               label="管理智能体系统提示词"
-              minRows={4}
               value={form.admin_agent_system_prompt ?? ''}
-              onValueChange={v => {
+              onChange={v => {
                 const trimmed = v.trim();
                 setForm(f => ({ ...f, admin_agent_system_prompt: trimmed === '' ? null : v }));
               }}

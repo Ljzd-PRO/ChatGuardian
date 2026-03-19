@@ -13,6 +13,12 @@ from loguru import logger
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.domain import DetectionRule, UserMemoryFact
+from chat_guardian.prompts import (
+    ADMIN_AGENT_SYSTEM_PROMPT,
+    RULE_DETECTION_SYSTEM_PROMPT,
+    USER_PROFILE_SYSTEM_PROMPT,
+    resolve_prompt,
+)
 from chat_guardian.services import build_llm_client
 from chat_guardian.settings import Settings, settings
 
@@ -462,7 +468,22 @@ class ChatGuardianOperations:
 
     @staticmethod
     def _settings_subset() -> Settings:
-        return settings
+        return settings.model_copy(
+            update={
+                "rule_detection_system_prompt": resolve_prompt(
+                    settings.rule_detection_system_prompt,
+                    RULE_DETECTION_SYSTEM_PROMPT,
+                ),
+                "user_profile_system_prompt": resolve_prompt(
+                    settings.user_profile_system_prompt,
+                    USER_PROFILE_SYSTEM_PROMPT,
+                ),
+                "admin_agent_system_prompt": resolve_prompt(
+                    settings.admin_agent_system_prompt,
+                    ADMIN_AGENT_SYSTEM_PROMPT,
+                ),
+            }
+        )
 
     async def get_settings(self) -> Settings:
         return self._settings_subset()

@@ -3,6 +3,7 @@ from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
 
 from chat_guardian.mcp import ChatGuardianMCPService, ChatGuardianOperations
+from chat_guardian.settings import settings
 
 
 class _DummyTokenManager:
@@ -57,3 +58,28 @@ async def test_tool_auth_login_and_status_error(mcp_service: ChatGuardianMCPServ
 async def test_start_http_server_rejects_non_loopback(mcp_service: ChatGuardianMCPService):
     with pytest.raises(ValueError):
         await mcp_service.start_http_server(host="0.0.0.0")
+
+
+@pytest.mark.asyncio
+async def test_get_settings_returns_default_prompt_texts_when_unset() -> None:
+    old_rule = settings.rule_detection_system_prompt
+    old_profile = settings.user_profile_system_prompt
+    old_admin = settings.admin_agent_system_prompt
+    settings.rule_detection_system_prompt = None
+    settings.user_profile_system_prompt = ""
+    settings.admin_agent_system_prompt = None
+
+    try:
+        ops = ChatGuardianOperations(container=_DummyContainer(), env_only_keys=[])
+        current = await ops.get_settings()
+
+        assert isinstance(current.rule_detection_system_prompt, str)
+        assert current.rule_detection_system_prompt.strip()
+        assert isinstance(current.user_profile_system_prompt, str)
+        assert current.user_profile_system_prompt.strip()
+        assert isinstance(current.admin_agent_system_prompt, str)
+        assert current.admin_agent_system_prompt.strip()
+    finally:
+        settings.rule_detection_system_prompt = old_rule
+        settings.user_profile_system_prompt = old_profile
+        settings.admin_agent_system_prompt = old_admin
