@@ -760,8 +760,8 @@ export default function RulesPage() {
                       label={t('matcher.adapterName')}
                       selectedKeys={filter.adapter_name ? [filter.adapter_name] : []}
                       onSelectionChange={keys => {
-                        const k = Array.from(keys)[0] as string;
-                        patchMatcherFilter(idx, { adapter_name: k || '' });
+                        const selectedAdapter = Array.from(keys)[0] as string;
+                        patchMatcherFilter(idx, { adapter_name: selectedAdapter || '' });
                       }}
                       className="w-60"
                     >

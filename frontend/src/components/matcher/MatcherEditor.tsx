@@ -143,8 +143,8 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
           label={t('matcher.adapterName')}
           selectedKeys={value.adapter_name ? [value.adapter_name] : []}
           onSelectionChange={(keys) => {
-            const k = Array.from(keys)[0] as string;
-            onChange({ ...value, adapter_name: k ?? '' });
+            const selectedAdapter = Array.from(keys)[0] as string;
+            onChange({ ...value, adapter_name: selectedAdapter ?? '' });
           }}
           className="w-48"
         >

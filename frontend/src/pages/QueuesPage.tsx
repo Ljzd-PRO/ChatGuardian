@@ -203,7 +203,7 @@ function QueueTable({
         >
           {[
             <SelectItem key="all">{t('queues.allTypes')}</SelectItem>,
-            ...types.map(tp => <SelectItem key={tp}>{formatChatType(t, tp)}</SelectItem>),
+            ...types.map(chatType => <SelectItem key={chatType}>{formatChatType(t, chatType)}</SelectItem>),
           ]}
         </Select>
         <Select
