@@ -155,7 +155,7 @@ export default function LLMPage() {
   async function doPing() {
     setPinging(true);
     try {
-      const r = await fetchLLMHealth() as { ping?: { ok: boolean; latency_ms: number; error?: string } };
+      const r = await fetchLLMHealth(true) as { ping?: { ok: boolean; latency_ms: number; error?: string } };
       if (r.ping) setPingResult(r.ping);
     } catch {
       setPingResult({ ok: false, latency_ms: 0, error: t('llm.requestFailed') });
@@ -362,7 +362,7 @@ function LLMHealthCard() {
   const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['llm_health'],
-    queryFn: () => fetchLLMHealth(),
+    queryFn: () => fetchLLMHealth(false),
     refetchInterval: 60_000,
   });
 

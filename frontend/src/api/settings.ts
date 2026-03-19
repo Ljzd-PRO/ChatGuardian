@@ -125,6 +125,7 @@ export const fetchDefaultPrompts = () => apiFetch<DefaultPrompts>('/api/prompts/
 export const fetchDefaultNotificationTemplate = () => apiFetch<DefaultNotificationTemplate>('/api/notifications/default-template');
 export const fetchNotificationsConfig = () => apiFetch<NotificationsConfig>('/api/notifications/config');
 export const fetchLLMConfig = () => apiFetch<LLMConfig>('/api/llm/config');
-export const fetchLLMHealth = () => apiFetch<Record<string, unknown>>('/llm/health');
+export const fetchLLMHealth = (doPing = false) =>
+  apiFetch<Record<string, unknown>>(`/llm/health?do_ping=${doPing ? 'true' : 'false'}`);
 export const testNotification = (type: 'email' | 'bark') =>
   apiFetch<{ ok: boolean }>(`/api/notifications/test/${type}`, { method: 'POST' });
