@@ -14,6 +14,7 @@ import { fetchAdapters } from '../api/adapters';
 import { fetchRuleStats } from '../api/stats';
 import { ICON_SIZES } from '../constants/iconSizes';
 import { Link } from 'react-router-dom';
+import { formatAdapterName } from '../utils/chatLabels';
 
 function formatTriggerTime(iso: string): string {
   const d = new Date(iso);
@@ -183,7 +184,7 @@ export default function DashboardPage() {
                     startContent={<Icon icon={plugCircleBold} fontSize={ICON_SIZES.chip} />}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold">{a.name}</span>
+                      <span className="font-semibold">{formatAdapterName(t, a.name)}</span>
                       <span className="text-xs text-default-600">
                         {a.running ? t('common.running') : t('common.stopped')}
                       </span>

@@ -25,6 +25,7 @@ import { fetchAdapters, startAdapters, stopAdapters } from '../api/adapters';
 import { fetchSettings, updateSettings } from '../api/settings';
 import type { AppSettings } from '../api/settings';
 import { ICON_SIZES } from '../constants/iconSizes';
+import { formatAdapterName } from '../utils/chatLabels';
 
 export default function AdaptersPage() {
   const { t } = useTranslation();
@@ -121,7 +122,7 @@ export default function AdaptersPage() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Icon icon={plugCircleBold} fontSize={ICON_SIZES.cardHeader} className="text-primary" />
-                      <p className="font-medium text-default-900">{a.name}</p>
+                      <p className="font-medium text-default-900">{formatAdapterName(t, a.name)}</p>
                     </div>
                     <p className="text-xs text-default-400">{t('adapters.adapterLabel')}</p>
                   </div>
@@ -163,7 +164,7 @@ export default function AdaptersPage() {
               className="max-w-xl"
             >
               {['onebot', 'telegram', 'discord', 'wechat', 'dingtalk', 'feishu', 'virtual'].map(a => (
-                <SelectItem key={a}>{a}</SelectItem>
+                <SelectItem key={a}>{formatAdapterName(t, a)}</SelectItem>
               ))}
             </Select>
           </div>

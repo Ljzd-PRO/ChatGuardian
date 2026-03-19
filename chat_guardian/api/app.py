@@ -10,6 +10,7 @@ import asyncio
 import json
 import os
 import secrets
+import signal
 import uuid as _uuid
 from collections import deque
 from contextlib import asynccontextmanager, suppress
@@ -147,16 +148,20 @@ async def _app_lifespan(app: FastAPI):
         logger.info(f"🚀 应用启动，自动启动 adapters: {adapter_names}")
         await container.adapter_manager.start_all()
     if mcp_service and settings.mcp_http_enabled:
-        transport = normalize_mcp_transport(settings.mcp_http_transport)
-        try:
-            mcp_http_task = await mcp_service.start_http_server(
-                transport=transport,
-                host=settings.mcp_http_host,
-                port=settings.mcp_http_port,
-                path=settings.mcp_http_path,
-            )
-        except Exception as exc:  # pragma: no cover - defensive logging
-            logger.warning("⚠️ 启动 MCP HTTP 传输失败: {}", exc)
+        if not (settings.mcp_http_auth_key or "").strip():
+            logger.warning("⚠️ 已启用 HTTP MCP，但未配置 mcp_http_auth_key，跳过启动。")
+            mcp_http_task = None
+        else:
+            transport = normalize_mcp_transport(settings.mcp_http_transport)
+            try:
+                mcp_http_task = await mcp_service.start_http_server(
+                    transport=transport,
+                    host=settings.mcp_http_host,
+                    port=settings.mcp_http_port,
+                    path=settings.mcp_http_path,
+                )
+            except Exception as exc:  # pragma: no cover - defensive logging
+                logger.warning("⚠️ 启动 MCP HTTP 传输失败: {}", exc)
     try:
         yield
     finally:
@@ -474,6 +479,17 @@ def create_app() -> FastAPI:
         """清空内存日志缓冲区。"""
         return await operations.clear_logs()
 
+    @app.post("/api/logs/restart")
+    async def restart_backend():
+        """重启后端进程。"""
+        loop = asyncio.get_running_loop()
+
+        def _send_term() -> None:
+            os.kill(os.getpid(), signal.SIGTERM)
+
+        loop.call_later(0.2, _send_term)
+        return {"status": "restarting"}
+
     # ── User Profiles ─────────────────────────────────────────────────────────
 
     @app.get("/api/user_profiles")
@@ -665,6 +681,8 @@ def create_app() -> FastAPI:
             settings.mcp_http_port,
             settings.mcp_http_path,
         )
+        if not (settings.mcp_http_auth_key or "").strip():
+            logger.warning("⚠️ 当前未配置 mcp_http_auth_key，HTTP MCP 将不会启动。")
 
     # ── Admin Agent ──────────────────────────────────────────────────────────
 

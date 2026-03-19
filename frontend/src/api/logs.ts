@@ -7,3 +7,6 @@ export const fetchLogs = (limit = 100) =>
 
 export const clearLogs = () =>
   apiFetch<{ cleared: number }>('/api/logs', { method: 'DELETE' });
+
+export const restartBackend = () =>
+  apiFetch<{ status: string }>('/api/logs/restart', { method: 'POST' });

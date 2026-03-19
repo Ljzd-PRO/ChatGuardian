@@ -6,6 +6,7 @@ import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
 import { useTranslation } from 'react-i18next';
 import { ICON_SIZES } from '../../constants/iconSizes';
 import { MATCHER_ICONS, TYPE_COLORS } from './constants';
+import { formatAdapterName, formatChatType } from '../../utils/chatLabels';
 
 const ALL_TYPES: MatcherType[] = [
   'and', 'or', 'not', 'all', 'sender', 'mention', 'chat', 'chat_type', 'adapter',
@@ -131,20 +132,26 @@ export function MatcherNode({ value, onChange, onRemove, depth = 0 }: MatcherNod
             if (k) onChange({ ...value, chat_type: k });
           }}
         >
-          <SelectItem key="group">{t('matcher.group')}</SelectItem>
-          <SelectItem key="private">{t('matcher.private')}</SelectItem>
+          <SelectItem key="group">{formatChatType(t, 'group')}</SelectItem>
+          <SelectItem key="private">{formatChatType(t, 'private')}</SelectItem>
         </Select>
       )}
 
       {value.type === 'adapter' && (
-        <Input
+        <Select
           size="sm"
           label={t('matcher.adapterName')}
-          isRequired
-          value={value.adapter_name}
-          onValueChange={v => onChange({ ...value, adapter_name: v })}
+          selectedKeys={value.adapter_name ? [value.adapter_name] : []}
+          onSelectionChange={(keys) => {
+            const k = Array.from(keys)[0] as string;
+            onChange({ ...value, adapter_name: k ?? '' });
+          }}
           className="w-48"
-        />
+        >
+          {['onebot', 'telegram', 'discord', 'wechat', 'dingtalk', 'feishu', 'virtual'].map(adapter => (
+            <SelectItem key={adapter}>{formatAdapterName(t, adapter)}</SelectItem>
+          ))}
+        </Select>
       )}
 
       {/* AND / OR children */}

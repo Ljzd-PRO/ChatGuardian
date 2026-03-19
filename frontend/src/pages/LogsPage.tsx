@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, CardBody, Chip, Select, SelectItem, Spinner } from '@heroui/react';
+import {
+  Button, Card, CardBody, Chip, Select, SelectItem, Spinner,
+  Modal, ModalBody, ModalContent, ModalFooter, ModalHeader,
+} from '@heroui/react';
 import { Icon } from '@iconify/react';
 import refreshCircleBold from '@iconify/icons-solar/refresh-circle-bold';
+import restartBold from '@iconify/icons-solar/restart-bold';
 import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
 import { useTranslation } from 'react-i18next';
-import { clearLogs, fetchLogs } from '../api/logs';
+import { clearLogs, fetchLogs, restartBackend } from '../api/logs';
 import type { LogEntry } from '../api/logs';
 import { ICON_SIZES } from '../constants/iconSizes';
 
@@ -22,6 +26,7 @@ export default function LogsPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [levelFilter, setLevelFilter] = useState('ALL');
+  const [confirmRestart, setConfirmRestart] = useState(false);
   const { data: logs, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['logs'],
     queryFn: () => fetchLogs(200),
@@ -32,6 +37,7 @@ export default function LogsPage() {
     mutationFn: clearLogs,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['logs'] }),
   });
+  const restart = useMutation({ mutationFn: restartBackend });
 
   const levels = ['ALL', 'DEBUG', 'INFO', 'SUCCESS', 'WARNING', 'ERROR', 'CRITICAL'];
 
@@ -67,6 +73,16 @@ export default function LogsPage() {
         </Button>
         <Button
           size="sm"
+          color="warning"
+          variant="flat"
+          startContent={<Icon icon={restartBold} fontSize={ICON_SIZES.button} />}
+          isLoading={restart.isPending}
+          onPress={() => setConfirmRestart(true)}
+        >
+          {t('logs.restart')}
+        </Button>
+        <Button
+          size="sm"
           color="danger"
           variant="flat"
           startContent={<Icon icon={trashBin2Bold} fontSize={ICON_SIZES.button} />}
@@ -88,6 +104,31 @@ export default function LogsPage() {
           ))}
         </CardBody>
       </Card>
+
+      <Modal isOpen={confirmRestart} onClose={() => setConfirmRestart(false)} size="md">
+        <ModalContent>
+          <ModalHeader>{t('logs.restartTitle')}</ModalHeader>
+          <ModalBody>
+            <p className="text-default-600">{t('logs.restartWarning')}</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={() => setConfirmRestart(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              color="warning"
+              startContent={<Icon icon={restartBold} fontSize={ICON_SIZES.button} />}
+              isLoading={restart.isPending}
+              onPress={() => {
+                setConfirmRestart(false);
+                restart.mutate();
+              }}
+            >
+              {t('logs.restart')}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

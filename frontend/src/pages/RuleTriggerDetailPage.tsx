@@ -24,6 +24,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { fetchRuleStat, deleteRuleRecords } from '../api/stats';
 import type { RuleRecord } from '../api/stats';
 import { ICON_SIZES } from '../constants/iconSizes';
+import { formatAdapterName, formatChatType } from '../utils/chatLabels';
 
 /* ── Helpers ────────────────────────────────────────────────────────── */
 
@@ -265,7 +266,7 @@ export default function RuleTriggerDetailPage() {
               placeholder={t('queues.allAdapters')}
               onSelectionChange={k => setAdapterFilter(Array.from(k)[0] as string ?? '')}
             >
-              {adapters.map(a => <SelectItem key={a}>{a}</SelectItem>)}
+              {adapters.map(a => <SelectItem key={a}>{formatAdapterName(t, a)}</SelectItem>)}
             </Select>
             <Select
               size="sm"
@@ -275,7 +276,7 @@ export default function RuleTriggerDetailPage() {
             >
               {[
                 <SelectItem key="all">{t('queues.allTypes')}</SelectItem>,
-                ...types.map(tp => <SelectItem key={tp}>{tp}</SelectItem>),
+                ...types.map(tp => <SelectItem key={tp}>{formatChatType(t, tp)}</SelectItem>),
               ]}
             </Select>
             <Select
@@ -357,10 +358,10 @@ export default function RuleTriggerDetailPage() {
               {pageItems.map((rec: RuleRecord) => (
                 <TableRow key={rec.id}>
                   <TableCell className={COLUMN_STYLES.adapter}>
-                    <Chip size="sm" variant="flat">{rec.adapter ?? '—'}</Chip>
+                    <Chip size="sm" variant="flat">{formatAdapterName(t, rec.adapter)}</Chip>
                   </TableCell>
                   <TableCell className={COLUMN_STYLES.chat_type}>
-                    <Chip size="sm" color="primary" variant="flat">{rec.chat_type ?? '—'}</Chip>
+                    <Chip size="sm" color="primary" variant="flat">{formatChatType(t, rec.chat_type)}</Chip>
                   </TableCell>
                   <TableCell className={cn('text-xs md:text-sm text-default-500', COLUMN_STYLES.chat_id)}>
                     {rec.chat_id ?? '—'}

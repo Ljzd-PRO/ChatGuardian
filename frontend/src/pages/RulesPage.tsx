@@ -35,6 +35,7 @@ import { MATCHER_ICONS, TYPE_COLORS } from '../components/matcher/constants';
 import { fetchSettings, updateSettings } from '../api/settings';
 import type { AppSettings } from '../api/settings';
 import { ICON_SIZES } from '../constants/iconSizes';
+import { formatAdapterName, formatChatType } from '../utils/chatLabels';
 
 type LeafMatcher = MatchSender | MatchMention | MatchChatInfo | MatchChatType | MatchAdapter;
 const LEAF_MATCHER_TYPES: LeafMatcher['type'][] = ['sender', 'mention', 'chat', 'chat_type', 'adapter'];
@@ -226,7 +227,7 @@ export default function RulesPage() {
           <div key={path}>
             {leafLabel(
               MATCHER_ICONS.chat_type,
-              `${t('matcher.types.chat_type')}: ${m.chat_type}`,
+              `${t('matcher.types.chat_type')}: ${formatChatType(t, m.chat_type)}`,
               color,
             )}
           </div>
@@ -238,7 +239,7 @@ export default function RulesPage() {
           <div key={path}>
             {leafLabel(
               MATCHER_ICONS.adapter,
-              `${t('matcher.types.adapter')}: ${m.adapter_name || t('common.none')}`,
+              `${t('matcher.types.adapter')}: ${m.adapter_name ? formatAdapterName(t, m.adapter_name) : t('common.none')}`,
               color,
             )}
           </div>
@@ -754,13 +755,20 @@ export default function RulesPage() {
                     </Select>
                   )}
                   {filter.type === 'adapter' && (
-                    <Input
+                    <Select
                       size="sm"
                       label={t('matcher.adapterName')}
-                      value={filter.adapter_name ?? ''}
-                      onValueChange={v => patchMatcherFilter(idx, { adapter_name: v })}
+                      selectedKeys={filter.adapter_name ? [filter.adapter_name] : []}
+                      onSelectionChange={keys => {
+                        const k = Array.from(keys)[0] as string;
+                        patchMatcherFilter(idx, { adapter_name: k || '' });
+                      }}
                       className="w-60"
-                    />
+                    >
+                      {['onebot', 'telegram', 'discord', 'wechat', 'dingtalk', 'feishu', 'virtual'].map(adapter => (
+                        <SelectItem key={adapter}>{formatAdapterName(t, adapter)}</SelectItem>
+                      ))}
+                    </Select>
                   )}
                 </div>
               </div>

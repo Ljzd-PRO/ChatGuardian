@@ -8,8 +8,12 @@ from datetime import date, datetime, timezone
 from typing import Any, AsyncIterator, Iterable, Literal
 
 from fastmcp import FastMCP
+from fastapi import Request
 from fastmcp.client.transports import FastMCPTransport
+from fastmcp.server.http import Middleware
 from loguru import logger
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.domain import DetectionRule, UserMemoryFact
@@ -553,12 +557,18 @@ class ChatGuardianOperations:
             "mcp_http_host",
             "mcp_http_port",
             "mcp_http_path",
+            "mcp_http_auth_key",
         }
         mcp_updates = mcp_keys & update_keys
         if mcp_updates:
             if not _is_loopback_host(settings.mcp_http_host):
                 raise OperationError(
                     "MCP HTTP host must be loopback only (e.g., 127.0.0.1/localhost).",
+                    status_code=400,
+                )
+            if settings.mcp_http_enabled and not (settings.mcp_http_auth_key or "").strip():
+                raise OperationError(
+                    "MCP HTTP auth key is required when HTTP MCP is enabled.",
                     status_code=400,
                 )
             mcp_service = getattr(self.container, "mcp_service", None)
@@ -988,6 +998,19 @@ class ChatGuardianMCPService:
             return self._http_task
         if not _is_loopback_host(host):
             raise ValueError("MCP HTTP host must be loopback (127.0.0.1/localhost).")
+        auth_key = (settings.mcp_http_auth_key or "").strip()
+        middleware = None
+        if auth_key:
+            expected_key = auth_key
+
+            class MCPKeyAuthMiddleware(BaseHTTPMiddleware):
+                async def dispatch(self, request: Request, call_next):
+                    provided_key = request.headers.get("X-MCP-Key")
+                    if provided_key != expected_key:
+                        return JSONResponse(status_code=401, content={"detail": "Invalid MCP key"})
+                    return await call_next(request)
+
+            middleware = [Middleware(MCPKeyAuthMiddleware)]
 
         async def _run():
             try:
@@ -997,6 +1020,7 @@ class ChatGuardianMCPService:
                     port=port,
                     path=path,
                     show_banner=False,
+                    middleware=middleware,
                 )
             except asyncio.CancelledError:
                 raise
