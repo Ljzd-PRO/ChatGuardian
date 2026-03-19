@@ -36,6 +36,7 @@ import { register } from '../api/auth';
 import { updateSettings, fetchSettings, type AppSettings } from '../api/settings';
 import RowSteps from '../components/steps/RowSteps';
 import { ICON_SIZES } from '../constants/iconSizes';
+import { formatAdapterName } from '../utils/chatLabels';
 
 const STEP_KEYS = ['account', 'llm', 'adapters', 'notifications'] as const;
 
@@ -480,7 +481,7 @@ const AdapterStep = forwardRef<StepHandle>(function AdapterStep(_, ref) {
         onSelectionChange={keys => setForm(f => ({ ...f, enabled_adapters: Array.from(keys) as string[] }))}
       >
         {['onebot', 'telegram', 'discord', 'wechat', 'dingtalk', 'feishu', 'virtual'].map(a => (
-          <SelectItem key={a}>{a}</SelectItem>
+          <SelectItem key={a}>{formatAdapterName(t, a)}</SelectItem>
         ))}
       </Select>
 

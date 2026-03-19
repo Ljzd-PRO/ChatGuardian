@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { clearHistoryMessages, deleteHistoryMessages, fetchQueues } from '../api/queues';
 import type { HistoryMessageKey, QueueMessage } from '../api/queues';
 import { ICON_SIZES } from '../constants/iconSizes';
+import { formatAdapterName, formatChatType } from '../utils/chatLabels';
 
 const COLUMN_CONFIG: { key: string; labelKey: string; icon: IconifyIcon }[] = [
   { key: 'adapter', labelKey: 'queues.adapter', icon: plugCircleBold },
@@ -192,7 +193,7 @@ function QueueTable({
           placeholder={t('queues.allAdapters')}
           onSelectionChange={k => setAdapterFilter(Array.from(k)[0] as string ?? '')}
         >
-          {adapters.map(a => <SelectItem key={a}>{a}</SelectItem>)}
+          {adapters.map(a => <SelectItem key={a}>{formatAdapterName(t, a)}</SelectItem>)}
         </Select>
         <Select
           size="sm"
@@ -202,7 +203,7 @@ function QueueTable({
         >
           {[
             <SelectItem key="all">{t('queues.allTypes')}</SelectItem>,
-            ...types.map(t => <SelectItem key={t}>{t}</SelectItem>),
+            ...types.map(chatType => <SelectItem key={chatType}>{formatChatType(t, chatType)}</SelectItem>),
           ]}
         </Select>
         <Select
@@ -286,8 +287,12 @@ function QueueTable({
           {enableHistoryActions
             ? pageItems.map(m => (
               <TableRow key={messageKey(m)}>
-                <TableCell className={COLUMN_STYLES.adapter}><Chip size="sm" variant="flat">{m.adapter}</Chip></TableCell>
-                <TableCell className={COLUMN_STYLES.type}><Chip size="sm" color="primary" variant="flat">{m.chat_type}</Chip></TableCell>
+                <TableCell className={COLUMN_STYLES.adapter}>
+                  <Chip size="sm" variant="flat">{formatAdapterName(t, m.adapter)}</Chip>
+                </TableCell>
+                <TableCell className={COLUMN_STYLES.type}>
+                  <Chip size="sm" color="primary" variant="flat">{formatChatType(t, m.chat_type)}</Chip>
+                </TableCell>
                 <TableCell className={cn('text-xs md:text-sm text-default-500', COLUMN_STYLES.chat)}>{m.chat_id}</TableCell>
                 <TableCell className={cn('text-sm md:text-base', COLUMN_STYLES.sender)}>{m.sender_name}</TableCell>
                 <TableCell className={cn('text-sm md:text-base truncate', COLUMN_STYLES.content)} title={m.content}>{m.content}</TableCell>
@@ -314,8 +319,12 @@ function QueueTable({
             ))
             : pageItems.map(m => (
               <TableRow key={messageKey(m)}>
-                <TableCell className={COLUMN_STYLES.adapter}><Chip size="sm" variant="flat">{m.adapter}</Chip></TableCell>
-                <TableCell className={COLUMN_STYLES.type}><Chip size="sm" color="primary" variant="flat">{m.chat_type}</Chip></TableCell>
+                <TableCell className={COLUMN_STYLES.adapter}>
+                  <Chip size="sm" variant="flat">{formatAdapterName(t, m.adapter)}</Chip>
+                </TableCell>
+                <TableCell className={COLUMN_STYLES.type}>
+                  <Chip size="sm" color="primary" variant="flat">{formatChatType(t, m.chat_type)}</Chip>
+                </TableCell>
                 <TableCell className={cn('text-xs md:text-sm text-default-500', COLUMN_STYLES.chat)}>{m.chat_id}</TableCell>
                 <TableCell className={cn('text-sm md:text-base', COLUMN_STYLES.sender)}>{m.sender_name}</TableCell>
                 <TableCell className={cn('text-sm md:text-base truncate', COLUMN_STYLES.content)} title={m.content}>{m.content}</TableCell>

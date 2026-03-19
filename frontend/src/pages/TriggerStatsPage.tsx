@@ -22,6 +22,7 @@ import { fetchRules } from '../api/rules';
 import TriggerChart from '../components/charts/TriggerChart';
 import type { RuleRecord } from '../api/stats';
 import { ICON_SIZES } from '../constants/iconSizes';
+import { formatAdapterName, formatChatType } from '../utils/chatLabels';
 
 type RuleRecordWithMetadata = RuleRecord & { ruleLabel: string; ruleDescription?: string };
 
@@ -175,7 +176,7 @@ export default function TriggerStatsPage() {
                                 color="secondary"
                                 startContent={<Icon icon={plugCircleBold} fontSize={ICON_SIZES.chip} />}
                               >
-                                {rec.adapter}
+                                {formatAdapterName(t, rec.adapter)}
                               </Chip>
                             )}
                             {rec.chat_type && (
@@ -185,7 +186,7 @@ export default function TriggerStatsPage() {
                                 color="primary"
                                 startContent={<Icon icon={usersGroupRoundedBold} fontSize={ICON_SIZES.chip} />}
                               >
-                                {rec.chat_type}
+                                {formatChatType(t, rec.chat_type)}
                               </Chip>
                             )}
                             {rec.chat_id && (

@@ -396,6 +396,7 @@ function AgentConfigSection() {
     mcp_http_host: string;
     mcp_http_port: number;
     mcp_http_path: string;
+    mcp_http_auth_key: string;
   } | null>(null);
 
   useEffect(() => {
@@ -406,6 +407,7 @@ function AgentConfigSection() {
         mcp_http_host: settings.mcp_http_host,
         mcp_http_port: settings.mcp_http_port,
         mcp_http_path: settings.mcp_http_path,
+        mcp_http_auth_key: settings.mcp_http_auth_key ?? '',
       });
     }
   }, [settings, form]);
@@ -483,6 +485,14 @@ function AgentConfigSection() {
                   label={t('agent.agentConfig.mcpHttpPath')}
                   value={form.mcp_http_path}
                   onValueChange={(v) => setForm(f => f ? { ...f, mcp_http_path: v } : f)}
+                  size="sm"
+                />
+                <Input
+                  label={t('agent.agentConfig.mcpHttpAuthKey')}
+                  type="password"
+                  value={form.mcp_http_auth_key}
+                  onValueChange={(v) => setForm(f => f ? { ...f, mcp_http_auth_key: v } : f)}
+                  description={t('agent.agentConfig.mcpHttpAuthKeyDesc')}
                   size="sm"
                 />
               </div>

@@ -247,6 +247,38 @@ def test_agent_chat_accepts_json_body(monkeypatch) -> None:
     assert events and events[0][0]["content"] == "hello"
 
 
+def test_logs_restart_endpoint_returns_restarting_status(monkeypatch) -> None:
+    app = create_app()
+    client = TestClient(app)
+    headers = _register_and_login(client)
+    monkeypatch.setattr("chat_guardian.api.app.os.kill", lambda _pid, _sig: None)
+
+    resp = client.post("/api/logs/restart", headers=headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "restarting"
+
+
+def test_update_settings_rejects_enabling_mcp_http_without_auth_key() -> None:
+    app = create_app()
+    client = TestClient(app)
+    headers = _register_and_login(client)
+
+    resp = client.post(
+        "/api/settings",
+        json={"mcp_http_enabled": True, "mcp_http_auth_key": ""},
+        headers=headers,
+    )
+    assert resp.status_code == 400
+    assert "auth key" in resp.text
+
+    # Ensure that the invalid update did not persist/enable MCP HTTP.
+    settings_resp = client.get("/api/settings", headers=headers)
+    assert settings_resp.status_code == 200, settings_resp.text
+    settings_data = settings_resp.json()
+    # `mcp_http_enabled` should not have been enabled by the rejected update.
+    assert not settings_data.get("mcp_http_enabled", False)
+
+
 def _make_detection_result(rule_id: str, result_id: str, triggered: bool = True) -> DetectionResult:
     """Helper to build a minimal DetectionResult for testing."""
     return DetectionResult(

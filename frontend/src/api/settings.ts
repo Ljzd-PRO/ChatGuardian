@@ -75,6 +75,7 @@ export interface AppSettings {
   mcp_http_host: string;
   mcp_http_port: number;
   mcp_http_path: string;
+  mcp_http_auth_key: string | null;
 }
 
 export interface NotificationsConfig {

@@ -40,7 +40,7 @@ export default function AppLayout() {
           <div className="md:hidden mb-4 flex-shrink-0">
             <h1 className="text-2xl font-bold text-default-900">{title}</h1>
           </div>
-          <div className="flex-1 min-h-0 overflow-auto">
+          <div className="flex-1 min-h-0 overflow-auto px-1 py-1">
             <Outlet />
           </div>
         </main>
