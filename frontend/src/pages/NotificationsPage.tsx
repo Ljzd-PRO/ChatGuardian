@@ -58,7 +58,7 @@ export default function NotificationsPage() {
     const varText = `{${variable}}`;
     const newText = currentText.substring(0, start) + varText + currentText.substring(end);
     setForm(f => ({ ...f, notification_text_template: newText }));
-    
+
     setTimeout(() => {
       el.focus();
       el.setSelectionRange(start + varText.length, start + varText.length);
@@ -354,12 +354,12 @@ export default function NotificationsPage() {
         </CardBody>
       </Card>
 
-        <Button
-          color="primary"
-          startContent={<Icon icon={disketteBold} fontSize={ICON_SIZES.button} />}
-          isLoading={save.isPending}
-          onPress={() => save.mutate()}
-        >
+      <Button
+        color="primary"
+        startContent={<Icon icon={disketteBold} fontSize={ICON_SIZES.button} />}
+        isLoading={save.isPending}
+        onPress={() => save.mutate()}
+      >
         {t('notifications.saveSettings')}
       </Button>
       {save.isSuccess && <p className="text-success text-sm">{t('common.saveSuccess')}</p>}
