@@ -25,8 +25,26 @@ on:
         required: false
         default: false
         type: boolean
+  workflow_call:
+    inputs:
+      tag:
+        description: "Image tag"
+        required: false
+        type: string
+      publish:
+        description: "Whether to push image to GHCR"
+        required: false
+        default: true
+        type: boolean
+      latest:
+        description: "Whether to also tag image as latest"
+        required: false
+        default: false
+        type: boolean
 
 env:
+  # GitHub container registry requires lowercase repository names
+  # We lowercase the owner at runtime in the `Define tags` step to avoid unsupported GH expression functions.
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/chatguardian
 
 jobs:
@@ -39,35 +57,70 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Define tags and publish switch
+      - name: Define tags
         id: vars
-        shell: bash
         run: |
+          # Ensure owner is lowercase for ghcr tag requirements
           OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           IMAGE_NAME="ghcr.io/${OWNER}/chatguardian"
 
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            PUBLISH="${{ github.event.inputs.publish }}"
-            TAG="${{ github.event.inputs.tag }}"
-            LATEST="${{ github.event.inputs.latest }}"
-            if [[ -z "$TAG" ]]; then
-              TAG="manual"
-            fi
-          else
-            # Push-triggered builds are validation-only.
+          # Prefer explicit inputs first (reusable/manual calls), then fallback by event type.
+          PUBLISH=""
+          INPUT_PUBLISH="${{ inputs.publish }}"
+          DISPATCH_PUBLISH="${{ github.event.inputs.publish }}"
+          if [[ -n "${INPUT_PUBLISH}" ]]; then
+            PUBLISH="${INPUT_PUBLISH}"
+          elif [[ -n "${DISPATCH_PUBLISH}" ]]; then
+            PUBLISH="${DISPATCH_PUBLISH}"
+          elif [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
             PUBLISH=false
-            TAG="latest"
+          else
+            PUBLISH=true
+          fi
+          PUBLISH=$(echo "${PUBLISH}" | tr '[:upper:]' '[:lower:]')
+          echo "publish=${PUBLISH}" >> "$GITHUB_OUTPUT"
+          echo "resolved-publish=${PUBLISH}"
+
+          # Resolve whether to add :latest tag.
+          LATEST=""
+          INPUT_LATEST="${{ inputs.latest }}"
+          DISPATCH_LATEST="${{ github.event.inputs.latest }}"
+          if [[ -n "${INPUT_LATEST}" ]]; then
+            LATEST="${INPUT_LATEST}"
+          elif [[ -n "${DISPATCH_LATEST}" ]]; then
+            LATEST="${DISPATCH_LATEST}"
+          else
             LATEST=false
           fi
-
-          PUBLISH=$(echo "${PUBLISH}" | tr '[:upper:]' '[:lower:]')
           LATEST=$(echo "${LATEST}" | tr '[:upper:]' '[:lower:]')
-          echo "publish=${PUBLISH}" >> "$GITHUB_OUTPUT"
+          echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
+          echo "resolved-latest=${LATEST}"
 
+          TAG=""
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            TAG="${{ github.event.inputs.tag }}"
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_call" ]]; then
+            TAG="${{ inputs.tag }}"
+          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            TAG="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ -z "$TAG" ]]; then
+            if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" || "${GITHUB_EVENT_NAME}" == "workflow_call" ]]; then
+              TAG="manual"
+            else
+              TAG="latest"
+            fi
+          fi
+
+          echo "resolved-tag=${TAG}"
           TAGS="${IMAGE_NAME}:${TAG}"
           if [[ "${LATEST}" == "true" && "${TAG}" != "latest" ]]; then
+            TAGS="${TAGS}"
             TAGS+=$'\n'"${IMAGE_NAME}:latest"
           fi
+          echo "resolved-tags:"
+          echo "${TAGS}"
           {
             echo "tags<<EOF"
             echo "${TAGS}"
