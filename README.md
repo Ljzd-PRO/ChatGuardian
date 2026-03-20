@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-    <a href="./README_en.md">English</a> | 中文
+  <a href="./README_en.md">English</a> | 简体中文 | <a href="./README_zh-TW.md">繁體中文</a> | <a href="./README_ja.md">日本語</a> | <a href="./README_ko.md">한국어</a> | <a href="./README_fr.md">Français</a> | <a href="./README_ru.md">Русский</a>
 </p>
 
 **当前仍是测试阶段**，消息平台中只有**OneBot**进行了验证，其他消息平台尚未经过验证，不能确保可用。欢迎反馈使用体验。
