@@ -1,6 +1,34 @@
-# ChatGuardian
+<div align="center">
 
-基于大模型的群聊/私聊规则检测与提醒、用户画像分析系统，让您高效地管理消息 99+ 的各种聊天平台。
+![ChatGuardian](https://socialify.git.ci/Ljzd-PRO/ChatGuardian/image?description=1&font=Source+Code+Pro&forks=1&issues=1&language=1&name=1&owner=1&pattern=Diagonal+Stripes&pulls=1&stargazers=1&theme=Auto)
+
+</div>
+
+<h1 align="center">
+  ChatGuardian
+</h1>
+
+<p align="center">
+基于大模型的群聊/私聊话题检测与提醒、用户画像分析系统，让您高效地管理消息 99+ 的各种聊天平台。
+</p>
+
+<p align="center">
+  <a href="./LICENSE">
+    <img src="https://img.shields.io/github/license/Ljzd-PRO/ChatGuardian" alt="BSD 3-Clause"/>
+  </a>
+
+  <a href="https://github.com/Ljzd-PRO/ChatGuardian/activity">
+    <img src="https://img.shields.io/github/last-commit/Ljzd-PRO/ChatGuardian/devel" alt="Last Commit"/>
+  </a>
+
+  <a href="https://codecov.io/gh/Ljzd-PRO/ChatGuardian" target="_blank">
+      <img src="https://codecov.io/gh/Ljzd-PRO/ChatGuardian/branch/master/graph/badge.svg?token=5XK9CYQHQN" alt="codecov"/>
+  </a>
+</p>
+
+<p align="center">
+    <a href="./README.md">English</a> | <a href="./README_zh-CN.md">中文</a>
+</p>
 
 **当前仍是测试阶段**，消息平台中只有**OneBot**进行了验证，其他消息平台尚未经过验证，不能确保可用。欢迎反馈使用体验。
 
