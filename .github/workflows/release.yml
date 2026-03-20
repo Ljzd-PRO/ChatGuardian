@@ -26,6 +26,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Determine release type
         id: release_type
         shell: bash
@@ -42,5 +45,6 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
+          body_path: CHANGELOG.md
           prerelease: ${{ steps.release_type.outputs.prerelease }}
-          generate_release_notes: true
+          generate_release_notes: false
