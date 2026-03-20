@@ -81,6 +81,7 @@ export default function LoginPage() {
               labelPlacement="outside"
               placeholder={t('auth.login.passwordPlaceholder')}
               variant="bordered"
+              classNames={{ input: 'login-password-native-toggle-hidden' }}
               type={showPw ? 'text' : 'password'}
               value={password}
               onValueChange={setPassword}

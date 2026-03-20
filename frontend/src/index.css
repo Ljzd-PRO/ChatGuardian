@@ -37,4 +37,10 @@
   button:focus {
     outline: none;
   }
+
+  /* Hide Edge native password reveal/clear controls on login password field only. */
+  .login-password-native-toggle-hidden::-ms-reveal,
+  .login-password-native-toggle-hidden::-ms-clear {
+    display: none;
+  }
 }
