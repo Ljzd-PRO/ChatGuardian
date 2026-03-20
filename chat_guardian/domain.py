@@ -8,6 +8,8 @@
 from __future__ import annotations
 
 import hashlib
+import asyncio
+from dataclasses import dataclass, field as dc_field
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -326,3 +328,21 @@ class UserMemoryFact(BaseModel):
     interests: dict[str, InterestTopicStat] = Field(default_factory=dict)
     active_groups: list[ActiveGroupStat] = Field(default_factory=list)
     frequent_contacts: dict[str, FrequentContactStat] = Field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class EngineOutput:
+    event_id: str
+    results: list[DetectionResult]
+    triggered_rule_ids: list[str]
+    notified_count: int
+
+
+@dataclass(slots=True)
+class ChannelRuntimeState:
+    """单会话运行时状态（用于触发策略控制）。"""
+
+    last_detection_at: datetime | None = None
+    lock: asyncio.Lock = dc_field(default_factory=asyncio.Lock)
+    cooldown_task: asyncio.Task[None] | None = None
+    timeout_task: asyncio.Task[None] | None = None

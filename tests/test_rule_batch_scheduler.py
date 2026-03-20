@@ -8,7 +8,7 @@ from chat_guardian.domain import (
     RuleDecision,
 )
 from chat_guardian.matcher import MatchChatInfo
-from chat_guardian.services import RuleBatchScheduler
+from chat_guardian.rule_batch_scheduler import RuleBatchScheduler
 
 
 class FlakyLLM:

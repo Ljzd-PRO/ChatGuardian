@@ -1,11 +1,12 @@
 from chat_guardian.domain import DetectionRule
 from chat_guardian.matcher import MatchChatInfo
-from chat_guardian.services import LangChainLLMClient, _extract_json_payload
+from chat_guardian.llm_client import LangChainLLMClient
+from chat_guardian.service_utils import extract_json_payload
 
 
 def test_extract_json_payload_from_text_with_wrapper() -> None:
     raw = "```json\n{\"decisions\": [{\"rule_id\": \"r-1\", \"triggered\": true, \"confidence\": 0.9, \"reason\": \"ok\"}]}\n```"
-    parsed = _extract_json_payload(raw)
+    parsed = extract_json_payload(raw)
     assert parsed["decisions"][0]["rule_id"] == "r-1"
 
 

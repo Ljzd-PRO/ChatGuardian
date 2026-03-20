@@ -15,7 +15,9 @@ from chat_guardian.repositories import (
     DetectionResultRepository,
     RuleRepository,
 )
-from chat_guardian.services import ContextWindowService, DetectionEngine, ExternalHookDispatcher
+from chat_guardian.context_window_service import ContextWindowService
+from chat_guardian.detection_engine import DetectionEngine
+from chat_guardian.external_hook_dispatcher import ExternalHookDispatcher
 from chat_guardian.settings import settings
 
 

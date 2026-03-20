@@ -23,7 +23,7 @@ from chat_guardian.prompts import (
     USER_PROFILE_SYSTEM_PROMPT,
 )
 from chat_guardian.notifiers.base import get_default_notification_template
-from chat_guardian.services import build_llm_client
+from chat_guardian.llm_client import build_llm_client
 from chat_guardian.settings import Settings, settings
 
 

@@ -1,4 +1,4 @@
-from chat_guardian.services import LangChainLLMClient, build_llm_client
+from chat_guardian.llm_client import LangChainLLMClient, build_llm_client
 from chat_guardian.settings import settings
 
 

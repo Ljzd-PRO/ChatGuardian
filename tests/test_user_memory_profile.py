@@ -15,7 +15,7 @@ from chat_guardian.domain import (
     UserMemoryFact,
 )
 from chat_guardian.repositories import MemoryRepository
-from chat_guardian.services import UserMemoryService
+from chat_guardian.user_memory_service import UserMemoryService
 from chat_guardian.settings import settings
 
 
