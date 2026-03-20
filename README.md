@@ -46,6 +46,7 @@
 - 💬 支持多个消息平台
   - OneBot（QQ）、企业微信、Telegram、Discord、钉钉、飞书 等
   - 【目前仅 OneBot 经过了测试】
+- ⚙ 所有配置项均可通过 WebUI 界面进行设置，无需设置环境变量，简单方便
 - 🔔 支持多种通知服务
   - 邮件通知
   - iOS Bark
@@ -61,39 +62,51 @@
 ### 🐳 Docker 快速部署
 
 ```bash
-git clone https://github.com/Ljzd-PRO/ChatGuardian.git
+git clone https://github.com/Ljzd-PRO/ChatGuardian.git --depth 1
 cd ChatGuardian
 docker compose up -d
 ```
 
+数据库文件 `db.sqlite` 将被创建在 `ChatGuardian/data` 目录下
+
+> Docker 部署方式在每次启动时都会检查数据库更新，因此不需要手动运行迁移命令，但建议每次更新前对 `db.sqlite` 文件进行备份。
+
 ### 💻 手动安装
 
-1. 安装依赖（后端）
+1. 克隆项目
 
-```bash
-poetry install
-```
+    ```bash
+    git clone https://github.com/Ljzd-PRO/ChatGuardian.git --depth 1
+    cd ChatGuardian
+    ```
 
-2. 构建前端
+2. 安装依赖（后端）
 
-```bash
-cd frontend
-npm ci --legacy-peer-deps
-npm run build
-```
+    ```bash
+    poetry install
+    ```
 
-3. 启动服务
+3. 构建前端
 
-```bash
-poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
-```
+    ```bash
+    cd frontend
+    npm ci --legacy-peer-deps
+    npm run build
+    cd ..
+    ```
 
-> 若后续进行了更新，则需要先执行数据库迁移：
->
-> ```bash
-> poetry run alembic upgrade head
-> ```
+4. 启动服务
 
-4. 访问
+    ```bash
+    poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
+    ```
 
-- Web UI: `http://127.0.0.1:8000/app/`
+    若后续进行了更新，则需要先执行数据库迁移，迁移前建议对 `db.sqlite` 文件进行备份
+    
+    ```bash
+    poetry run alembic upgrade head
+    ```
+
+5. 访问
+
+    Web UI: `http://127.0.0.1:8000/app/`

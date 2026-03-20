@@ -47,6 +47,7 @@
 - 💬 複数のメッセージプラットフォームに対応
   - OneBot（QQ）、WeCom、Telegram、Discord、DingTalk、Feishuなど
   - 【現在はOneBotのみ検証済み】
+- ⚙ すべての設定項はWebUIインターフェースを通じて設定でき、環境変数の設定不要で、シンプルで便利です
 - 🔔 多様な通知サービスに対応
   - メール通知
   - iOS Bark
@@ -62,39 +63,51 @@
 ### 🐳 Dockerで簡単デプロイ
 
 ```bash
-git clone https://github.com/Ljzd-PRO/ChatGuardian.git
+git clone https://github.com/Ljzd-PRO/ChatGuardian.git --depth 1
 cd ChatGuardian
 docker compose up -d
 ```
 
+データベースファイル `db.sqlite` は `ChatGuardian/data` ディレクトリに作成されます
+
+> Dockerデプロイ方式は起動のたびにデータベースアップデートを確認するため、手動でマイグレーションを実行する必要はありませんが、更新前に `db.sqlite` ファイルをバックアップすることをお勧めします。
+
 ### 💻 手動インストール
 
-1. 依存関係のインストール（バックエンド）
+1. リポジトリをクローン
 
-```bash
-poetry install
-```
+    ```bash
+    git clone https://github.com/Ljzd-PRO/ChatGuardian.git --depth 1
+    cd ChatGuardian
+    ```
 
-2. フロントエンドのビルド
+2. 依存関係のインストール（バックエンド）
 
-```bash
-cd frontend
-npm ci --legacy-peer-deps
-npm run build
-```
+    ```bash
+    poetry install
+    ```
 
-3. サービスの起動
+3. フロントエンドのビルド
 
-```bash
-poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
-```
+    ```bash
+    cd frontend
+    npm ci --legacy-peer-deps
+    npm run build
+    cd ..
+    ```
 
-> 後で更新があった場合は、データベースのマイグレーションを実行してください：
->
-> ```bash
-> poetry run alembic upgrade head
-> ```
+4. サービスの起動
 
-4. アクセス
+    ```bash
+    poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
+    ```
 
-- Web UI: `http://127.0.0.1:8000/app/`
+    後で更新があった場合は、データベースのマイグレーションを実行してください。マイグレーション前に `db.sqlite` ファイルをバックアップすることをお勧めします
+    
+    ```bash
+    poetry run alembic upgrade head
+    ```
+
+5. アクセス
+
+    Web UI: `http://127.0.0.1:8000/app/`

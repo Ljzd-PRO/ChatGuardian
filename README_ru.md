@@ -47,6 +47,7 @@
 - 💬 Поддержка различных платформ обмена сообщениями
   - OneBot (QQ), WeCom, Telegram, Discord, DingTalk, Feishu и др.
   - [Пока протестирован только OneBot]
+- ⚙ Все элементы конфигурации можно установить через интерфейс WebUI без установки переменных окружения, просто и удобно
 - 🔔 Поддержка различных сервисов уведомлений
   - Уведомления по электронной почте
   - iOS Bark
@@ -62,39 +63,51 @@
 ### 🐳 Быстрый запуск через Docker
 
 ```bash
-git clone https://github.com/Ljzd-PRO/ChatGuardian.git
+git clone https://github.com/Ljzd-PRO/ChatGuardian.git --depth 1
 cd ChatGuardian
 docker compose up -d
 ```
 
+Файл базы данных `db.sqlite` будет создан в директории `ChatGuardian/data`
+
+> При каждом запуске Docker проверяет обновления базы данных, поэтому ручная миграция не требуется, но рекомендуется создавать резервную копию файла `db.sqlite` перед каждым обновлением.
+
 ### 💻 Ручная установка
 
-1. Установка зависимостей (backend)
+1. Клонирование репозитория
 
-```bash
-poetry install
-```
+    ```bash
+    git clone https://github.com/Ljzd-PRO/ChatGuardian.git --depth 1
+    cd ChatGuardian
+    ```
 
-2. Сборка frontend
+2. Установка зависимостей (backend)
 
-```bash
-cd frontend
-npm ci --legacy-peer-deps
-npm run build
-```
+    ```bash
+    poetry install
+    ```
 
-3. Запуск сервиса
+3. Сборка frontend
 
-```bash
-poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
-```
+    ```bash
+    cd frontend
+    npm ci --legacy-peer-deps
+    npm run build
+    cd ..
+    ```
 
-> После обновления выполните миграцию базы данных:
->
-> ```bash
-> poetry run alembic upgrade head
-> ```
+4. Запуск сервиса
 
-4. Доступ
+    ```bash
+    poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
+    ```
 
-- Web UI: `http://127.0.0.1:8000/app/`
+    После обновления выполните миграцию базы данных. Рекомендуется создавать резервную копию файла `db.sqlite` перед миграцией
+    
+    ```bash
+    poetry run alembic upgrade head
+    ```
+
+5. Доступ
+
+    Web UI: `http://127.0.0.1:8000/app/`
