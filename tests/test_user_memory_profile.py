@@ -15,8 +15,8 @@ from chat_guardian.domain import (
     UserMemoryFact,
 )
 from chat_guardian.repositories import MemoryRepository
-from chat_guardian.user_memory import UserMemoryService
 from chat_guardian.settings import settings
+from chat_guardian.user_memory import UserMemoryService
 
 
 # ---------------------------------------------------------------------------
@@ -140,6 +140,7 @@ async def test_memory_repository_get_missing_returns_none() -> None:
 class FakeContextService:
     def __init__(self):
         self.count = 0
+
     async def build_context(self, event):
         self.count += 1
         peer_message = ChatMessage(

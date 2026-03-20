@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 RULE_DETECTION_SYSTEM_PROMPT = """\
 # 角色
 你是聊天规则检测模型。
@@ -57,7 +56,6 @@ RULE_DETECTION_SYSTEM_PROMPT = """\
 ```
 """
 
-
 USER_PROFILE_SYSTEM_PROMPT = """\
 # 角色
 你是用户行为画像提取模型。
@@ -106,7 +104,6 @@ USER_PROFILE_SYSTEM_PROMPT = """\
 }
 ```
 """
-
 
 ADMIN_AGENT_SYSTEM_PROMPT = """\
 你是 ChatGuardian 后台管理智能助手。你的职责是帮助管理员通过自然语言对话完成系统的各项管理操作。

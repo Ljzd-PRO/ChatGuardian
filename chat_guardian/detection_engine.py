@@ -26,14 +26,14 @@ class DetectionEngine:
     """核心检测引擎。"""
 
     def __init__(
-        self,
-        rules: RuleRepository,
-        context_service: ContextWindowService,
-        llm_client: LangChainLLMClient,
-        result_repository: DetectionResultRepository,
-        notifiers: list[Notifier],
-        hook_dispatcher: ExternalHookDispatcher,
-        batch_scheduler: RuleBatchScheduler | None = None,
+            self,
+            rules: RuleRepository,
+            context_service: ContextWindowService,
+            llm_client: LangChainLLMClient,
+            result_repository: DetectionResultRepository,
+            notifiers: list[Notifier],
+            hook_dispatcher: ExternalHookDispatcher,
+            batch_scheduler: RuleBatchScheduler | None = None,
     ):
         self.rules = rules
         self.context_service = context_service
@@ -96,7 +96,8 @@ class DetectionEngine:
         )
 
     async def _process_event_with_context(self, event: ChatEvent, context_messages: list[ChatMessage]) -> EngineOutput:
-        logger.debug(f"🔍 开始处理事件 | 会话={event.chat_id} | 消息ID={event.message.message_id} | 上下文数={len(context_messages)}")
+        logger.debug(
+            f"🔍 开始处理事件 | 会话={event.chat_id} | 消息ID={event.message.message_id} | 上下文数={len(context_messages)}")
 
         active_rules = [rule for rule in await self.rules.list_enabled() if rule.matcher.matches(event)]
         logger.info(f"📋 适用规则 | 总数={len(active_rules)}")
@@ -190,11 +191,11 @@ class DetectionEngine:
         )
 
     async def _try_trigger(
-        self,
-        platform: str,
-        chat_type: str,
-        chat_id: str,
-        force_all_pending: bool,
+            self,
+            platform: str,
+            chat_type: str,
+            chat_id: str,
+            force_all_pending: bool,
     ) -> EngineOutput | None:
         state = self._state_of(platform, chat_type, chat_id)
         async with state.lock:
@@ -229,11 +230,11 @@ class DetectionEngine:
             return output
 
     async def _drain_pending_and_detect(
-        self,
-        platform: str,
-        chat_type: str,
-        chat_id: str,
-        force_all_pending: bool,
+            self,
+            platform: str,
+            chat_type: str,
+            chat_id: str,
+            force_all_pending: bool,
     ) -> EngineOutput | None:
         min_new = max(1, settings.detection_min_new_messages)
         max_count = None if force_all_pending else min_new
@@ -273,12 +274,12 @@ class DetectionEngine:
         return await self._process_event_with_context(event, context_messages)
 
     async def _ensure_cooldown_task(
-        self,
-        platform: str,
-        chat_type: str,
-        chat_id: str,
-        state: ChannelRuntimeState,
-        delay_seconds: float,
+            self,
+            platform: str,
+            chat_type: str,
+            chat_id: str,
+            state: ChannelRuntimeState,
+            delay_seconds: float,
     ) -> None:
         if state.cooldown_task and not state.cooldown_task.done():
             logger.debug("⏳ 冷却任务已存在，跳过创建")
@@ -299,11 +300,11 @@ class DetectionEngine:
         state.cooldown_task = asyncio.create_task(_run())
 
     async def _ensure_timeout_task(
-        self,
-        platform: str,
-        chat_type: str,
-        chat_id: str,
-        state: ChannelRuntimeState,
+            self,
+            platform: str,
+            chat_type: str,
+            chat_id: str,
+            state: ChannelRuntimeState,
     ) -> None:
         pending = await self.context_service.store.pending_size(platform, chat_type, chat_id)
         min_new = max(1, settings.detection_min_new_messages)

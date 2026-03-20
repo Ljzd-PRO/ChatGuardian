@@ -6,13 +6,13 @@ import os
 import pytest
 
 from chat_guardian.adapters import AdapterManager, VirtualAdapter, VirtualAdapterConfig, VirtualScriptedMessage
-from chat_guardian.domain import DetectionRule
-from chat_guardian.matcher import MatchChatInfo
-from chat_guardian.repositories import ChatHistoryStore, DetectionResultRepository, RuleRepository
 from chat_guardian.context_window import ContextWindowService
 from chat_guardian.detection_engine import DetectionEngine
+from chat_guardian.domain import DetectionRule
 from chat_guardian.external_hook import ExternalHookDispatcher
 from chat_guardian.llm_client import build_llm_client
+from chat_guardian.matcher import MatchChatInfo
+from chat_guardian.repositories import ChatHistoryStore, DetectionResultRepository, RuleRepository
 from chat_guardian.settings import settings
 
 

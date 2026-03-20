@@ -16,14 +16,14 @@ class RuleBatchScheduler:
     """规则批处理调度器。"""
 
     def __init__(
-        self,
-        llm_client: LangChainLLMClient,
-        batch_size: int,
-        max_parallel_batches: int,
-        batch_timeout_seconds: float,
-        max_retries: int,
-        rate_limit_per_second: float,
-        idempotency_cache_size: int,
+            self,
+            llm_client: LangChainLLMClient,
+            batch_size: int,
+            max_parallel_batches: int,
+            batch_timeout_seconds: float,
+            max_retries: int,
+            rate_limit_per_second: float,
+            idempotency_cache_size: int,
     ):
         self.llm_client = llm_client
         self.batch_size = max(1, batch_size)
@@ -55,10 +55,10 @@ class RuleBatchScheduler:
         )
 
     async def evaluate_rules(
-        self,
-        messages: list[ChatMessage],
-        rules: list[DetectionRule],
-        request_id: str,
+            self,
+            messages: list[ChatMessage],
+            rules: list[DetectionRule],
+            request_id: str,
     ) -> list[RuleDecision]:
         if not rules:
             logger.debug("📋 规则列表为空，跳过批调度")
@@ -72,7 +72,8 @@ class RuleBatchScheduler:
 
         async def run_batch(index: int, batch_rules: list[DetectionRule]) -> list[RuleDecision]:
             batch_request_id = self._build_batch_request_id(request_id, messages, batch_rules, index)
-            logger.debug(f"  🔄 执行批次 {index + 1}/{len(batches)} | 批ID={batch_request_id} | 规则数={len(batch_rules)}")
+            logger.debug(
+                f"  🔄 执行批次 {index + 1}/{len(batches)} | 批ID={batch_request_id} | 规则数={len(batch_rules)}")
             return await self._run_idempotent(batch_request_id, lambda: self._execute_batch(messages, batch_rules))
 
         nested_results = await asyncio.gather(*(run_batch(index, batch) for index, batch in enumerate(batches)))
@@ -82,10 +83,10 @@ class RuleBatchScheduler:
 
     @staticmethod
     def _build_batch_request_id(
-        request_id: str,
-        messages: list[ChatMessage],
-        rules: list[DetectionRule],
-        batch_index: int,
+            request_id: str,
+            messages: list[ChatMessage],
+            rules: list[DetectionRule],
+            batch_index: int,
     ) -> str:
         message_part = "|".join(message.message_id for message in messages)
         rule_part = "|".join(rule.rule_id for rule in rules)
@@ -93,9 +94,9 @@ class RuleBatchScheduler:
         return f"rb:{digest}"
 
     async def _run_idempotent(
-        self,
-        request_id: str,
-        executor: Callable[[], Coroutine[Any, Any, list[RuleDecision]]],
+            self,
+            request_id: str,
+            executor: Callable[[], Coroutine[Any, Any, list[RuleDecision]]],
     ) -> list[RuleDecision]:
         async with self._idempotency_lock:
             cached = self._completed.get(request_id)
@@ -126,9 +127,9 @@ class RuleBatchScheduler:
         return result
 
     async def _execute_batch(
-        self,
-        messages: list[ChatMessage],
-        rules: list[DetectionRule],
+            self,
+            messages: list[ChatMessage],
+            rules: list[DetectionRule],
     ) -> list[RuleDecision]:
         async with self._parallel_semaphore:
             last_error: Exception | None = None

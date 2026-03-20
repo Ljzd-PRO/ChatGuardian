@@ -22,10 +22,10 @@ class UserMemoryService:
     """基于配置的用户 ID 列表更新用户画像的服务。"""
 
     def __init__(
-        self,
-        llm_client: LangChainLLMClient,
-        memory_repository: MemoryRepository,
-        context_service: ContextWindowService,
+            self,
+            llm_client: LangChainLLMClient,
+            memory_repository: MemoryRepository,
+            context_service: ContextWindowService,
     ):
         self.llm_client = llm_client
         self.memory_repository = memory_repository
@@ -54,7 +54,8 @@ class UserMemoryService:
             return 0
 
         self._user_msg_counts[user_id] = 0
-        logger.debug(f"💾 用户画像检测 | 发送者={user_id} | 消息ID={event.message.message_id} | 触发消息数={current_count}")
+        logger.debug(
+            f"💾 用户画像检测 | 发送者={user_id} | 消息ID={event.message.message_id} | 触发消息数={current_count}")
 
         context_messages = await self.context_service.build_context(event)
         logger.debug(f"  ✓ 构建上下文 | 消息数={len(context_messages)}")
@@ -180,7 +181,8 @@ class UserMemoryService:
                 is_topic_suppressed = False
                 if is_interaction_suppressed and topic in last_interactions.get(uid, set()):
                     is_topic_suppressed = True
-                    logger.debug(f"⚠️ 用户 {user_id} 画像抑制: 与 '{uid}' 的互动话题 '{topic}' 已提取过，跳过参与次数增加")
+                    logger.debug(
+                        f"⚠️ 用户 {user_id} 画像抑制: 与 '{uid}' 的互动话题 '{topic}' 已提取过，跳过参与次数增加")
 
                 if topic in contact.related_topics:
                     if not is_topic_suppressed:

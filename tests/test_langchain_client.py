@@ -1,6 +1,6 @@
 from chat_guardian.domain import DetectionRule
-from chat_guardian.matcher import MatchChatInfo
 from chat_guardian.llm_client import LangChainLLMClient
+from chat_guardian.matcher import MatchChatInfo
 from chat_guardian.utils import extract_json_payload
 
 

@@ -122,8 +122,8 @@ async def build_image_content_blocks(messages: list[ChatMessage]) -> tuple[list[
 
 
 async def build_rule_detection_content_blocks(
-    messages: list[ChatMessage],
-    rules_payload: list[dict[str, Any]],
+        messages: list[ChatMessage],
+        rules_payload: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], str, int]:
     """构建规则检测用的多模态 HumanMessage content blocks。"""
     messages_payload = messages_to_markdown(messages)

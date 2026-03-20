@@ -1,5 +1,6 @@
-import pytest
 from types import SimpleNamespace
+
+import pytest
 from fastmcp.exceptions import ToolError
 from fastmcp.server.context import Context
 

@@ -6,8 +6,8 @@ from types import SimpleNamespace
 import pytest
 
 from chat_guardian.domain import ChatMessage, ContentType, DetectionRule, MessageContent
-from chat_guardian.matcher import MatchChatInfo
 from chat_guardian.llm_client import LangChainLLMClient
+from chat_guardian.matcher import MatchChatInfo
 from chat_guardian.settings import settings
 
 

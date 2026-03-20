@@ -7,8 +7,8 @@ from contextlib import asynccontextmanager, suppress
 from datetime import date, datetime, timezone
 from typing import Any, AsyncIterator, Iterable, Literal
 
-from fastmcp import FastMCP
 from fastapi import Request
+from fastmcp import FastMCP
 from fastmcp.client.transports import FastMCPTransport
 from fastmcp.server.http import Middleware
 from loguru import logger
@@ -17,13 +17,13 @@ from starlette.responses import JSONResponse
 
 from chat_guardian.adapters import AdapterManager, build_adapters_from_settings
 from chat_guardian.domain import DetectionRule, UserMemoryFact
+from chat_guardian.llm_client import build_llm_client
+from chat_guardian.notifiers.base import get_default_notification_template
 from chat_guardian.prompts import (
     ADMIN_AGENT_SYSTEM_PROMPT,
     RULE_DETECTION_SYSTEM_PROMPT,
     USER_PROFILE_SYSTEM_PROMPT,
 )
-from chat_guardian.notifiers.base import get_default_notification_template
-from chat_guardian.llm_client import build_llm_client
 from chat_guardian.settings import Settings, settings
 
 

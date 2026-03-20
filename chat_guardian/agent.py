@@ -114,6 +114,7 @@ TOOL_DISPLAY_NAMES: dict[str, dict[str, str]] = {
     },
 }
 
+
 def _build_agent_tools(operations: ChatGuardianOperations) -> list:
     """基于 ChatGuardianOperations 构建 LangChain 工具列表。"""
 

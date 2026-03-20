@@ -33,10 +33,14 @@ from chat_guardian.api.schemas import (
     LoginRequest,
     RegisterRequest,
 )
+from chat_guardian.context_window import ContextWindowService
+from chat_guardian.detection_engine import DetectionEngine
 from chat_guardian.domain import (
     ChatEvent,
     DetectionRule,
 )
+from chat_guardian.external_hook import ExternalHookDispatcher
+from chat_guardian.llm_client import build_llm_client
 from chat_guardian.mcp import (
     ChatGuardianMCPService,
     ChatGuardianOperations,
@@ -57,12 +61,8 @@ from chat_guardian.repositories import (
     RuleRepository,
     SettingsRepository,
 )
-from chat_guardian.context_window import ContextWindowService
-from chat_guardian.detection_engine import DetectionEngine
-from chat_guardian.external_hook import ExternalHookDispatcher
-from chat_guardian.llm_client import build_llm_client
-from chat_guardian.user_memory import UserMemoryService
 from chat_guardian.settings import settings, Settings
+from chat_guardian.user_memory import UserMemoryService
 
 ENV_ONLY_KEYS = frozenset({"database_url"})
 PUBLIC_PATH_PREFIXES = ("/app/", "/app/assets", "/assets", "/mcp")

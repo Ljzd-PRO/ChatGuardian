@@ -19,25 +19,25 @@ from chat_guardian.prompts import (
     USER_PROFILE_SYSTEM_PROMPT,
     resolve_prompt,
 )
+from chat_guardian.settings import settings
 from chat_guardian.utils import (
     build_image_content_blocks,
     build_rule_detection_content_blocks,
     extract_json_payload,
     messages_to_markdown,
 )
-from chat_guardian.settings import settings
 
 
 class LangChainLLMClient:
     """基于 LangChain 的 LLM 客户端实现。"""
 
     def __init__(
-        self,
-        chat_model: BaseChatModel,
-        backend: str,
-        model_name: str,
-        api_base: str | None,
-        api_key_configured: bool,
+            self,
+            chat_model: BaseChatModel,
+            backend: str,
+            model_name: str,
+            api_base: str | None,
+            api_key_configured: bool,
     ):
         self.model = chat_model
         self.backend = backend
@@ -110,10 +110,10 @@ class LangChainLLMClient:
             ]
 
     async def extract_self_participation(
-        self,
-        event: ChatEvent,
-        context: list[ChatMessage],
-        existing_topics: list[dict[str, Any]] | None = None,
+            self,
+            event: ChatEvent,
+            context: list[ChatMessage],
+            existing_topics: list[dict[str, Any]] | None = None,
     ) -> dict | None:
         if existing_topics is None:
             existing_topics = []
