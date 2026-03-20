@@ -32,7 +32,7 @@ export default function AppLayout() {
   }, [title, t]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-default-50">
+    <div className="flex h-[100dvh] overflow-hidden bg-default-50">
       <Sidebar open={open} onClose={close} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopNavbar onMenuClick={toggle} title={title} />

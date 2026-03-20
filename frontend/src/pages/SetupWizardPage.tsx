@@ -123,7 +123,7 @@ export default function SetupWizardPage() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-default-50">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-default-50">
         <Spinner size="lg" />
       </div>
     );
@@ -133,7 +133,7 @@ export default function SetupWizardPage() {
   const isLast = step === STEP_KEYS.length - 1;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-default-50 px-4 py-8">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-default-50 px-4 py-8">
       <div className="w-full max-w-2xl space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-primary">{t('common.appName')}</h1>

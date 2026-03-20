@@ -27,7 +27,7 @@ export default function LoginPage() {
   // Redirect to setup if credentials not yet configured
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-default-50">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-default-50">
         <Spinner size="lg" />
       </div>
     );
@@ -54,7 +54,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-default-50 px-4">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-default-50 px-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardBody className="px-8 pt-8 pb-10">
           <div className="mb-8 text-center">

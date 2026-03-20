@@ -36,6 +36,7 @@ import { fetchSettings, updateSettings } from '../api/settings';
 import type { AppSettings } from '../api/settings';
 import { ICON_SIZES } from '../constants/iconSizes';
 import { formatAdapterName, formatChatType } from '../utils/chatLabels';
+import { generateUuid } from '../utils/uuid';
 
 type LeafMatcher = MatchSender | MatchMention | MatchChatInfo | MatchChatType | MatchAdapter;
 const LEAF_MATCHER_TYPES: LeafMatcher['type'][] = ['sender', 'mention', 'chat', 'chat_type', 'adapter'];
@@ -328,7 +329,7 @@ export default function RulesPage() {
   }
 
   function openNew() {
-    setEditing({ ...EMPTY_RULE, rule_id: crypto.randomUUID() });
+    setEditing({ ...EMPTY_RULE, rule_id: generateUuid() });
     setTopicInput('');
   }
 

@@ -12,7 +12,7 @@ export default function AuthGuard({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-default-50">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-default-50">
         <Spinner size="lg" />
       </div>
     );
