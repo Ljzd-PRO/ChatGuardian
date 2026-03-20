@@ -6,6 +6,8 @@ services:
     container_name: chatguardian
     ports:
       - "8000:8000"
+      - "2290:2290"
+      - "8082:8082"
     environment:
       - CHAT_GUARDIAN_DATABASE_URL=sqlite:///./data/db.sqlite
     volumes:
