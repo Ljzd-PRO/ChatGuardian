@@ -20,6 +20,11 @@ on:
         required: false
         default: true
         type: boolean
+      latest:
+        description: "Whether to also tag image as latest"
+        required: false
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       tag:
@@ -30,6 +35,11 @@ on:
         description: "Whether to push image to GHCR"
         required: false
         default: true
+        type: boolean
+      latest:
+        description: "Whether to also tag image as latest"
+        required: false
+        default: false
         type: boolean
 
 env:
@@ -54,17 +64,37 @@ jobs:
           OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           IMAGE_NAME="ghcr.io/${OWNER}/chatguardian"
 
-          # Push-triggered branch builds are validation-only by default.
-          PUBLISH=true
-          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+          # Prefer explicit inputs first (reusable/manual calls), then fallback by event type.
+          PUBLISH=""
+          INPUT_PUBLISH="${{ inputs.publish }}"
+          DISPATCH_PUBLISH="${{ github.event.inputs.publish }}"
+          if [[ -n "${INPUT_PUBLISH}" ]]; then
+            PUBLISH="${INPUT_PUBLISH}"
+          elif [[ -n "${DISPATCH_PUBLISH}" ]]; then
+            PUBLISH="${DISPATCH_PUBLISH}"
+          elif [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
             PUBLISH=false
-          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            PUBLISH="${{ github.event.inputs.publish }}"
-          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_call" ]]; then
-            PUBLISH="${{ inputs.publish }}"
+          else
+            PUBLISH=true
           fi
           PUBLISH=$(echo "${PUBLISH}" | tr '[:upper:]' '[:lower:]')
           echo "publish=${PUBLISH}" >> "$GITHUB_OUTPUT"
+          echo "resolved-publish=${PUBLISH}"
+
+          # Resolve whether to add :latest tag.
+          LATEST=""
+          INPUT_LATEST="${{ inputs.latest }}"
+          DISPATCH_LATEST="${{ github.event.inputs.latest }}"
+          if [[ -n "${INPUT_LATEST}" ]]; then
+            LATEST="${INPUT_LATEST}"
+          elif [[ -n "${DISPATCH_LATEST}" ]]; then
+            LATEST="${DISPATCH_LATEST}"
+          else
+            LATEST=false
+          fi
+          LATEST=$(echo "${LATEST}" | tr '[:upper:]' '[:lower:]')
+          echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
+          echo "resolved-latest=${LATEST}"
 
           TAG=""
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
@@ -84,7 +114,18 @@ jobs:
           fi
 
           echo "resolved-tag=${TAG}"
-          echo "tags=${IMAGE_NAME}:${TAG}" >> "$GITHUB_OUTPUT"
+          TAGS="${IMAGE_NAME}:${TAG}"
+          if [[ "${LATEST}" == "true" && "${TAG}" != "latest" ]]; then
+            TAGS="${TAGS}"
+            TAGS+=$'\n'"${IMAGE_NAME}:latest"
+          fi
+          echo "resolved-tags:"
+          echo "${TAGS}"
+          {
+            echo "tags<<EOF"
+            echo "${TAGS}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR
         if: ${{ steps.vars.outputs.publish == 'true' }}
