@@ -47,6 +47,7 @@ Système d'analyse de sujets de discussion et de profil utilisateur basé sur de
 - 💬 Prise en charge de plusieurs plateformes de messagerie
   - OneBot (QQ), WeCom, Telegram, Discord, DingTalk, Feishu, etc.
   - [Seul OneBot a été testé pour l'instant]
+- ⚙ Tous les éléments de configuration peuvent être définis par l'interface WebUI sans définir les variables d'environnement, simple et pratique
 - 🔔 Prise en charge de plusieurs services de notification
   - Notification par e-mail
   - iOS Bark
@@ -62,39 +63,51 @@ Système d'analyse de sujets de discussion et de profil utilisateur basé sur de
 ### 🐳 Déploiement rapide avec Docker
 
 ```bash
-git clone https://github.com/Ljzd-PRO/ChatGuardian.git
+git clone https://github.com/Ljzd-PRO/ChatGuardian.git --depth 1
 cd ChatGuardian
 docker compose up -d
 ```
 
+Le fichier de base de données `db.sqlite` sera créé dans le répertoire `ChatGuardian/data`
+
+> Le déploiement Docker vérifie les mises à jour de la base de données à chaque démarrage, donc la migration manuelle n'est pas nécessaire, mais il est recommandé de sauvegarder le fichier `db.sqlite` avant chaque mise à jour.
+
 ### 💻 Installation manuelle
 
-1. Installer les dépendances (backend)
+1. Cloner le référentiel
 
-```bash
-poetry install
-```
+    ```bash
+    git clone https://github.com/Ljzd-PRO/ChatGuardian.git --depth 1
+    cd ChatGuardian
+    ```
 
-2. Construire le frontend
+2. Installer les dépendances (backend)
 
-```bash
-cd frontend
-npm ci --legacy-peer-deps
-npm run build
-```
+    ```bash
+    poetry install
+    ```
 
-3. Démarrer le service
+3. Construire le frontend
 
-```bash
-poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
-```
+    ```bash
+    cd frontend
+    npm ci --legacy-peer-deps
+    npm run build
+    cd ..
+    ```
 
-> Après une mise à jour, exécutez la migration de la base de données :
->
-> ```bash
-> poetry run alembic upgrade head
-> ```
+4. Démarrer le service
 
-4. Accéder à l'interface Web
+    ```bash
+    poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
+    ```
 
-- Web UI : `http://127.0.0.1:8000/app/`
+    Après une mise à jour, n'oubliez pas de sauvegarder le fichier `db.sqlite` avant d'exécuter la migration de la base de données
+    
+    ```bash
+    poetry run alembic upgrade head
+    ```
+
+5. Accéder à l'interface Web
+
+    Web UI : `http://127.0.0.1:8000/app/`

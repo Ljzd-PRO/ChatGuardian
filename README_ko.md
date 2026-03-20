@@ -47,6 +47,7 @@
 - 💬 다양한 메시지 플랫폼 지원
   - OneBot(QQ), 기업용 위챗, Telegram, Discord, DingTalk, Feishu 등
   - [현재는 OneBot만 검증됨]
+- ⚙ 모든 구성 항목은 WebUI 인터페이스를 통해 설정할 수 있으며, 환경 변수 설정이 필요 없어 간단하고 편리합니다
 - 🔔 다양한 알림 서비스 지원
   - 이메일 알림
   - iOS Bark
@@ -62,39 +63,51 @@
 ### 🐳 Docker로 빠른 배포
 
 ```bash
-git clone https://github.com/Ljzd-PRO/ChatGuardian.git
+git clone https://github.com/Ljzd-PRO/ChatGuardian.git --depth 1
 cd ChatGuardian
 docker compose up -d
 ```
 
+데이터베이스 파일 `db.sqlite`는 `ChatGuardian/data` 디렉토리에 생성됩니다
+
+> Docker 배포 방식은 시작할 때마다 데이터베이스 업데이트를 확인하므로 수동 마이그레이션이 필요하지 않지만, 각 업데이트 전에 `db.sqlite` 파일을 백업하는 것이 좋습니다.
+
 ### 💻 수동 설치
 
-1. 의존성 설치(백엔드)
+1. 리포지토리 복제
 
-```bash
-poetry install
-```
+    ```bash
+    git clone https://github.com/Ljzd-PRO/ChatGuardian.git --depth 1
+    cd ChatGuardian
+    ```
 
-2. 프론트엔드 빌드
+2. 의존성 설치(백엔드)
 
-```bash
-cd frontend
-npm ci --legacy-peer-deps
-npm run build
-```
+    ```bash
+    poetry install
+    ```
 
-3. 서비스 시작
+3. 프론트엔드 빌드
 
-```bash
-poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
-```
+    ```bash
+    cd frontend
+    npm ci --legacy-peer-deps
+    npm run build
+    cd ..
+    ```
 
-> 이후 업데이트가 있을 경우, 데이터베이스 마이그레이션을 먼저 실행하세요:
->
-> ```bash
-> poetry run alembic upgrade head
-> ```
+4. 서비스 시작
 
-4. 접속
+    ```bash
+    poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
+    ```
 
-- Web UI: `http://127.0.0.1:8000/app/`
+    이후 업데이트가 있을 경우, 데이터베이스 마이그레이션을 먼저 실행하세요. 마이그레이션 전에 `db.sqlite` 파일을 백업하는 것이 좋습니다
+    
+    ```bash
+    poetry run alembic upgrade head
+    ```
+
+5. 접속
+
+    Web UI: `http://127.0.0.1:8000/app/`

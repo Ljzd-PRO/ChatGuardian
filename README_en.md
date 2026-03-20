@@ -47,6 +47,7 @@ A topic detection, notification, and user profiling system for group/private cha
 - 💬 Supports multiple chat platforms
   - OneBot (QQ), WeCom, Telegram, Discord, DingTalk, Feishu, etc.
   - [Currently only OneBot has been tested]
+- ⚙ All configuration items can be set through the WebUI interface without setting environment variables, simple and convenient
 - 🔔 Supports multiple notification services
   - Email notification
   - iOS Bark
@@ -62,39 +63,51 @@ A topic detection, notification, and user profiling system for group/private cha
 ### 🐳 Quick Deploy with Docker
 
 ```bash
-git clone https://github.com/Ljzd-PRO/ChatGuardian.git
+git clone https://github.com/Ljzd-PRO/ChatGuardian.git --depth 1
 cd ChatGuardian
 docker compose up -d
 ```
 
+The database file `db.sqlite` will be created in the `ChatGuardian/data` directory.
+
+> Docker deployment checks for database updates on each startup, so manual migration is not required, but it's recommended to back up the `db.sqlite` file before each update.
+
 ### 💻 Manual Installation
 
-1. Install dependencies (backend)
+1. Clone the repository
 
-```bash
-poetry install
-```
+    ```bash
+    git clone https://github.com/Ljzd-PRO/ChatGuardian.git --depth 1
+    cd ChatGuardian
+    ```
 
-2. Build frontend
+2. Install dependencies (backend)
 
-```bash
-cd frontend
-npm ci --legacy-peer-deps
-npm run build
-```
+    ```bash
+    poetry install
+    ```
 
-3. Start the service
+3. Build frontend
 
-```bash
-poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
-```
+    ```bash
+    cd frontend
+    npm ci --legacy-peer-deps
+    npm run build
+    cd ..
+    ```
 
-> If you update later, run database migration first:
->
-> ```bash
-> poetry run alembic upgrade head
-> ```
+4. Start the service
 
-4. Access
+    ```bash
+    poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
+    ```
 
-- Web UI: `http://127.0.0.1:8000/app/`
+    If you update later, run database migration first. It's recommended to back up the `db.sqlite` file before migration.
+    
+    ```bash
+    poetry run alembic upgrade head
+    ```
+
+5. Access
+
+    Web UI: `http://127.0.0.1:8000/app/`
