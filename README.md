@@ -42,7 +42,7 @@ docker compose up -d
 poetry install
 ```
 
-2. 构建前端（单端口部署）
+2. 构建前端
 
 ```bash
 cd frontend
