@@ -2,6 +2,8 @@
 
 基于大模型的群聊/私聊规则检测与提醒、用户画像分析系统，让您高效地管理消息 99+ 的各种聊天平台。
 
+**当前仍是测试阶段**，消息平台中只有**OneBot**进行了验证，其他消息平台尚未经过验证，不能确保可用。欢迎反馈使用体验。
+
 ## ✨ 功能特性
 
 - 💬 设置群聊/私聊**话题检测**规则，当群里聊到自己感兴趣的话题时发送通知
@@ -29,10 +31,8 @@
 ### 🐳 Docker 快速部署
 
 ```bash
-docker compose up --build
+docker compose up -d
 ```
-
-> Docker 镜像构建时会自动打包前端产物并通过 FastAPI 提供 `/app/*` 路由，同时内置 `/health` 健康检查，便于容器编排监控。
 
 ### 💻 手动安装
 
@@ -56,15 +56,12 @@ npm run build
 poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
 ```
 
-> 注意：在全新 / 空数据库上首次部署时，需要先完成一次应用启动，让应用内部通过 `create_all()` 创建基础表结构。
-> 之后在升级版本、变更数据结构时，再使用 Alembic 进行迁移。
-
-如需手动执行数据库迁移（假设基础表已经存在）：
-
-```bash
-poetry run alembic upgrade head
-```
+> 若后续进行了更新，则需要先执行数据库迁移：
+>
+> ```bash
+> poetry run alembic upgrade head
+> ```
 
 4. 访问
 
-- Web UI（单端口构建版）: `http://127.0.0.1:8000/app/`
+- Web UI: `http://127.0.0.1:8000/app/`
