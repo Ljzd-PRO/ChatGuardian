@@ -2,8 +2,16 @@ name: Tests
 
 on:
   pull_request:
+    paths:
+      - 'chat_guardian/**'
+      - 'frontend/**'
+      - 'tests/**'
   push:
     branches: [master]
+    paths:
+      - 'chat_guardian/**'
+      - 'frontend/**'
+      - 'tests/**'
   workflow_dispatch:
 
 jobs:
