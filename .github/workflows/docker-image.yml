@@ -18,10 +18,6 @@ on:
         required: false
         default: true
         type: boolean
-    paths:
-      - 'chat_guardian/**'
-      - 'frontend/**'
-      - 'tests/**'
   workflow_call:
     inputs:
       tag:
@@ -33,10 +29,6 @@ on:
         required: false
         default: true
         type: boolean
-    paths:
-      - 'chat_guardian/**'
-      - 'frontend/**'
-      - 'tests/**'
 
 env:
   # GitHub container registry requires lowercase repository names
