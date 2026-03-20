@@ -61,22 +61,28 @@ jobs:
           elif [[ "${GITHUB_EVENT_NAME}" == "workflow_call" ]]; then
             PUBLISH="${{ inputs.publish }}"
           fi
+          PUBLISH=$(echo "${PUBLISH}" | tr '[:upper:]' '[:lower:]')
           echo "publish=${PUBLISH}" >> "$GITHUB_OUTPUT"
 
+          TAG=""
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             TAG="${{ github.event.inputs.tag }}"
-            if [[ -z "$TAG" ]]; then TAG="manual"; fi
-            echo "tags=${IMAGE_NAME}:${TAG}" >> "$GITHUB_OUTPUT"
           elif [[ "${GITHUB_EVENT_NAME}" == "workflow_call" ]]; then
             TAG="${{ inputs.tag }}"
-            if [[ -z "$TAG" ]]; then TAG="manual"; fi
-            echo "tags=${IMAGE_NAME}:${TAG}" >> "$GITHUB_OUTPUT"
           elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             TAG="${GITHUB_REF_NAME}"
-            echo "tags=${IMAGE_NAME}:${TAG}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tags=${IMAGE_NAME}:latest" >> "$GITHUB_OUTPUT"
           fi
+
+          if [[ -z "$TAG" ]]; then
+            if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" || "${GITHUB_EVENT_NAME}" == "workflow_call" ]]; then
+              TAG="manual"
+            else
+              TAG="latest"
+            fi
+          fi
+
+          echo "resolved-tag=${TAG}"
+          echo "tags=${IMAGE_NAME}:${TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR
         if: ${{ steps.vars.outputs.publish == 'true' }}
