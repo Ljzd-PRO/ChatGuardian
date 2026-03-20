@@ -5,4 +5,4 @@ ChatGuardian 包初始化。
 """
 
 __all__ = ["__version__"]
-__version__ = "v0.3.0"
+__version__ = "v0.3.1"
