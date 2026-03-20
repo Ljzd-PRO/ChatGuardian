@@ -7,18 +7,19 @@ import {
 import { Icon } from '@iconify/react';
 import refreshCircleBold from '@iconify/icons-solar/refresh-circle-bold';
 import restartBold from '@iconify/icons-solar/restart-bold';
+import tagBold from '@iconify/icons-solar/tag-bold';
 import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
 import { useTranslation } from 'react-i18next';
-import { clearLogs, fetchLogs, restartBackend } from '../api/logs';
+import { clearLogs, fetchLogs, fetchVersion, restartBackend } from '../api/logs';
 import type { LogEntry } from '../api/logs';
 import { ICON_SIZES } from '../constants/iconSizes';
 
 const LEVEL_COLORS: Record<string, 'default' | 'primary' | 'warning' | 'danger' | 'success'> = {
-  DEBUG:    'default',
-  INFO:     'primary',
-  SUCCESS:  'success',
-  WARNING:  'warning',
-  ERROR:    'danger',
+  DEBUG: 'default',
+  INFO: 'primary',
+  SUCCESS: 'success',
+  WARNING: 'warning',
+  ERROR: 'danger',
   CRITICAL: 'danger',
 };
 
@@ -31,6 +32,11 @@ export default function LogsPage() {
     queryKey: ['logs'],
     queryFn: () => fetchLogs(200),
     refetchInterval: 10_000,
+  });
+  const { data: versionInfo } = useQuery({
+    queryKey: ['backend-version'],
+    queryFn: fetchVersion,
+    staleTime: 60_000,
   });
 
   const clear = useMutation({
@@ -92,6 +98,14 @@ export default function LogsPage() {
           {t('logs.clear')}
         </Button>
         <span className="text-xs text-default-400">{t('common.entries', { count: filtered.length })}</span>
+        <Chip
+          size="sm"
+          variant="flat"
+          color="default"
+          startContent={<Icon icon={tagBold} fontSize={12} className="text-default-500" />}
+        >
+          {t('logs.versionLabel')}: {versionInfo?.version ?? t('logs.versionUnknown')}
+        </Chip>
       </div>
 
       {isLoading && <Spinner label={t('logs.loading')} />}

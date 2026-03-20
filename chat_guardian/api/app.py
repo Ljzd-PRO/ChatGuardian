@@ -64,6 +64,7 @@ from chat_guardian.repositories import (
 )
 from chat_guardian.settings import settings, Settings
 from chat_guardian.user_memory import UserMemoryService
+from chat_guardian import __version__
 
 ENV_ONLY_KEYS = frozenset({"database_url"})
 PUBLIC_PATH_PREFIXES = ("/app/", "/app/assets", "/assets", "/mcp")
@@ -142,6 +143,7 @@ async def _app_lifespan(app: FastAPI):
         signal.signal(signal.SIGTERM, _on_sigterm)
 
     # 启动
+    logger.info("🚀 ChatGuardian backend starting, version={}", __version__)
     try:
         run_alembic_migrations(settings.database_url)
         logger.info("✅ 启动时数据库迁移完成")
@@ -276,7 +278,7 @@ def create_app() -> FastAPI:
     container = AppContainer()
     operations = ChatGuardianOperations(container=container, env_only_keys=ENV_ONLY_KEYS)
     token_manager = TokenManager()
-    app = FastAPI(title="ChatGuardian API", version="0.1.0", lifespan=_app_lifespan)
+    app = FastAPI(title="ChatGuardian API", version=__version__, lifespan=_app_lifespan)
     app.state.container = container
 
     # CORS: configured via settings.cors_allow_origins (default ["*"])
@@ -364,6 +366,11 @@ def create_app() -> FastAPI:
     async def health() -> dict[str, str]:
         """健康检查接口，确认 API 进程是否正常运行。"""
         return await operations.health()
+
+    @app.get("/api/version")
+    async def get_version() -> dict[str, str]:
+        """返回后端版本信息。"""
+        return {"name": "ChatGuardian", "version": __version__}
 
     @app.get("/llm/health")
     async def llm_health(do_ping: bool = True) -> dict[str, object]:
