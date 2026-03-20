@@ -247,15 +247,13 @@ def test_agent_chat_accepts_json_body(monkeypatch) -> None:
     assert events and events[0][0]["content"] == "hello"
 
 
-def test_logs_restart_endpoint_returns_restarting_status(monkeypatch) -> None:
+def test_logs_restart_endpoint_not_found() -> None:
     app = create_app()
     client = TestClient(app)
     headers = _register_and_login(client)
-    monkeypatch.setattr("chat_guardian.api.app.os.kill", lambda _pid, _sig: None)
 
     resp = client.post("/api/logs/restart", headers=headers)
-    assert resp.status_code == 200, resp.text
-    assert resp.json()["status"] == "restarting"
+    assert resp.status_code == 404, resp.text
 
 
 def test_update_settings_rejects_enabling_mcp_http_without_auth_key() -> None:

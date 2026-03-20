@@ -492,17 +492,6 @@ def create_app() -> FastAPI:
         """清空内存日志缓冲区。"""
         return await operations.clear_logs()
 
-    @app.post("/api/logs/restart")
-    async def restart_backend():
-        """重启后端进程。"""
-        loop = asyncio.get_running_loop()
-
-        def _send_term() -> None:
-            os.kill(os.getpid(), signal.SIGTERM)
-
-        loop.call_later(0.2, _send_term)
-        return {"status": "restarting"}
-
     # ── User Profiles ─────────────────────────────────────────────────────────
 
     @app.get("/api/user_profiles")
