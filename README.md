@@ -20,10 +20,6 @@
   <a href="https://github.com/Ljzd-PRO/ChatGuardian/activity">
     <img src="https://img.shields.io/github/last-commit/Ljzd-PRO/ChatGuardian/devel" alt="Last Commit"/>
   </a>
-
-  <a href="https://codecov.io/gh/Ljzd-PRO/ChatGuardian" target="_blank">
-      <img src="https://codecov.io/gh/Ljzd-PRO/ChatGuardian/branch/master/graph/badge.svg?token=5XK9CYQHQN" alt="codecov"/>
-  </a>
 </p>
 
 <p align="center">
