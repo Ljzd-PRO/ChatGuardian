@@ -60,6 +60,7 @@ from chat_guardian.repositories import (
     MemoryRepository,
     RuleRepository,
     SettingsRepository,
+    run_alembic_migrations,
 )
 from chat_guardian.settings import settings, Settings
 from chat_guardian.user_memory import UserMemoryService
@@ -141,6 +142,13 @@ async def _app_lifespan(app: FastAPI):
         signal.signal(signal.SIGTERM, _on_sigterm)
 
     # 启动
+    try:
+        run_alembic_migrations(settings.database_url)
+        logger.info("✅ 启动时数据库迁移完成")
+    except Exception as exc:
+        logger.exception("❌ 启动时数据库迁移失败")
+        raise RuntimeError("Database migration failed during startup") from exc
+
     if container.adapter_manager.adapters:
         adapter_names = [adapter.name for adapter in container.adapter_manager.adapters]
         logger.info(f"🚀 应用启动，自动启动 adapters: {adapter_names}")

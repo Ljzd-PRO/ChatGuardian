@@ -105,22 +105,6 @@ class _AgentMessageRecord(_Base):
 
 
 class _RepositoryDatabase:
-    def _run_alembic_migrations(self) -> None:
-        script_location = Path(__file__).with_name("alembic")
-        if not script_location.exists():
-            logging.getLogger(__name__).warning(
-                "Alembic migrations directory '%s' not found; skipping database migrations. "
-                "This may indicate a packaging/configuration issue.",
-                script_location,
-            )
-            return
-
-        config = Config()
-        config.set_main_option("script_location", str(script_location))
-        with self.engine.begin() as connection:
-            config.attributes["connection"] = connection
-            command.upgrade(config, "head")
-
     def __init__(self, database_url: str):
         normalized_url = normalize_database_url(database_url)
         engine_kwargs: dict[str, Any] = {"future": True}
@@ -130,7 +114,23 @@ class _RepositoryDatabase:
         self.engine = create_engine(normalized_url, **engine_kwargs)
         self.session_factory = sessionmaker(bind=self.engine, expire_on_commit=False)
         _Base.metadata.create_all(self.engine)
-        self._run_alembic_migrations()
+        run_alembic_migrations(normalized_url)
+
+
+def run_alembic_migrations(database_url: str) -> None:
+    script_location = Path(__file__).with_name("alembic")
+    if not script_location.exists():
+        logging.getLogger(__name__).warning(
+            "Alembic migrations directory '%s' not found; skipping database migrations. "
+            "This may indicate a packaging/configuration issue.",
+            script_location,
+        )
+        return
+
+    config = Config()
+    config.set_main_option("script_location", str(script_location))
+    config.set_main_option("sqlalchemy.url", normalize_database_url(database_url))
+    command.upgrade(config, "head")
 
 
 def normalize_database_url(database_url: str) -> str:
