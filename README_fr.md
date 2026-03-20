@@ -62,6 +62,8 @@ Système d'analyse de sujets de discussion et de profil utilisateur basé sur de
 ### 🐳 Déploiement rapide avec Docker
 
 ```bash
+git clone https://github.com/Ljzd-PRO/ChatGuardian.git
+cd ChatGuardian
 docker compose up -d
 ```
 

@@ -61,6 +61,8 @@
 ### 🐳 Docker 快速部署
 
 ```bash
+git clone https://github.com/Ljzd-PRO/ChatGuardian.git
+cd ChatGuardian
 docker compose up -d
 ```
 

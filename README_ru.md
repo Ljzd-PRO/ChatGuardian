@@ -62,6 +62,8 @@
 ### 🐳 Быстрый запуск через Docker
 
 ```bash
+git clone https://github.com/Ljzd-PRO/ChatGuardian.git
+cd ChatGuardian
 docker compose up -d
 ```
 

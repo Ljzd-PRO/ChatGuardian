@@ -62,6 +62,8 @@ A topic detection, notification, and user profiling system for group/private cha
 ### 🐳 Quick Deploy with Docker
 
 ```bash
+git clone https://github.com/Ljzd-PRO/ChatGuardian.git
+cd ChatGuardian
 docker compose up -d
 ```
 
