@@ -10,6 +10,7 @@ services:
       - CHAT_GUARDIAN_DATABASE_URL=sqlite:///./data/db.sqlite
     volumes:
       - ./data:/app/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 30s
