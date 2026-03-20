@@ -1,9 +1,9 @@
 version: "3.9"
 
 services:
-  chat-guardian:
-    image: ghcr.io/ljzd-pro/chatguardian:manual
-    container_name: chat-guardian
+  chatguardian:
+    image: ghcr.io/ljzd-pro/chatguardian:latest
+    container_name: chatguardian
     ports:
       - "8000:8000"
     environment:
