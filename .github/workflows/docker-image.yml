@@ -7,6 +7,8 @@ on:
       - 'chat_guardian/**'
       - 'frontend/**'
       - 'tests/**'
+      - '.github/workflows/docker-image.yml'
+      - 'Dockerfile'
   workflow_dispatch:
     inputs:
       tag:
