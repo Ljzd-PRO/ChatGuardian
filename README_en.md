@@ -18,7 +18,7 @@ A topic detection, notification, and user profiling system for group/private cha
   </a>
 
   <a href="https://github.com/Ljzd-PRO/ChatGuardian/activity">
-    <img src="https://img.shields.io/github/last-commit/Ljzd-PRO/ChatGuardian/devel" alt="Last Commit"/>
+    <img src="https://img.shields.io/github/last-commit/Ljzd-PRO/ChatGuardian/master" alt="Last Commit"/>
   </a>
 </p>
 
