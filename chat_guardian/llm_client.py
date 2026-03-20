@@ -19,7 +19,7 @@ from chat_guardian.prompts import (
     USER_PROFILE_SYSTEM_PROMPT,
     resolve_prompt,
 )
-from chat_guardian.service_utils import (
+from chat_guardian.utils import (
     build_image_content_blocks,
     build_rule_detection_content_blocks,
     extract_json_payload,

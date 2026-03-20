@@ -1,7 +1,7 @@
 from chat_guardian.domain import DetectionRule
 from chat_guardian.matcher import MatchChatInfo
 from chat_guardian.llm_client import LangChainLLMClient
-from chat_guardian.service_utils import extract_json_payload
+from chat_guardian.utils import extract_json_payload
 
 
 def test_extract_json_payload_from_text_with_wrapper() -> None:

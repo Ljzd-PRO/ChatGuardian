@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from loguru import logger
 
-from chat_guardian.context_window_service import ContextWindowService
+from chat_guardian.context_window import ContextWindowService
 from chat_guardian.domain import (
     ChannelRuntimeState,
     ChatEvent,
@@ -14,11 +14,11 @@ from chat_guardian.domain import (
     DetectionResult,
     EngineOutput,
 )
-from chat_guardian.external_hook_dispatcher import ExternalHookDispatcher
+from chat_guardian.external_hook import ExternalHookDispatcher
 from chat_guardian.llm_client import LangChainLLMClient
 from chat_guardian.notifiers import Notifier
 from chat_guardian.repositories import DetectionResultRepository, RuleRepository
-from chat_guardian.rule_batch_scheduler import RuleBatchScheduler
+from chat_guardian.rule_batch import RuleBatchScheduler
 from chat_guardian.settings import settings
 
 

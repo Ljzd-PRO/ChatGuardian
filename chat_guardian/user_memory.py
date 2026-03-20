@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from loguru import logger
 
-from chat_guardian.context_window_service import ContextWindowService
+from chat_guardian.context_window import ContextWindowService
 from chat_guardian.domain import (
     ActiveGroupStat,
     ChatEvent,

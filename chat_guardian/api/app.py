@@ -57,11 +57,11 @@ from chat_guardian.repositories import (
     RuleRepository,
     SettingsRepository,
 )
-from chat_guardian.context_window_service import ContextWindowService
+from chat_guardian.context_window import ContextWindowService
 from chat_guardian.detection_engine import DetectionEngine
-from chat_guardian.external_hook_dispatcher import ExternalHookDispatcher
+from chat_guardian.external_hook import ExternalHookDispatcher
 from chat_guardian.llm_client import build_llm_client
-from chat_guardian.user_memory_service import UserMemoryService
+from chat_guardian.user_memory import UserMemoryService
 from chat_guardian.settings import settings, Settings
 
 ENV_ONLY_KEYS = frozenset({"database_url"})
