@@ -70,7 +70,7 @@ docker compose up -d
 
 The database file `db.sqlite` will be created in the `ChatGuardian/data` directory.
 
-> Docker deployment checks for database updates on each startup, so manual migration is not required, but it's recommended to back up the `db.sqlite` file before each update.
+If you update later, database definitions may change and migrations may be executed during startup, so it's recommended to back up the `db.sqlite` file before updating.
 
 ### 💻 Manual Installation
 
@@ -102,11 +102,7 @@ The database file `db.sqlite` will be created in the `ChatGuardian/data` directo
     poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
     ```
 
-    If you update later, run database migration first. It's recommended to back up the `db.sqlite` file before migration.
-    
-    ```bash
-    poetry run alembic upgrade head
-    ```
+    If you update later, database definitions may change and migrations may be executed during startup, so it's recommended to back up the `db.sqlite` file before updating.
 
 5. Access
 

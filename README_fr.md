@@ -70,7 +70,7 @@ docker compose up -d
 
 Le fichier de base de données `db.sqlite` sera créé dans le répertoire `ChatGuardian/data`
 
-> Le déploiement Docker vérifie les mises à jour de la base de données à chaque démarrage, donc la migration manuelle n'est pas nécessaire, mais il est recommandé de sauvegarder le fichier `db.sqlite` avant chaque mise à jour.
+Si une mise à jour a lieu, la définition de la base de données peut changer et une migration peut être exécutée au démarrage. Il est donc recommandé de sauvegarder le fichier `db.sqlite` avant la mise à jour.
 
 ### 💻 Installation manuelle
 
@@ -102,11 +102,7 @@ Le fichier de base de données `db.sqlite` sera créé dans le répertoire `Chat
     poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
     ```
 
-    Après une mise à jour, n'oubliez pas de sauvegarder le fichier `db.sqlite` avant d'exécuter la migration de la base de données
-    
-    ```bash
-    poetry run alembic upgrade head
-    ```
+    Si une mise à jour a lieu, la définition de la base de données peut changer et une migration peut être exécutée au démarrage. Il est donc recommandé de sauvegarder le fichier `db.sqlite` avant la mise à jour.
 
 5. Accéder à l'interface Web
 

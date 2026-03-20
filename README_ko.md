@@ -70,7 +70,7 @@ docker compose up -d
 
 데이터베이스 파일 `db.sqlite`는 `ChatGuardian/data` 디렉토리에 생성됩니다
 
-> Docker 배포 방식은 시작할 때마다 데이터베이스 업데이트를 확인하므로 수동 마이그레이션이 필요하지 않지만, 각 업데이트 전에 `db.sqlite` 파일을 백업하는 것이 좋습니다.
+이후 업데이트가 있을 경우 데이터베이스 정의가 변경될 수 있고 시작 시 마이그레이션이 실행될 수 있으므로 업데이트 전에 `db.sqlite` 파일을 백업하는 것이 좋습니다
 
 ### 💻 수동 설치
 
@@ -102,11 +102,7 @@ docker compose up -d
     poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
     ```
 
-    이후 업데이트가 있을 경우, 데이터베이스 마이그레이션을 먼저 실행하세요. 마이그레이션 전에 `db.sqlite` 파일을 백업하는 것이 좋습니다
-    
-    ```bash
-    poetry run alembic upgrade head
-    ```
+    이후 업데이트가 있을 경우 데이터베이스 정의가 변경될 수 있고 시작 시 마이그레이션이 실행될 수 있으므로 업데이트 전에 `db.sqlite` 파일을 백업하는 것이 좋습니다
 
 5. 접속
 

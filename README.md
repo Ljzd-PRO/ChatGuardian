@@ -69,7 +69,7 @@ docker compose up -d
 
 数据库文件 `db.sqlite` 将被创建在 `ChatGuardian/data` 目录下
 
-> Docker 部署方式在每次启动时都会检查数据库更新，因此不需要手动运行迁移命令，但建议每次更新前对 `db.sqlite` 文件进行备份。
+若后续进行了更新，数据库定义可能发生变化，启动时可能执行迁移，因此建议在更新前对 `db.sqlite` 文件进行备份
 
 ### 💻 手动安装
 
@@ -101,11 +101,7 @@ docker compose up -d
     poetry run uvicorn chat_guardian.api.app:app --host 0.0.0.0 --port 8000
     ```
 
-    若后续进行了更新，则需要先执行数据库迁移，迁移前建议对 `db.sqlite` 文件进行备份
-    
-    ```bash
-    poetry run alembic upgrade head
-    ```
+    若后续进行了更新，数据库定义可能发生变化，启动时可能执行迁移，因此建议在更新前对 `db.sqlite` 文件进行备份
 
 5. 访问
 
