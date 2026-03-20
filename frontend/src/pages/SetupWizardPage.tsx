@@ -261,13 +261,17 @@ function AccountStep({ done, onDone }: { done: boolean; onDone: (u: string, p: s
         isRequired
         label={t('auth.login.password')}
         variant="bordered"
+        classNames={{ input: 'login-password-native-toggle-hidden' }}
         type={showPw ? 'text' : 'password'}
         value={password}
         onValueChange={setPassword}
         startContent={<Icon icon={lockPasswordBold} fontSize={ICON_SIZES.input} className="text-default-400" />}
         endContent={
           <button type="button" onClick={() => setShowPw(p => !p)} aria-label={t('auth.login.togglePassword')}>
-            <Icon className="text-default-400 text-xl" icon={showPw ? eyeClosedLinear : eyeBold} />
+            <Icon
+              className="text-default-400 pointer-events-none text-xl"
+              icon={showPw ? eyeClosedLinear : eyeBold}
+            />
           </button>
         }
         autoComplete="new-password"
@@ -276,10 +280,19 @@ function AccountStep({ done, onDone }: { done: boolean; onDone: (u: string, p: s
         isRequired
         label={t('setup.confirmPassword')}
         variant="bordered"
+        classNames={{ input: 'login-password-native-toggle-hidden' }}
         type={showPw ? 'text' : 'password'}
         value={confirm}
         onValueChange={setConfirm}
         startContent={<Icon icon={lockPasswordBold} fontSize={ICON_SIZES.input} className="text-default-400" />}
+        endContent={
+          <button type="button" onClick={() => setShowPw(p => !p)} aria-label={t('auth.login.togglePassword')}>
+            <Icon
+              className="text-default-400 pointer-events-none text-xl"
+              icon={showPw ? eyeClosedLinear : eyeBold}
+            />
+          </button>
+        }
         autoComplete="new-password"
       />
       {error && <p className="text-sm text-danger">{error}</p>}
