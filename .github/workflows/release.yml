@@ -5,11 +5,12 @@ on:
     tags:
       - "*"
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   build-image:
-    permissions:
-      contents: read
-      packages: write
     uses: ./.github/workflows/docker-image.yml
     with:
       tag: ${{ github.ref_name }}
