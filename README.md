@@ -71,6 +71,18 @@ docker compose up -d
 
 若后续进行了更新，数据库定义可能发生变化，启动时可能执行迁移，因此建议在更新前对 `db.sqlite` 文件进行备份
 
+### 存储维护
+
+系统默认会清理过期/超额的历史消息与检测结果，并且默认不会把图片原始二进制长期写入数据库，以避免 SQLite 文件持续膨胀。Web UI 的“日志”页面提供存储统计、手动清理和 SQLite 压缩入口。
+
+如果已有数据库文件过大，可先停止服务后运行：
+
+```bash
+python scripts/storage_maintenance.py --db data/db.sqlite --strip-images --prune
+```
+
+确认设备有足够临时空闲空间后，再按需执行 `--compact`。SQLite `VACUUM` 可能需要接近数据库大小的额外临时空间。
+
 ### 💻 手动安装
 
 1. 克隆项目

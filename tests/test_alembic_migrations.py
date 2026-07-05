@@ -49,12 +49,15 @@ def test_repository_init_runs_alembic_migrations_for_legacy_schema(tmp_path: Pat
         inspector = inspect(conn)
         detection_columns = {col["name"] for col in inspector.get_columns("detection_results")}
         agent_columns = {col["name"] for col in inspector.get_columns("agent_messages")}
+        chat_columns = {col["name"] for col in inspector.get_columns("chat_messages")}
 
         assert "result_id" in detection_columns
         assert "total_tokens" in agent_columns
+        assert "message_id" in chat_columns
+        assert "message_timestamp" in chat_columns
 
         result_id = conn.execute(text("SELECT result_id FROM detection_results WHERE id = 1")).scalar_one()
         assert result_id == "legacy-result"
 
         alembic_version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        assert alembic_version == "20260318_01"
+        assert alembic_version == "20260705_01"

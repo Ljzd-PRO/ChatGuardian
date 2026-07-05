@@ -20,6 +20,7 @@ from chat_guardian.notifiers import Notifier
 from chat_guardian.repositories import DetectionResultRepository, RuleRepository
 from chat_guardian.rule_batch import RuleBatchScheduler
 from chat_guardian.settings import settings
+from chat_guardian.storage import limit_messages
 
 
 class DetectionEngine:
@@ -81,13 +82,13 @@ class DetectionEngine:
 
         min_new = max(1, settings.detection_min_new_messages)
         pending = await self.context_service.store.pending_size(event.platform, event.chat_type.value, event.chat_id)
-        logger.info(f"📊 队列状态 | 待处理={pending} | 最小触发={min_new}")
+        logger.debug(f"📊 队列状态 | 待处理={pending} | 最小触发={min_new}")
 
         if pending < min_new:
             logger.debug("⏳ 消息不足，等待更多消息或超时触发...")
             return None
 
-        logger.info("🚀 满足最小条件，触发检测...")
+        logger.debug("🚀 满足最小条件，触发检测...")
         return await self._try_trigger(
             platform=event.platform,
             chat_type=event.chat_type.value,
@@ -100,7 +101,7 @@ class DetectionEngine:
             f"🔍 开始处理事件 | 会话={event.chat_id} | 消息ID={event.message.message_id} | 上下文数={len(context_messages)}")
 
         active_rules = [rule for rule in await self.rules.list_enabled() if rule.matcher.matches(event)]
-        logger.info(f"📋 适用规则 | 总数={len(active_rules)}")
+        logger.debug(f"📋 适用规则 | 总数={len(active_rules)}")
 
         self_ids = set(settings.detection_self_sender_ids)
         if self_ids:
@@ -170,7 +171,7 @@ class DetectionEngine:
                 continue
 
             triggered_rule_ids.append(decision.rule_id)
-            logger.success(f"🎯 规则触发! | rule_id={decision.rule_id} | confidence={decision.confidence:.2f}")
+            logger.success(f"🎯 规则触发 | rule_id={decision.rule_id} | confidence={decision.confidence:.2f}")
 
             for notifier in self.notifiers:
                 sent = await notifier.notify(event, decision, context_messages)
@@ -180,7 +181,7 @@ class DetectionEngine:
             await self.hook_dispatcher.dispatch(event, decision, context_messages)
             logger.debug("  🔗 Hook 已派发")
 
-        logger.info(
+        logger.debug(
             f"✅ 事件处理完成 | 事件ID={event_id} | 结果数={len(all_results)} | 触发数={len(triggered_rule_ids)} | 通知数={notify_count}"
         )
         return EngineOutput(
@@ -219,7 +220,7 @@ class DetectionEngine:
                 return None
 
             state.last_detection_at = datetime.now(timezone.utc)
-            logger.success(f"✅ 检测完成 | 事件ID={output.event_id} | 触发规则数={len(output.triggered_rule_ids)}")
+            logger.debug(f"✅ 检测完成 | 事件ID={output.event_id} | 触发规则数={len(output.triggered_rule_ids)}")
 
             pending = await self.context_service.store.pending_size(platform, chat_type, chat_id)
             min_new = max(1, settings.detection_min_new_messages)
@@ -251,7 +252,7 @@ class DetectionEngine:
             logger.debug("⏭️ 无待处理消息")
             return None
 
-        logger.info(f"📋 取出消息 | 数量={len(pending_messages)}")
+        logger.debug(f"📋 取出消息 | 数量={len(pending_messages)}")
 
         await self.context_service.store.append_history_messages(
             platform=platform,
@@ -261,6 +262,15 @@ class DetectionEngine:
         )
         logger.debug("  ✓ 消息已追加到历史记录")
 
+        first_pending = pending_messages[0]
+        previous_context = await self.context_service.store.recent_history_messages(
+            platform=platform,
+            chat_type=chat_type,
+            chat_id=chat_id,
+            before_message_id=first_pending.message_id,
+            limit=settings.context_message_limit,
+        )
+
         anchor_message = pending_messages[-1]
         event = ChatEvent(
             chat_type=ChatType(chat_type),
@@ -268,7 +278,10 @@ class DetectionEngine:
             message=anchor_message,
             platform=platform,
         )
-        context_messages = await self.context_service.build_context(event)
+        context_messages = limit_messages(
+            [*previous_context, *pending_messages],
+            settings.storage_detection_context_message_limit,
+        )
         logger.debug(f"  ✓ 构建上下文 | 上下文消息数={len(context_messages)}")
 
         return await self._process_event_with_context(event, context_messages)

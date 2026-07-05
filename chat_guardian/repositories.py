@@ -8,21 +8,32 @@ Repository 实现：内存缓存 + SQLAlchemy 持久化。
 from __future__ import annotations
 
 import hashlib
+import contextlib
 import json
 import logging
 import os
 import secrets
 from collections import defaultdict, deque
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, delete, select
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, delete, func, select, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from chat_guardian.domain import ChatMessage, ChatType, DetectionResult, DetectionRule, UserMemoryFact
+from chat_guardian.storage import (
+    limit_messages,
+    normalize_datetime,
+    sanitize_detection_result_for_storage,
+    sanitize_message_for_storage,
+    sanitize_messages_for_storage,
+    strip_image_data_from_detection_payload,
+    strip_image_data_from_message_payload,
+)
 
 
 class _Base(DeclarativeBase):
@@ -37,6 +48,8 @@ class _ChatMessageRecord(_Base):
     platform: Mapped[str] = mapped_column(String(64), index=True)
     chat_type: Mapped[str] = mapped_column(String(32), index=True)
     chat_id: Mapped[str] = mapped_column(String(128), index=True)
+    message_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    message_timestamp: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     message_json: Mapped[str] = mapped_column(Text)
 
 
@@ -139,6 +152,81 @@ def normalize_database_url(database_url: str) -> str:
     return database_url
 
 
+def _sqlite_database_path(database_url: str) -> Path | None:
+    url = make_url(normalize_database_url(database_url))
+    if url.drivername != "sqlite" or not url.database or url.database == ":memory:":
+        return None
+    path = Path(url.database)
+    return path if path.is_absolute() else Path.cwd() / path
+
+
+def get_database_file_size(database_url: str) -> int | None:
+    path = _sqlite_database_path(database_url)
+    if path is None or not path.exists():
+        return None
+    return path.stat().st_size
+
+
+def compact_database(database_url: str) -> dict[str, Any]:
+    normalized_url = normalize_database_url(database_url)
+    if not normalized_url.startswith("sqlite"):
+        raise ValueError("Database compaction is only supported for SQLite.")
+
+    before = get_database_file_size(normalized_url)
+    db = _get_db_manager(normalized_url)
+    if db is None:
+        return {"before_bytes": before, "after_bytes": before, "compacted": False}
+    with db.session_factory() as session:
+        session.execute(text("VACUUM"))
+        session.commit()
+    after = get_database_file_size(normalized_url)
+    return {"before_bytes": before, "after_bytes": after, "compacted": True}
+
+
+def collect_storage_stats(database_url: str) -> dict[str, Any]:
+    db = _get_db_manager(database_url)
+    file_size = get_database_file_size(database_url)
+    if db is None:
+        return {"database_file_bytes": file_size, "tables": {}}
+
+    table_specs = {
+        "chat_messages": (_ChatMessageRecord, _ChatMessageRecord.message_json),
+        "detection_results": (_DetectionResultRecord, _DetectionResultRecord.payload_json),
+        "memory_facts": (_MemoryFactRecord, _MemoryFactRecord.payload_json),
+        "rules": (_RuleRecord, _RuleRecord.payload_json),
+        "app_settings": (_SettingRecord, _SettingRecord.value),
+        "agent_messages": (_AgentMessageRecord, _AgentMessageRecord.content),
+    }
+    tables: dict[str, dict[str, int]] = {}
+    with db.session_factory() as session:
+        for name, (model, payload_column) in table_specs.items():
+            row_count = session.scalar(select(func.count()).select_from(model)) or 0
+            payload_bytes = session.scalar(select(func.coalesce(func.sum(func.length(payload_column)), 0))) or 0
+            tables[name] = {"rows": int(row_count), "payload_bytes": int(payload_bytes)}
+
+    return {
+        "database_file_bytes": file_size,
+        "database_path": str(_sqlite_database_path(database_url) or ""),
+        "tables": tables,
+    }
+
+
+def _message_from_json(raw_json: str) -> ChatMessage:
+    payload = json.loads(raw_json)
+    if isinstance(payload, dict):
+        strip_image_data_from_message_payload(payload)
+        return ChatMessage.model_validate(payload)
+    return ChatMessage.model_validate_json(raw_json)
+
+
+def _detection_result_from_json(raw_json: str) -> DetectionResult:
+    payload = json.loads(raw_json)
+    if isinstance(payload, dict):
+        strip_image_data_from_detection_payload(payload)
+        return DetectionResult.model_validate(payload)
+    return DetectionResult.model_validate_json(raw_json)
+
+
 _DB_MANAGERS: dict[str, _RepositoryDatabase] = {}
 
 
@@ -184,7 +272,7 @@ class ChatHistoryStore:
             rows = session.scalars(select(_ChatMessageRecord).order_by(_ChatMessageRecord.id)).all()
 
         for row in rows:
-            message = ChatMessage.model_validate_json(row.message_json)
+            message = _message_from_json(row.message_json)
             if row.bucket == "pending":
                 bucket = self.pending[row.platform][row.chat_type][row.chat_id]
                 bucket.append(message)
@@ -201,6 +289,12 @@ class ChatHistoryStore:
         if self._db is None:
             return
 
+        from chat_guardian.settings import settings
+
+        persisted_message = sanitize_message_for_storage(
+            message,
+            persist_image_data=settings.storage_persist_image_data,
+        )
         with self._db.session_factory() as session:
             session.add(
                 _ChatMessageRecord(
@@ -208,7 +302,9 @@ class ChatHistoryStore:
                     platform=platform,
                     chat_type=chat_type,
                     chat_id=chat_id,
-                    message_json=message.model_dump_json(),
+                    message_id=persisted_message.message_id,
+                    message_timestamp=persisted_message.timestamp,
+                    message_json=persisted_message.model_dump_json(exclude_none=True),
                 )
             )
             session.commit()
@@ -308,10 +404,16 @@ class ChatHistoryStore:
             message: ChatMessage,
     ) -> None:
         """将单条消息追加到已处理滚动历史中，超过上限会从旧端丢弃。"""
+        from chat_guardian.settings import settings
+
         chat_type_key = self._chat_type_key(chat_type)
+        persisted_message = sanitize_message_for_storage(
+            message,
+            persist_image_data=settings.storage_persist_image_data,
+        )
         bucket = self.history[platform][chat_type_key][chat_id]
-        bucket.append(message)
-        self._insert_chat_message("history", platform, chat_type_key, chat_id, message)
+        bucket.append(persisted_message)
+        self._insert_chat_message("history", platform, chat_type_key, chat_id, persisted_message)
 
         overflow = len(bucket) - self.history_list_limit
         if overflow > 0:
@@ -403,7 +505,7 @@ class ChatHistoryStore:
                     ).all()
                     for row in rows:
                         try:
-                            message = ChatMessage.model_validate_json(row.message_json)
+                            message = _message_from_json(row.message_json)
                         except Exception:
                             continue
                         if message.message_id in message_ids:
@@ -429,6 +531,104 @@ class ChatHistoryStore:
                 session.commit()
 
         return cleared
+
+    async def prune_history(
+            self,
+            retention_days: int | None = None,
+            max_total_messages: int | None = None,
+    ) -> dict[str, int]:
+        """Prune persisted and in-memory history by age and global row count."""
+        from chat_guardian.settings import settings
+
+        retention_days = settings.storage_history_retention_days if retention_days is None else retention_days
+        max_total_messages = (
+            settings.storage_history_max_total_messages
+            if max_total_messages is None
+            else max_total_messages
+        )
+        cutoff = (
+            datetime.now(timezone.utc) - timedelta(days=retention_days)
+            if retention_days and retention_days > 0
+            else None
+        )
+
+        deleted_by_age = 0
+        if cutoff is not None:
+            for by_type in self.history.values():
+                for by_chat in by_type.values():
+                    for bucket in by_chat.values():
+                        kept = deque()
+                        while bucket:
+                            message = bucket.popleft()
+                            if normalize_datetime(message.timestamp) < cutoff:
+                                deleted_by_age += 1
+                                continue
+                            kept.append(message)
+                        bucket.extend(kept)
+
+        deleted_by_count = 0
+        if max_total_messages and max_total_messages > 0:
+            all_messages: list[tuple[datetime, str, str, str, str]] = []
+            for platform, by_type in self.history.items():
+                for chat_type, by_chat in by_type.items():
+                    for chat_id, bucket in by_chat.items():
+                        for message in bucket:
+                            all_messages.append((
+                                normalize_datetime(message.timestamp),
+                                platform,
+                                chat_type,
+                                chat_id,
+                                message.message_id,
+                            ))
+            overflow = len(all_messages) - max_total_messages
+            if overflow > 0:
+                remove_keys = {
+                    (platform, chat_type, chat_id, message_id)
+                    for _ts, platform, chat_type, chat_id, message_id in sorted(all_messages)[:overflow]
+                }
+                for platform, chat_type, chat_id, message_id in remove_keys:
+                    bucket = self.history.get(platform, {}).get(chat_type, {}).get(chat_id)
+                    if not bucket:
+                        continue
+                    for message in list(bucket):
+                        if message.message_id == message_id:
+                            with contextlib.suppress(ValueError):
+                                bucket.remove(message)
+                            deleted_by_count += 1
+                            break
+
+        db_deleted = 0
+        if self._db is not None:
+            with self._db.session_factory() as session:
+                if cutoff is not None:
+                    result = session.execute(
+                        delete(_ChatMessageRecord).where(
+                            _ChatMessageRecord.bucket == "history",
+                            _ChatMessageRecord.message_timestamp.is_not(None),
+                            _ChatMessageRecord.message_timestamp < cutoff,
+                        )
+                    )
+                    db_deleted += result.rowcount or 0
+
+                if max_total_messages and max_total_messages > 0:
+                    ids_to_delete = session.scalars(
+                        select(_ChatMessageRecord.id)
+                        .where(_ChatMessageRecord.bucket == "history")
+                        .order_by(_ChatMessageRecord.id.desc())
+                        .offset(max_total_messages)
+                    ).all()
+                    if ids_to_delete:
+                        result = session.execute(
+                            delete(_ChatMessageRecord).where(_ChatMessageRecord.id.in_(ids_to_delete))
+                        )
+                        db_deleted += result.rowcount or 0
+                session.commit()
+
+        return {
+            "history_deleted_by_age": deleted_by_age,
+            "history_deleted_by_count": deleted_by_count,
+            "history_db_deleted": db_deleted,
+        }
 
 
 class RuleRepository:
@@ -559,7 +759,7 @@ class DetectionResultRepository:
             rows = session.scalars(select(_DetectionResultRecord).order_by(_DetectionResultRecord.id)).all()
 
         for row in rows:
-            result = DetectionResult.model_validate_json(row.payload_json)
+            result = _detection_result_from_json(row.payload_json)
             self.results.append(result)
             self.results_by_rule[result.rule_id].append(result)
             if result.decision.triggered and not result.trigger_suppressed:
@@ -569,27 +769,35 @@ class DetectionResultRepository:
 
     async def add(self, result: DetectionResult) -> None:
         """新增一条检测结果，并同步更新按规则索引。"""
-        self.results.append(result)
-        self.results_by_rule[result.rule_id].append(result)
+        from chat_guardian.settings import settings
+
+        stored_result = sanitize_detection_result_for_storage(
+            result,
+            persist_image_data=settings.storage_persist_image_data,
+            max_context_messages=settings.storage_detection_context_message_limit,
+        )
+        self.results.append(stored_result)
+        self.results_by_rule[stored_result.rule_id].append(stored_result)
 
         if self._db is not None:
             with self._db.session_factory() as session:
                 session.add(
                     _DetectionResultRecord(
-                        rule_id=result.rule_id,
-                        result_id=result.result_id,
-                        generated_at=result.generated_at,
-                        triggered=result.decision.triggered,
-                        trigger_suppressed=result.trigger_suppressed,
-                        payload_json=result.model_dump_json(),
+                        rule_id=stored_result.rule_id,
+                        result_id=stored_result.result_id,
+                        generated_at=stored_result.generated_at,
+                        triggered=stored_result.decision.triggered,
+                        trigger_suppressed=stored_result.trigger_suppressed,
+                        payload_json=stored_result.model_dump_json(exclude_none=True),
                     )
                 )
                 session.commit()
 
-        if result.decision.triggered and not result.trigger_suppressed:
-            self.last_triggered_by_rule[result.rule_id] = result
-            self.last_triggered_message_ids[result.rule_id] = {message.message_id for message in
-                                                               result.context_messages}
+        if stored_result.decision.triggered and not stored_result.trigger_suppressed:
+            self.last_triggered_by_rule[stored_result.rule_id] = stored_result
+            self.last_triggered_message_ids[stored_result.rule_id] = {message.message_id for message in
+                                                                      stored_result.context_messages}
+        await self.prune()
 
     async def list_by_rule(self, rule_id: str) -> list[DetectionResult]:
         """返回指定规则的全部检测结果。"""
@@ -665,7 +873,13 @@ class DetectionResultRepository:
             merged.append(message)
             known_ids.add(message.message_id)
 
-        last.context_messages = merged
+        from chat_guardian.settings import settings
+
+        last.context_messages = sanitize_messages_for_storage(
+            limit_messages(merged, settings.storage_detection_context_message_limit),
+            persist_image_data=settings.storage_persist_image_data,
+        )
+        self.last_triggered_message_ids[rule_id] = {message.message_id for message in last.context_messages}
         if self._db is not None:
             with self._db.session_factory() as session:
                 row = session.scalar(
@@ -679,9 +893,103 @@ class DetectionResultRepository:
                     .limit(1)
                 )
                 if row is not None:
-                    row.payload_json = last.model_dump_json()
+                    row.payload_json = last.model_dump_json(exclude_none=True)
                     session.commit()
         return last
+
+    def _rebuild_indexes(self) -> None:
+        self.results_by_rule = defaultdict(list)
+        self.last_triggered_by_rule = {}
+        self.last_triggered_message_ids = {}
+        for result in self.results:
+            self.results_by_rule[result.rule_id].append(result)
+            if result.decision.triggered and not result.trigger_suppressed:
+                self.last_triggered_by_rule[result.rule_id] = result
+                self.last_triggered_message_ids[result.rule_id] = {
+                    message.message_id for message in result.context_messages
+                }
+
+    async def prune(
+            self,
+            retention_days: int | None = None,
+            max_records_per_rule: int | None = None,
+    ) -> dict[str, int]:
+        """Prune detection results by age and per-rule count limits."""
+        from chat_guardian.settings import settings
+
+        retention_days = (
+            settings.storage_detection_retention_days
+            if retention_days is None
+            else retention_days
+        )
+        max_records_per_rule = (
+            settings.storage_detection_max_records_per_rule
+            if max_records_per_rule is None
+            else max_records_per_rule
+        )
+        cutoff = (
+            datetime.now(timezone.utc) - timedelta(days=retention_days)
+            if retention_days and retention_days > 0
+            else None
+        )
+
+        removed_result_ids: set[str] = set()
+        kept: list[DetectionResult] = []
+        deleted_by_age = 0
+        for result in self.results:
+            if cutoff is not None and normalize_datetime(result.generated_at) < cutoff:
+                removed_result_ids.add(result.result_id)
+                deleted_by_age += 1
+                continue
+            kept.append(result)
+
+        deleted_by_count = 0
+        if max_records_per_rule and max_records_per_rule > 0:
+            by_rule: dict[str, list[DetectionResult]] = defaultdict(list)
+            for result in kept:
+                by_rule[result.rule_id].append(result)
+
+            allowed_ids: set[str] = set()
+            for rule_results in by_rule.values():
+                sorted_results = sorted(rule_results, key=lambda item: normalize_datetime(item.generated_at))
+                keep_tail = sorted_results[-max_records_per_rule:]
+                allowed_ids.update(item.result_id for item in keep_tail)
+                deleted_by_count += max(0, len(sorted_results) - len(keep_tail))
+
+            next_kept: list[DetectionResult] = []
+            for result in kept:
+                if result.result_id in allowed_ids:
+                    next_kept.append(result)
+                else:
+                    removed_result_ids.add(result.result_id)
+            kept = next_kept
+
+        if removed_result_ids:
+            self.results = kept
+            self._rebuild_indexes()
+
+        db_deleted = 0
+        if self._db is not None:
+            with self._db.session_factory() as session:
+                if cutoff is not None:
+                    result = session.execute(
+                        delete(_DetectionResultRecord).where(_DetectionResultRecord.generated_at < cutoff)
+                    )
+                    db_deleted += result.rowcount or 0
+                if removed_result_ids:
+                    result = session.execute(
+                        delete(_DetectionResultRecord).where(
+                            _DetectionResultRecord.result_id.in_(list(removed_result_ids))
+                        )
+                    )
+                    db_deleted += result.rowcount or 0
+                session.commit()
+
+        return {
+            "detection_deleted_by_age": deleted_by_age,
+            "detection_deleted_by_count": deleted_by_count,
+            "detection_db_deleted": db_deleted,
+        }
 
 
 class SettingsRepository:

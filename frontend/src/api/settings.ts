@@ -21,6 +21,12 @@ export interface AppSettings {
   context_message_limit: number;
   pending_queue_limit: number;
   history_list_limit: number;
+  storage_detection_retention_days: number;
+  storage_detection_max_records_per_rule: number;
+  storage_detection_context_message_limit: number;
+  storage_history_retention_days: number;
+  storage_history_max_total_messages: number;
+  storage_persist_image_data: boolean;
   detection_cooldown_seconds: number;
   detection_min_new_messages: number;
   detection_wait_timeout_seconds: number;

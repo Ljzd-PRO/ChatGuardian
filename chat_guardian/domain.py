@@ -80,6 +80,10 @@ class MessageContent(BaseModel):
     type: ContentType
     text: str | None = None
     image_data: bytes | None = None
+    image_id: str | None = None
+    image_mime_type: str | None = None
+    image_byte_size: int | None = None
+    image_data_stripped: bool = False
     mention_user: UserInfo | None = None
     model_config = ConfigDict(ser_json_bytes="base64", val_json_bytes="base64")
 
@@ -104,8 +108,11 @@ class MessageContent(BaseModel):
     def __str__(self) -> str:
         if self.type == ContentType.TEXT and self.text:
             return self.text
-        elif self.type == ContentType.IMAGE and self.image_data:
-            return f"[image: {self.generate_short_id(self.image_data)}]"
+        elif self.type == ContentType.IMAGE:
+            image_id = self.image_id or (self.generate_short_id(self.image_data) if self.image_data else None)
+            if image_id:
+                return f"[image: {image_id}]"
+            return "[image]"
         elif self.type == ContentType.MENTION and self.mention_user:
             return f"@{self.mention_user}"
         return ""

@@ -62,11 +62,11 @@ from chat_guardian.repositories import (
     SettingsRepository,
     run_alembic_migrations,
 )
-from chat_guardian.settings import settings, Settings
+from chat_guardian.settings import settings, Settings, configure_logging
 from chat_guardian.user_memory import UserMemoryService
 from chat_guardian import __version__
 
-ENV_ONLY_KEYS = frozenset({"database_url"})
+ENV_ONLY_KEYS = frozenset({"database_url", "log_level"})
 PUBLIC_PATH_PREFIXES = ("/app/", "/app/assets", "/assets", "/mcp")
 PUBLIC_PATHS = {
     "/",
@@ -117,6 +117,7 @@ async def _app_lifespan(app: FastAPI):
     container = app.state.container
     mcp_service = getattr(container, "mcp_service", None)
     mcp_http_task: asyncio.Task | None = None
+    storage_maintenance_task: asyncio.Task | None = None
 
     # 安装信号处理器以记录用户主动停止程序的操作（仅在主线程中有效）
     _prev_sigint = signal.getsignal(signal.SIGINT)
@@ -170,6 +171,20 @@ async def _app_lifespan(app: FastAPI):
                 )
             except Exception as exc:  # pragma: no cover - defensive logging
                 logger.warning("⚠️ 启动 MCP HTTP 传输失败: {}", exc)
+
+    async def _storage_maintenance_loop() -> None:
+        try:
+            await asyncio.sleep(30)
+            while True:
+                try:
+                    await container.run_storage_maintenance()
+                except Exception as exc:  # pragma: no cover - defensive logging
+                    logger.warning("⚠️ 存储维护任务失败: {}", exc)
+                await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            raise
+
+    storage_maintenance_task = asyncio.create_task(_storage_maintenance_loop())
     try:
         yield
     finally:
@@ -185,6 +200,10 @@ async def _app_lifespan(app: FastAPI):
             mcp_http_task.cancel()
             with suppress(asyncio.CancelledError):
                 await mcp_http_task
+        if storage_maintenance_task:
+            storage_maintenance_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await storage_maintenance_task
         logger.info("✅ 应用程序已成功停止")
 
         if _is_main_thread:
@@ -241,11 +260,23 @@ class AppContainer:
         self.adapter_manager = AdapterManager(build_adapters_from_settings(settings))
         for adapter in self.adapter_manager.adapters:
             adapter.register_handler(self.handle_adapter_event)
+        self.last_storage_prune_at: str | None = None
 
     async def handle_adapter_event(self, event: ChatEvent) -> None:
         """Adapter 统一消息入口：先处理用户画像，再进入检测触发流程。"""
         await self.user_memory_service.process_user_memory(event)
         await self.detection_engine.ingest_event(event)
+
+    async def run_storage_maintenance(self) -> dict[str, object]:
+        """Run safe storage pruning without SQLite VACUUM."""
+        history = await self.chat_history_store.prune_history()
+        detection = await self.detection_result_repository.prune()
+        self.last_storage_prune_at = datetime.now(timezone.utc).isoformat()
+        return {
+            "history": history,
+            "detection": detection,
+            "last_storage_prune_at": self.last_storage_prune_at,
+        }
 
 
 class TokenManager:
@@ -275,6 +306,7 @@ class TokenManager:
 
 def create_app() -> FastAPI:
     """创建并返回 FastAPI 应用实例。应用启动时自动启动所有 enabled adapters。"""
+    configure_logging()
     container = AppContainer()
     operations = ChatGuardianOperations(container=container, env_only_keys=ENV_ONLY_KEYS)
     token_manager = TokenManager()
@@ -442,6 +474,24 @@ def create_app() -> FastAPI:
             items: 可选，待删除消息的列表，元素包含 ``platform``/``adapter``、``chat_type``、``chat_id``、``message_id``。
         """
         return await operations.delete_history_messages(payload=payload)
+
+    @app.get("/api/storage/stats")
+    async def get_storage_stats():
+        """获取数据库文件大小、表行数与 payload 大小估算。"""
+        return await operations.get_storage_stats()
+
+    @app.post("/api/storage/prune")
+    async def prune_storage():
+        """执行安全存储清理：删除过期/超额历史和检测结果，不执行 VACUUM。"""
+        return await operations.prune_storage()
+
+    @app.post("/api/storage/compact")
+    async def compact_storage():
+        """手动执行 SQLite VACUUM 压缩数据库文件。"""
+        try:
+            return await operations.compact_storage()
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.get("/api/adapters/status")
     async def get_adapters_status():

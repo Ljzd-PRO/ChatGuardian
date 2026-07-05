@@ -68,7 +68,7 @@ class RuleBatchScheduler:
         batches = [rules[i: i + self.batch_size] for i in range(0, len(rules), self.batch_size)]
         self._metrics.total_requests += 1
         self._metrics.total_batches += len(batches)
-        logger.info(f"  📊 批分割完成 | 批次数={len(batches)} | 最大并行={self.max_parallel_batches}")
+        logger.debug(f"  📊 批分割完成 | 批次数={len(batches)} | 最大并行={self.max_parallel_batches}")
 
         async def run_batch(index: int, batch_rules: list[DetectionRule]) -> list[RuleDecision]:
             batch_request_id = self._build_batch_request_id(request_id, messages, batch_rules, index)
@@ -78,7 +78,7 @@ class RuleBatchScheduler:
 
         nested_results = await asyncio.gather(*(run_batch(index, batch) for index, batch in enumerate(batches)))
         decisions = [decision for sublist in nested_results for decision in sublist]
-        logger.success(f"✅ 批调度完成 | 总决策数={len(decisions)} | 触发={sum(1 for d in decisions if d.triggered)}")
+        logger.debug(f"✅ 批调度完成 | 总决策数={len(decisions)} | 触发={sum(1 for d in decisions if d.triggered)}")
         return sorted(decisions, key=lambda item: item.rule_id)
 
     @staticmethod
@@ -143,7 +143,7 @@ class RuleBatchScheduler:
                         timeout=self.batch_timeout_seconds,
                     )
                     self._metrics.successful_batches += 1
-                    logger.info(
+                    logger.debug(
                         f"✅ LLM 批次执行成功 | 决策数={len(decisions)} | 触发={sum(1 for d in decisions if d.triggered)}"
                     )
                     return decisions

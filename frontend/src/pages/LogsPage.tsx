@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Button, Card, CardBody, Chip, Select, SelectItem, Spinner,
+  Accordion, AccordionItem, Button, Card, CardBody, Chip, Select, SelectItem, Spinner,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import refreshCircleBold from '@iconify/icons-solar/refresh-circle-bold';
 import tagBold from '@iconify/icons-solar/tag-bold';
 import trashBin2Bold from '@iconify/icons-solar/trash-bin-2-bold';
+import eraserCircleBold from '@iconify/icons-solar/eraser-circle-bold';
+import disketteBoldDuotone from '@iconify/icons-solar/diskette-bold-duotone';
+import databaseBold from '@iconify/icons-solar/database-bold';
 import { useTranslation } from 'react-i18next';
 import { clearLogs, fetchLogs, fetchVersion } from '../api/logs';
+import { compactStorage, fetchStorageStats, pruneStorage } from '../api/storage';
 import type { LogEntry } from '../api/logs';
 import { ICON_SIZES } from '../constants/iconSizes';
 
@@ -20,6 +24,19 @@ const LEVEL_COLORS: Record<string, 'default' | 'primary' | 'warning' | 'danger' 
   ERROR: 'danger',
   CRITICAL: 'danger',
 };
+
+function formatBytes(value: number | null | undefined): string {
+  if (value == null) return '—';
+  if (value < 1024) return `${value} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let size = value / 1024;
+  let unit = units[0];
+  for (let i = 1; i < units.length && size >= 1024; i += 1) {
+    size /= 1024;
+    unit = units[i];
+  }
+  return `${size.toFixed(size >= 10 ? 1 : 2)} ${unit}`;
+}
 
 export default function LogsPage() {
   const { t } = useTranslation();
@@ -35,10 +52,23 @@ export default function LogsPage() {
     queryFn: fetchVersion,
     staleTime: 60_000,
   });
+  const { data: storageStats, isLoading: storageLoading } = useQuery({
+    queryKey: ['storage-stats'],
+    queryFn: fetchStorageStats,
+    refetchInterval: 60_000,
+  });
 
   const clear = useMutation({
     mutationFn: clearLogs,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['logs'] }),
+  });
+  const prune = useMutation({
+    mutationFn: pruneStorage,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['storage-stats'] }),
+  });
+  const compact = useMutation({
+    mutationFn: compactStorage,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['storage-stats'] }),
   });
 
   const levels = ['ALL', 'DEBUG', 'INFO', 'SUCCESS', 'WARNING', 'ERROR', 'CRITICAL'];
@@ -93,6 +123,79 @@ export default function LogsPage() {
           {t('logs.versionLabel')}: {versionInfo?.version ?? t('logs.versionUnknown')}
         </Chip>
       </div>
+
+      <Accordion variant="splitted" className="bg-transparent" itemClasses={{ title: 'w-full' }}>
+        <AccordionItem
+          key="storage"
+          aria-label={t('logs.storageTitle')}
+          title={(
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-2">
+                <Icon icon={databaseBold} fontSize={ICON_SIZES.cardHeader} className="text-primary" />
+                <span className="font-semibold">{t('logs.storageTitle')}</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Chip size="sm" variant="flat" color="primary">
+                  {t('logs.databaseSize')}: {formatBytes(storageStats?.database_file_bytes)}
+                </Chip>
+                <Chip size="sm" variant="flat" color="default">
+                  {t('logs.lastPrune')}: {
+                    storageStats?.last_storage_prune_at
+                      ? new Date(storageStats.last_storage_prune_at).toLocaleString()
+                      : t('logs.never')
+                  }
+                </Chip>
+              </div>
+            </div>
+          )}
+        >
+          <div className="space-y-3 px-1 pb-2">
+            <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-sm text-default-500">{t('logs.storageDescription')}</p>
+                <p className="text-xs text-warning mt-1">{t('logs.compactWarning')}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="flat"
+                  color="primary"
+                  startContent={<Icon icon={eraserCircleBold} fontSize={ICON_SIZES.button} />}
+                  isLoading={prune.isPending}
+                  onPress={() => prune.mutate()}
+                >
+                  {t('logs.prune')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="flat"
+                  color="warning"
+                  startContent={<Icon icon={disketteBoldDuotone} fontSize={ICON_SIZES.button} />}
+                  isLoading={compact.isPending}
+                  onPress={() => compact.mutate()}
+                >
+                  {t('logs.compact')}
+                </Button>
+              </div>
+            </div>
+
+            {storageLoading ? (
+              <Spinner size="sm" label={t('common.loading')} />
+            ) : (
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {Object.entries(storageStats?.tables ?? {}).map(([name, table]) => (
+                  <div key={name} className="rounded-lg border border-divider px-3 py-2">
+                    <div className="text-sm font-medium text-default-800">{name}</div>
+                    <div className="text-xs text-default-500">
+                      {t('logs.tableRows', { count: table.rows })} · {t('logs.payloadSize')}: {formatBytes(table.payload_bytes)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </AccordionItem>
+      </Accordion>
 
       {isLoading && <Spinner label={t('logs.loading')} />}
 

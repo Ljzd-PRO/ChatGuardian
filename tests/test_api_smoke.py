@@ -123,6 +123,29 @@ def test_llm_health_endpoint_without_ping() -> None:
     assert "metrics" in payload["scheduler"]
 
 
+def test_storage_maintenance_endpoints() -> None:
+    app = create_app()
+    client = TestClient(app)
+    headers = _register_and_login(client)
+
+    stats_resp = client.get("/api/storage/stats", headers=headers)
+    assert stats_resp.status_code == 200, stats_resp.text
+    stats = stats_resp.json()
+    assert "database_file_bytes" in stats
+    assert "tables" in stats
+    assert "chat_messages" in stats["tables"]
+
+    prune_resp = client.post("/api/storage/prune", headers=headers)
+    assert prune_resp.status_code == 200, prune_resp.text
+    prune_data = prune_resp.json()
+    assert "history" in prune_data
+    assert "detection" in prune_data
+
+    compact_resp = client.post("/api/storage/compact", headers=headers)
+    assert compact_resp.status_code == 200, compact_resp.text
+    assert compact_resp.json()["compacted"] is True
+
+
 def test_rule_list_and_delete_flow() -> None:
     app = create_app()
     client = TestClient(app)

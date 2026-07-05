@@ -24,6 +24,7 @@ from chat_guardian.prompts import (
     RULE_DETECTION_SYSTEM_PROMPT,
     USER_PROFILE_SYSTEM_PROMPT,
 )
+from chat_guardian.repositories import collect_storage_stats, compact_database
 from chat_guardian.settings import Settings, settings
 
 
@@ -236,6 +237,19 @@ class ChatGuardianOperations:
             items.append((str(platform), str(chat_type), str(chat_id), str(message_id)))
         deleted = await store.delete_history_messages(items)
         return {"deleted": deleted}
+
+    async def get_storage_stats(self) -> dict[str, Any]:
+        stats = collect_storage_stats(settings.database_url)
+        stats["last_storage_prune_at"] = getattr(self.container, "last_storage_prune_at", None)
+        return stats
+
+    async def prune_storage(self) -> dict[str, Any]:
+        return await self.container.run_storage_maintenance()
+
+    async def compact_storage(self) -> dict[str, Any]:
+        result = compact_database(settings.database_url)
+        result["last_storage_prune_at"] = getattr(self.container, "last_storage_prune_at", None)
+        return result
 
     async def get_adapters_status(self) -> list[dict[str, Any]]:
         return [
@@ -879,6 +893,21 @@ class ChatGuardianMCPService:
             """
             payload = {"clear_all": clear_all, "items": items or []}
             return await self.operations.delete_history_messages(payload)
+
+        @self.server.tool(name="storage_stats", description="获取数据库存储统计。")
+        async def tool_storage_stats() -> dict[str, Any]:
+            """返回数据库文件大小、表行数和 payload 估算大小。"""
+            return await self.operations.get_storage_stats()
+
+        @self.server.tool(name="storage_prune", description="执行安全存储清理。")
+        async def tool_storage_prune() -> dict[str, Any]:
+            """删除过期/超额历史和检测结果，不执行 VACUUM。"""
+            return await self.operations.prune_storage()
+
+        @self.server.tool(name="storage_compact", description="执行 SQLite VACUUM 压缩。")
+        async def tool_storage_compact() -> dict[str, Any]:
+            """手动压缩 SQLite 数据库文件；需要额外临时磁盘空间。"""
+            return await self.operations.compact_storage()
 
         @self.server.tool(name="adapters_status", description="查询 adapter 状态。")
         async def tool_adapters_status() -> list[dict[str, Any]]:

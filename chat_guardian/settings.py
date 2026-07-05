@@ -4,8 +4,10 @@
 此模块定义 `Settings` 配置类。`database_url` 通过环境变量（前缀
 `CHAT_GUARDIAN_`）读取，其余配置项通过 SQLAlchemy SQLite 数据库保存与读取，并可通过前端 API 修改。
 """
+import sys
 from typing import Literal, Optional
 
+from loguru import logger
 from pydantic import BaseModel, ConfigDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -16,6 +18,7 @@ class _EnvConfig(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="CHAT_GUARDIAN_", env_file=".env", extra="ignore")
 
     database_url: str = "sqlite:///./db.sqlite"
+    log_level: str = "INFO"
 
 
 class Settings(BaseModel):
@@ -27,6 +30,7 @@ class Settings(BaseModel):
 
     Attributes:
         database_url: SQLAlchemy/数据库连接字符串（仅通过环境变量配置）。
+        log_level: Loguru 输出级别（仅通过环境变量 CHAT_GUARDIAN_LOG_LEVEL 配置）。
         cors_allow_origins: CORS 允许来源列表，默认 ``["*"]``。
         llm_timeout_seconds: LLM 单次调用超时时间（秒）。
         llm_max_parallel_batches: LLM 最大并行批次数。
@@ -48,6 +52,12 @@ class Settings(BaseModel):
         context_message_limit: 检测时回溯的历史消息条数。
         pending_queue_limit: 未处理消息队列上限。
         history_list_limit: 滚动历史消息上限。
+        storage_detection_retention_days: 检测结果保留天数，<=0 表示不按时间清理。
+        storage_detection_max_records_per_rule: 每条规则最多保留的检测结果，<=0 表示不按数量清理。
+        storage_detection_context_message_limit: 每条检测结果最多保留的上下文消息数。
+        storage_history_retention_days: 历史消息保留天数，<=0 表示不按时间清理。
+        storage_history_max_total_messages: 全局历史消息最多保留条数，<=0 表示不按总量清理。
+        storage_persist_image_data: 是否将图片原始字节持久化入库。
         detection_cooldown_seconds: 检测冷却时间（秒）。
         detection_min_new_messages: 检测触发所需最小新消息数。
         detection_wait_timeout_seconds: 检测等待超时时间（秒）。
@@ -107,6 +117,7 @@ class Settings(BaseModel):
 
     # database_url 仅通过环境变量配置，不存储在数据库中
     database_url: str = "sqlite:///./db.sqlite"
+    log_level: str = "INFO"
     cors_allow_origins: list[str] = ["*"]
 
     # LLM 与批处理相关设置
@@ -137,6 +148,12 @@ class Settings(BaseModel):
     # 消息缓冲配置：未处理队列与滚动历史上限
     pending_queue_limit: int = 200
     history_list_limit: int = 1000
+    storage_detection_retention_days: int = 30
+    storage_detection_max_records_per_rule: int = 1000
+    storage_detection_context_message_limit: int = 50
+    storage_history_retention_days: int = 30
+    storage_history_max_total_messages: int = 100000
+    storage_persist_image_data: bool = False
 
     # 检测触发配置：冷却、新消息最小数量、等待超时
     detection_cooldown_seconds: float = 0
@@ -226,3 +243,13 @@ class Settings(BaseModel):
 
 _env_overrides = _EnvConfig().model_dump(exclude_none=True)
 settings = Settings(**_env_overrides)
+
+
+def configure_logging(level: str | None = None) -> None:
+    configured_level = (level or settings.log_level or "INFO").upper()
+    logger.remove()
+    logger.add(
+        sys.stderr,
+        level=configured_level,
+        format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {message}",
+    )
